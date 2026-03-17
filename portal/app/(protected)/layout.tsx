@@ -11,6 +11,10 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(routes.login);
   }
 
+  if (user.force_password_change) {
+    redirect(routes.changePassword);
+  }
+
   return (
     <AppShell
       user={{
@@ -20,6 +24,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         role:       user.role,
       }}
       role={user.role as UserRole}
+      colorTheme={(user as { color_theme?: string }).color_theme ?? 'red'}
     >
       {children}
     </AppShell>

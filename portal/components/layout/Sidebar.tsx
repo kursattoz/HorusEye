@@ -20,6 +20,7 @@ import {
   Laptop,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
+import { switchTheme } from '@/lib/utils/switchTheme';
 import type { UserRole } from '@/types';
 import {
   Tooltip,
@@ -27,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { HorusEyeIcon } from './HorusEyeIcon';
 
 interface NavItem {
   label: string;
@@ -153,7 +155,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'border-r bg-background flex flex-col shrink-0 transition-all duration-200 ease-in-out overflow-hidden',
+          'border-r bg-background flex flex-col shrink-0 transition-[width] duration-200 ease-in-out overflow-hidden',
           collapsed ? 'w-14' : 'w-56'
         )}
       >
@@ -182,19 +184,40 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
             </Tooltip>
           ) : settingsInner}
 
-          {/* Theme toggle */}
+          {/* Theme toggle — ghost glide sliding pill */}
           <div
             className={cn(
-              'flex rounded-lg bg-muted p-0.5 gap-0.5',
+              'relative flex rounded-lg bg-muted p-0.5',
               collapsed ? 'flex-col' : 'flex-row'
             )}
           >
+            {/* Sliding pill indicator */}
+            {mounted && (
+              <span
+                aria-hidden
+                className="absolute rounded-md bg-background shadow-sm pointer-events-none"
+                style={collapsed
+                  ? {
+                      top: '2px', left: '2px', right: '2px',
+                      height: 'calc(50% - 2px)',
+                      transform: resolvedTheme === 'dark' ? 'translateY(100%)' : 'translateY(0)',
+                      transition: 'transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }
+                  : {
+                      top: '2px', bottom: '2px', left: '2px',
+                      width: 'calc(50% - 2px)',
+                      transform: resolvedTheme === 'dark' ? 'translateX(100%)' : 'translateX(0)',
+                      transition: 'transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }
+                }
+              />
+            )}
             <button
-              onClick={() => setTheme('light')}
+              onClick={() => switchTheme(setTheme, 'light')}
               className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
+                'relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium',
                 mounted && resolvedTheme === 'light'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -208,11 +231,11 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
               {!collapsed && 'Light'}
             </button>
             <button
-              onClick={() => setTheme('dark')}
+              onClick={() => switchTheme(setTheme, 'dark')}
               className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
+                'relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium',
                 mounted && resolvedTheme === 'dark'
-                  ? 'bg-background text-foreground shadow-sm'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >

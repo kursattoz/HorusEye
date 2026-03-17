@@ -21,7 +21,19 @@ export const metadata: Metadata = {
   title:       'HorusEye — AI Exam Proctoring',
   description: 'AI-based exam proctoring and monitoring system',
   manifest:    '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
 };
+
+/**
+ * Inline script injected in <head> before any paint.
+ * Reads the stored color-theme from localStorage and sets
+ * data-color-theme on <html> to prevent a flash of wrong accent color.
+ */
+const COLOR_THEME_SCRIPT = `(function(){try{var t=localStorage.getItem('horuseye-color-theme')||'red';document.documentElement.setAttribute('data-color-theme',t);}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,6 +42,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
       className={`${inter.variable} ${geistMono.variable}`}
     >
+      <head>
+        {/* Apply color theme before first paint to avoid flash */}
+        <script dangerouslySetInnerHTML={{ __html: COLOR_THEME_SCRIPT }} />
+      </head>
       <body>
         <ThemeProvider
           attribute="class"

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { LoginForm }     from '@/components/auth/LoginForm';
 import { LoginDocPanel } from '@/components/auth/LoginDocPanel';
 import { LoginDocModal } from '@/components/auth/LoginDocModal';
+import { HorusEyeIcon }  from '@/components/layout/HorusEyeIcon';
 import { createClient }  from '@/lib/supabase/server';
 import { routes }        from '@/constants/routes';
 import type { PublicFile } from '@/components/public/FileTree';
@@ -30,10 +31,12 @@ export default async function LoginPage() {
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex items-center justify-between">
           <Link href={routes.home} className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-              H
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <HorusEyeIcon className="w-[18px] h-[15px] text-primary-foreground" />
             </div>
-            <span className="font-semibold text-sm">HorusEye</span>
+            <span className="text-sm leading-none select-none">
+              <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
+            </span>
           </Link>
           {/* Show doc modal button on mobile/tablet only (desktop has the panel) */}
           <div className="lg:hidden">

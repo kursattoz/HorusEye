@@ -3,10 +3,11 @@ export const routes = {
   home:            '/',
   docs:            (slug: string) => `/docs/${slug}`,
   login:           '/login',
+  changePassword:  '/change-password',
   dashboard:       '/dashboard',
-  files:           '/dashboard/files',
-  team:            '/dashboard/team',
-  feedback:        '/dashboard/feedback',
+  files:           '/files',
+  team:            '/team',
+  feedback:        '/feedback',
   settings:        '/settings',
   notifications:   '/notifications',
   monitor:         '/dev/monitor',
@@ -17,6 +18,9 @@ export const routes = {
 // Routes that require authentication (used in middleware)
 export const PROTECTED_ROUTES = [
   '/dashboard',
+  '/files',
+  '/team',
+  '/feedback',
   '/settings',
   '/notifications',
   '/dev',
@@ -24,7 +28,7 @@ export const PROTECTED_ROUTES = [
 
 // Routes only accessible by admin
 export const ADMIN_ONLY_ROUTES = [
-  '/dashboard/files',
-  '/dashboard/team',
+  '/files',
+  '/team',
   '/dev/monitor',
 ] as const;

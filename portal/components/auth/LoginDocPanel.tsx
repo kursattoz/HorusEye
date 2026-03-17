@@ -7,6 +7,7 @@ import {
   Download, ExternalLink, BookOpen, ChevronRight,
   MessageSquarePlus, Loader2,
 } from 'lucide-react';
+import { HorusEyeIcon } from '@/components/layout/HorusEyeIcon';
 import { cn } from '@/lib/utils';
 import type { PublicFile } from '@/components/public/FileTree';
 
@@ -93,8 +94,8 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
 
         {/* Card header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-muted/40">
-          <div className="h-6 w-6 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-xs">
-            H
+          <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center shrink-0">
+            <HorusEyeIcon className="w-3.5 h-[11px] text-primary-foreground" />
           </div>
           <span className="text-sm font-semibold text-foreground">Document Hub</span>
           <span className="ml-auto text-xs text-muted-foreground">{files.length} document{files.length !== 1 ? 's' : ''}</span>

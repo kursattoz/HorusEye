@@ -3,7 +3,9 @@ import { createClient }  from '@/lib/supabase/server';
 import {
   Card, CardContent, CardHeader, CardTitle,
 } from '@/components/ui/card';
-import { FileText, MessageSquare, Users } from 'lucide-react';
+import { FileText, MessageSquare, Users, ClipboardList } from 'lucide-react';
+import { SuspicionAreaChart } from '@/components/dashboard/charts/SuspicionAreaChart';
+import { SuspicionRadarChart } from '@/components/dashboard/charts/SuspicionRadarChart';
 
 async function getStats() {
   const supabase = await createClient();
@@ -20,7 +22,6 @@ async function getStats() {
 }
 
 export default async function DashboardPage() {
-  // getCurrentUser() is already verified by ProtectedLayout — safe to call again
   const user    = await getCurrentUser();
   const isAdmin = user?.role === 'admin';
   const stats   = isAdmin ? await getStats() : null;
@@ -35,11 +36,25 @@ export default async function DashboardPage() {
       </div>
 
       {isAdmin && stats && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard title="Files"     value={stats.files}     icon={FileText}      />
-          <StatCard title="Comments"  value={stats.feedbacks} icon={MessageSquare} />
-          <StatCard title="Users"     value={stats.users}     icon={Users}         />
-        </div>
+        <>
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard title="Files"        value={stats.files}     icon={FileText}      />
+            <StatCard title="Comments"     value={stats.feedbacks} icon={MessageSquare} />
+            <StatCard title="Users"        value={stats.users}     icon={Users}         />
+            <StatCard title="Total Exams"  value={12}              icon={ClipboardList} />
+          </div>
+
+          {/* Analytics charts */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+            <div className="xl:col-span-2 flex flex-col">
+              <SuspicionAreaChart />
+            </div>
+            <div className="flex flex-col">
+              <SuspicionRadarChart />
+            </div>
+          </div>
+        </>
       )}
 
       {!isAdmin && (

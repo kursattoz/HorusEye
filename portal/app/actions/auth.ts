@@ -68,6 +68,7 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
 
   const role = (profile?.role ?? 'assistant') as UserRole;
   const dest  = role === 'admin' ? routes.dashboard : routes.feedback;
+  // admin → /dashboard, others → /feedback
 
   revalidatePath('/', 'layout');
   redirect(dest);
@@ -100,10 +101,65 @@ export async function getCurrentUser() {
 
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('id, email, full_name, role, avatar_url, is_active')
+    .select('id, email, full_name, role, avatar_url, is_active, force_password_change, color_theme')
     .eq('id', user.id)
     .single();
 
   if (profileError) console.error('[getCurrentUser] profile error:', profileError.message, profileError.code);
   return profile;
+}
+
+const VALID_COLOR_THEMES = ['red', 'pink', 'orange', 'blue'] as const;
+type ColorTheme = typeof VALID_COLOR_THEMES[number];
+
+export async function updateColorThemeAction(theme: ColorTheme): Promise<void> {
+  if (!VALID_COLOR_THEMES.includes(theme)) return;
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  await supabase
+    .from('user_profiles')
+    .update({ color_theme: theme })
+    .eq('id', user.id);
+}
+
+export async function changePasswordAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
+  const password  = formData.get('password');
+  const confirm   = formData.get('confirm');
+
+  if (typeof password !== 'string' || typeof confirm !== 'string') {
+    return { error: 'Invalid request.' };
+  }
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters.' };
+  }
+  if (password !== confirm) {
+    return { error: 'Passwords do not match.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated.' };
+
+  // Update password in Supabase Auth
+  const { error: pwError } = await supabase.auth.updateUser({ password });
+  if (pwError) return { error: pwError.message };
+
+  // Clear the force_password_change flag (service role to bypass RLS)
+  const admin = await createClient({ serviceRole: true });
+  await admin.from('user_profiles')
+    .update({ force_password_change: false })
+    .eq('id', user.id);
+
+  await log({
+    event_type: 'auth.password_reset',
+    severity:   'info',
+    user_id:    user.id,
+    action:     'User changed forced password on first login',
+  });
+
+  revalidatePath('/', 'layout');
+  redirect(routes.dashboard);
 }
