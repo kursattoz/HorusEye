@@ -1,6 +1,8 @@
 <div align="center">
-  <img src="SVG/favicon.svg" width="64" height="64" alt="HorusEye Logo" />
-  <h1>HorusEye</h1>
+  <img src="SVG/readme-icon.svg" width="100" height="100" alt="HorusEye Icon" />
+  <br/>
+  <img src="SVG/readme-wordmark.svg" width="300" height="55" alt="HorusEye" />
+  <br/>
   <p><strong>AI-Powered Exam Proctoring & Monitoring System</strong></p>
   <p>
     <img src="https://img.shields.io/badge/Next.js-15-black?logo=next.js" alt="Next.js" />
