@@ -16,6 +16,8 @@ export interface PublicFile {
   description: string | null;
   created_at:  string;
   file_size_bytes?: number;
+  blurred_page?: number | null;
+  sort_order?:   number | null;
 }
 
 const FILE_ICONS: Record<string, React.ElementType> = {

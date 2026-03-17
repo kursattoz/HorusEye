@@ -1,0 +1,91 @@
+'use client';
+
+import { useState, useCallback } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import { ChevronLeft, ChevronRight, Loader2, EyeOff } from 'lucide-react';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
+interface PdfViewerProps {
+  url:         string;
+  blurredPage?: number | null; // 1-indexed page to blur
+  className?:  string;
+}
+
+export function PdfViewer({ url, blurredPage, className }: PdfViewerProps) {
+  const [numPages,    setNumPages]    = useState<number>(0);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [loading,     setLoading]     = useState(true);
+  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+
+  const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setLoading(false);
+  }, []);
+
+  const width = containerRef?.clientWidth ?? 600;
+
+  const isBlurred = blurredPage != null && currentPage === blurredPage;
+
+  return (
+    <div ref={setContainerRef} className={`flex flex-col h-full bg-zinc-950 ${className ?? ''}`}>
+      {/* PDF Document */}
+      <div className="flex-1 overflow-y-auto flex flex-col items-center py-4 px-2 relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          </div>
+        )}
+        <Document
+          file={url}
+          onLoadSuccess={onDocumentLoadSuccess}
+          loading={null}
+          error={<p className="text-xs text-zinc-500 mt-8">Failed to load PDF.</p>}
+        >
+          <div className="relative">
+            <Page
+              pageNumber={currentPage}
+              width={Math.min(width - 16, 800)}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+            />
+            {isBlurred && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded"
+                style={{ backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+                <EyeOff className="h-8 w-8 text-zinc-300" />
+                <p className="text-sm font-medium text-zinc-200 text-center px-6 max-w-sm">
+                  This page has been hidden as it contains sensitive or personal information.
+                </p>
+              </div>
+            )}
+          </div>
+        </Document>
+      </div>
+
+      {/* Page navigation */}
+      {numPages > 1 && (
+        <div className="shrink-0 flex items-center justify-center gap-3 border-t border-zinc-800 py-2.5 bg-zinc-950">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className="p-1 rounded hover:bg-zinc-800 disabled:opacity-30 text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-xs text-zinc-400">
+            Page {currentPage} of {numPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(numPages, p + 1))}
+            disabled={currentPage >= numPages}
+            className="p-1 rounded hover:bg-zinc-800 disabled:opacity-30 text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

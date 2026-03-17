@@ -15,8 +15,9 @@ async function getPublicFiles(): Promise<PublicFile[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('public_files')
-    .select('id, display_name, file_type, public_url, slug, category, description, created_at')
-    .order('created_at', { ascending: false });
+    .select('id, display_name, file_type, public_url, slug, category, description, created_at, blurred_page, sort_order')
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true });
   return (data ?? []) as PublicFile[];
 }
 

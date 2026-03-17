@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
   const displayName = (formData.get('display_name') as string) || file?.name || 'Untitled';
   const category    = (formData.get('category') as string) || 'other';
   const isPublic    = formData.get('is_public') === 'true';
+  const blurredPageRaw = formData.get('blurred_page');
+  const blurredPage = blurredPageRaw ? parseInt(blurredPageRaw as string, 10) : null;
 
   if (!file) return NextResponse.json({ error: 'File not found.' }, { status: 400 });
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'Maximum file size is 50MB.' }, { status: 400 });
@@ -65,6 +67,8 @@ export async function POST(request: NextRequest) {
     is_public:       isPublic,
     uploaded_by:     user.id,
     metadata:        { category, slug: slugify(displayName) },
+    blurred_page:    blurredPage ?? null,
+    sort_order:      null,
   }).select().single();
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });

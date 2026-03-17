@@ -1,12 +1,25 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import {
   FileText, FileImage, Presentation, Search,
   Download, ExternalLink, BookOpen, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PublicFile } from '@/components/public/FileTree';
+
+const PdfViewer = dynamic(
+  () => import('@/components/public/PdfViewer').then(m => ({ default: m.PdfViewer })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <div className="h-6 w-6 rounded-full border-2 border-zinc-600 border-t-zinc-300 animate-spin" />
+      </div>
+    ),
+  }
+);
 
 const FILE_ICONS: Record<string, React.ElementType> = {
   pdf:   FileText,
@@ -47,7 +60,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
 
   return (
     /* Force dark theme variables inside this panel */
-    <div className="dark h-full flex items-center justify-center p-6 lg:p-8">
+    <div className="dark h-full flex items-center justify-center p-3 md:p-6 lg:p-8">
       {/* Floating card */}
       <div className="w-full max-w-3xl h-[min(700px,calc(100svh-3rem))] rounded-2xl overflow-hidden flex flex-col bg-zinc-900 border border-zinc-700/60 shadow-[0_32px_80px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
 
@@ -61,10 +74,10 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
         </div>
 
         {/* Body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
           {/* Left — file list */}
-          <div className="w-56 shrink-0 flex flex-col border-r border-zinc-800 bg-zinc-950/30">
+          <div className="w-full md:w-56 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-zinc-800 bg-zinc-950/30">
             {/* Search */}
             <div className="p-2.5 border-b border-zinc-800">
               <div className="relative">
@@ -108,15 +121,37 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                       </p>
                       <p className="text-zinc-600 text-[10px] mt-0.5">{formatDate(file.created_at)}</p>
                     </div>
-                    {active && <ChevronRight size={10} className="shrink-0 mt-1 text-zinc-400" />}
+                    {/* Mobile: show Open + Download inline; Desktop: show chevron when active */}
+                    <div className="flex items-center gap-1 shrink-0 md:hidden">
+                      <a
+                        href={file.public_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors"
+                        aria-label="Open"
+                      >
+                        <ExternalLink size={11} />
+                      </a>
+                      <a
+                        href={file.public_url}
+                        download
+                        onClick={e => e.stopPropagation()}
+                        className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-200 transition-colors"
+                        aria-label="Download"
+                      >
+                        <Download size={11} />
+                      </a>
+                    </div>
+                    {active && <ChevronRight size={10} className="shrink-0 mt-1 text-zinc-400 hidden md:block" />}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Right — preview */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/20">
+          {/* Right — preview (hidden on mobile) */}
+          <div className="hidden md:flex flex-1 flex-col overflow-hidden bg-zinc-950/20">
             {selected ? (
               <>
                 {/* Preview header */}
@@ -149,7 +184,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                   </div>
                 </div>
 
-                {/* Iframe viewer */}
+                {/* Viewer */}
                 <div className="flex-1 relative overflow-hidden">
                   {loading && (
                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 z-10">
@@ -179,15 +214,7 @@ function DocViewer({ file, onLoad }: { file: PublicFile; onLoad: () => void }) {
   const { file_type, public_url, display_name } = file;
 
   if (file_type === 'pdf') {
-    return (
-      <iframe
-        key={public_url}
-        src={`${public_url}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
-        title={display_name}
-        className="w-full h-full border-0"
-        onLoad={onLoad}
-      />
-    );
+    return <PdfViewer key={public_url} url={public_url} blurredPage={file.blurred_page} />;
   }
 
   if (file_type === 'pptx') {

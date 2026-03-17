@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -13,6 +14,11 @@ import { Progress } from '@/components/ui/progress';
 import { Upload, X } from 'lucide-react';
 import { toast }    from 'sonner';
 import { cn }       from '@/lib/utils';
+
+const PdfPagePicker = dynamic(
+  () => import('@/components/public/PdfPagePicker').then(m => ({ default: m.PdfPagePicker })),
+  { ssr: false }
+);
 
 const ACCEPTED = '.pdf,.pptx,.docx,.png,.jpg,.jpeg,.webp';
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
@@ -36,6 +42,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
   const [displayName, setDisplayName] = useState('');
   const [category, setCategory] = useState('documents');
   const [isPublic, setIsPublic] = useState(false);
+  const [blurredPage, setBlurredPage] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging]   = useState(false);
@@ -63,6 +70,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
     fd.append('display_name', displayName || file.name);
     fd.append('category', category);
     fd.append('is_public', String(isPublic));
+    if (blurredPage) fd.append('blurred_page', String(blurredPage));
 
     try {
       setProgress(40);
@@ -86,7 +94,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
 
   function resetState() {
     setFile(null); setDisplayName(''); setCategory('documents');
-    setIsPublic(false); setProgress(0);
+    setIsPublic(false); setBlurredPage(null); setProgress(0);
   }
 
   return (
@@ -154,6 +162,13 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
             <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
             <Label htmlFor="public">Public (visible to everyone)</Label>
           </div>
+
+          {file && file.type === 'application/pdf' && (
+            <div className="space-y-2">
+              <Label>Blur Page (optional)</Label>
+              <PdfPagePicker file={file} selected={blurredPage} onSelect={setBlurredPage} />
+            </div>
+          )}
 
           {uploading && <Progress value={progress} className="h-1.5" />}
         </div>

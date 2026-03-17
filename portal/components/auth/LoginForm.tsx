@@ -81,7 +81,7 @@ export function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="you@horuseye.com"
+          placeholder="you@tedu.edu.tr"
           autoComplete="email"
           inputMode="email"
           maxLength={MAX_EMAIL_LEN}

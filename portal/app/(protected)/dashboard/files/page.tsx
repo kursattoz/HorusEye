@@ -8,9 +8,10 @@ async function getFiles() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('files')
-    .select('id, display_name, name, file_type, file_size_bytes, is_public, storage_path, public_url, metadata, created_at, uploaded_by, deleted_at')
+    .select('id, display_name, name, file_type, file_size_bytes, is_public, storage_path, public_url, metadata, created_at, uploaded_by, deleted_at, blurred_page, sort_order')
     .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true });
   return data ?? [];
 }
 

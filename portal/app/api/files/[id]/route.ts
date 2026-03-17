@@ -22,6 +22,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (body.is_public    !== undefined) allowed.is_public    = body.is_public;
   if (body.display_name !== undefined) allowed.display_name = body.display_name;
   if (body.metadata     !== undefined) allowed.metadata     = body.metadata;
+  if (body.blurred_page !== undefined) allowed.blurred_page = body.blurred_page;
+  if (body.sort_order   !== undefined) allowed.sort_order   = body.sort_order;
 
   const { data, error } = await supabase.from('files').update(allowed).eq('id', id).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

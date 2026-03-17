@@ -12,7 +12,7 @@ import {
   DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Trash2, Globe, Lock, Upload } from 'lucide-react';
+import { MoreHorizontal, Trash2, Globe, Lock, Upload, ArrowUp, ArrowDown, EyeOff } from 'lucide-react';
 import { toast }      from 'sonner';
 import { FileUploadDialog } from './FileUploadDialog';
 
@@ -27,6 +27,8 @@ interface FileRow {
   metadata:        Record<string, unknown>;
   created_at:      string;
   deleted_at:      string | null;
+  blurred_page:    number | null;
+  sort_order:      number | null;
 }
 
 interface FilesTableProps {
@@ -79,6 +81,50 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     toast.success(`"${file.display_name}" uploaded.`);
   }
 
+  async function moveFile(id: string, direction: 'up' | 'down') {
+    const idx = files.findIndex(f => f.id === id);
+    if (direction === 'up' && idx === 0) return;
+    if (direction === 'down' && idx === files.length - 1) return;
+
+    const newFiles = [...files];
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    const tmp = newFiles[idx]!;
+    newFiles[idx] = newFiles[swapIdx]!;
+    newFiles[swapIdx] = tmp;
+
+    const idAtIdx   = newFiles[idx]!.id;
+    const idAtSwap  = newFiles[swapIdx]!.id;
+
+    setFiles(newFiles.map((f, i) => ({ ...f, sort_order: (i + 1) * 10 })));
+
+    await Promise.all([
+      fetch(`/api/files/${idAtIdx}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sort_order: (idx + 1) * 10 }),
+      }),
+      fetch(`/api/files/${idAtSwap}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sort_order: (swapIdx + 1) * 10 }),
+      }),
+    ]);
+  }
+
+  async function updateBlurPage(id: string, page: number | null) {
+    const res = await fetch(`/api/files/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ blurred_page: page }),
+    });
+    if (res.ok) {
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, blurred_page: page } : f));
+      toast.success('Blur page updated.');
+    } else {
+      toast.error('Update failed.');
+    }
+  }
+
   return (
     <>
       <div className="flex justify-end mb-4">
@@ -96,18 +142,20 @@ export function FilesTable({ files: initial }: FilesTableProps) {
               <TableHead>Size</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="w-20">Order</TableHead>
+              <TableHead className="w-24">Blur Page</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {files.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No files uploaded yet.
                 </TableCell>
               </TableRow>
             )}
-            {files.map(file => (
+            {files.map((file, idx) => (
               <TableRow key={file.id}>
                 <TableCell className="font-medium max-w-xs truncate">{file.display_name}</TableCell>
                 <TableCell>
@@ -126,6 +174,46 @@ export function FilesTable({ files: initial }: FilesTableProps) {
                       ? <Globe size={13} className="text-green-600" />
                       : <Lock size={13} className="text-muted-foreground" />}
                   </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => moveFile(file.id, 'up')}
+                      disabled={idx === 0}
+                      className="p-1 rounded hover:bg-accent disabled:opacity-30 transition-colors"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                    <button
+                      onClick={() => moveFile(file.id, 'down')}
+                      disabled={idx === files.length - 1}
+                      className="p-1 rounded hover:bg-accent disabled:opacity-30 transition-colors"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown size={13} />
+                    </button>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {file.file_type === 'pdf' ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        defaultValue={file.blurred_page ?? ''}
+                        placeholder="–"
+                        className="w-14 h-7 text-xs border rounded px-2 bg-background"
+                        onBlur={e => {
+                          const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                          if (val !== file.blurred_page) updateBlurPage(file.id, val);
+                        }}
+                      />
+                      {file.blurred_page && <EyeOff size={12} className="text-muted-foreground" />}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">–</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
