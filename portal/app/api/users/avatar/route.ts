@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE = 15 * 1024 * 1024; // 15 MB
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png':  'png',
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const file = formData.get('avatar') as File | null;
 
   if (!file) return NextResponse.json({ error: 'No file provided.' }, { status: 400 });
-  if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File must be under 5 MB.' }, { status: 400 });
+  if (file.size > MAX_SIZE) return NextResponse.json({ error: 'File must be under 15 MB.' }, { status: 400 });
 
   const ext = ALLOWED_TYPES[file.type];
   if (!ext) return NextResponse.json({ error: 'Only JPG, PNG, and WebP are allowed.' }, { status: 400 });

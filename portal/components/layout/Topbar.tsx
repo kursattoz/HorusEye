@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronLeft, ChevronRight, LogOut, Settings } from 'lucide-react';
+import { ChevronLeft, LogOut, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -39,24 +39,35 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
     <header className="h-14 border-b bg-background flex items-center justify-between px-4 shrink-0">
       {/* Left: logo + collapse toggle */}
       <div className="flex items-center gap-1">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
+        {sidebarCollapsed ? (
+          /* Collapsed: only the H icon, clicking it expands */
+          <button
+            onClick={onToggleSidebar}
+            aria-label="Expand sidebar"
+            className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0 hover:opacity-80 transition-opacity"
+          >
             H
-          </div>
-          <span className="font-semibold text-sm">HorusEye</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleSidebar}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {sidebarCollapsed
-            ? <ChevronRight className="h-4 w-4" />
-            : <ChevronLeft  className="h-4 w-4" />
-          }
-        </Button>
+          </button>
+        ) : (
+          /* Expanded: icon + name + collapse arrow */
+          <>
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shrink-0">
+                H
+              </div>
+              <span className="font-semibold text-sm">HorusEye</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleSidebar}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Right: notifications + user */}

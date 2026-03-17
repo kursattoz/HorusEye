@@ -11,7 +11,7 @@ import { toast }   from 'sonner';
 import { Camera, Loader2 } from 'lucide-react';
 import { AvatarCropDialog } from './AvatarCropDialog';
 
-const MAX_FILE_SIZE  = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE  = 15 * 1024 * 1024; // 15 MB
 const ALLOWED_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
 
 interface ProfileTabProps {
@@ -48,7 +48,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('Image must be under 5 MB.');
+      toast.error('Image must be under 15 MB.');
       return;
     }
 
