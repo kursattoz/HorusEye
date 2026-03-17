@@ -17,8 +17,8 @@ export function AppearanceTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Tema</CardTitle>
-        <CardDescription>Arayüz temasını seçin. Seçim anında uygulanır.</CardDescription>
+        <CardTitle className="text-base">Theme</CardTitle>
+        <CardDescription>Choose the interface theme. Selection is applied immediately.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-3 gap-3 max-w-sm">

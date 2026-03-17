@@ -50,7 +50,7 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
           size="icon"
           onClick={onToggleSidebar}
           className="h-7 w-7 text-muted-foreground hover:text-foreground"
-          aria-label={sidebarCollapsed ? 'Sidebar genişlet' : 'Sidebar daralt'}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {sidebarCollapsed
             ? <ChevronRight className="h-4 w-4" />
@@ -65,7 +65,7 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="Hesap menüsü">
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full" aria-label="Account menu">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.avatar_url ?? undefined} alt={user.full_name ?? user.email} />
                 <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -75,7 +75,7 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">{user.full_name ?? 'Kullanıcı'}</p>
+                <p className="text-sm font-medium">{user.full_name ?? 'User'}</p>
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                 <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
               </div>
@@ -84,7 +84,7 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
             <DropdownMenuItem asChild>
               <Link href={routes.settings}>
                 <Settings className="mr-2 h-4 w-4" />
-                Ayarlar
+                Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -92,7 +92,7 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
               <form action={logoutAction} className="w-full">
                 <button type="submit" className="flex w-full items-center text-sm">
                   <LogOut className="mr-2 h-4 w-4" />
-                  Çıkış Yap
+                  Sign Out
                 </button>
               </form>
             </DropdownMenuItem>

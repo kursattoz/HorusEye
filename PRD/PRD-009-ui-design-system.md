@@ -11,14 +11,52 @@
 AuthUser: @1.0
 -->
 
-## ⚠️ LLM INSTRUCTION
-This PRD is the **single source of truth** for all visual decisions.
-- Every component must come from shadcn/ui. Do not introduce a second component library.
+## ⚠️ LLM INSTRUCTION — STRICT RULES
+This PRD is the **single source of truth** for all visual decisions. Violations will cause build failures and must be corrected immediately.
+
+### Mandatory
+- **shadcn/ui `new-york` style** with **Radix UI** as primitive layer. This is the ONLY allowed component source.
+- **`@base-ui/react` is BANNED.** Never install or import it. `components.json` must always have `"style": "new-york"`.
+- **`asChild` prop** is the correct composition pattern in Radix UI. Use `<DropdownMenuTrigger asChild>`, `<Button asChild>`, etc. Never use a `render` prop for composition.
+- **`buttonVariants`** is a pure CVA function (no `"use client"`). It can be imported and called freely in both Server and Client Components.
 - Every icon must come from `lucide-react`. Do not use other icon sets.
 - Do not hardcode color values anywhere in component files. Use CSS variables defined here.
 - Dark/light mode must be implemented via the `next-themes` strategy defined in Section 5.
 - Interface dependencies are declared in the INTERFACE_DEPS block above. If PRD-000 version changes, update this block or `validate:prd` will fail.
 - Any design token change (color, font, spacing) must be made here first, then applied globally.
+
+### Forbidden Patterns
+```tsx
+// ❌ WRONG — @base-ui/react render prop
+<DropdownMenuTrigger render={<Button .../>} />
+
+// ✅ CORRECT — Radix UI asChild
+<DropdownMenuTrigger asChild>
+  <Button .../>
+</DropdownMenuTrigger>
+
+// ❌ WRONG — inline hardcoded button styles in server component
+<Link className="inline-flex items-center ...border border-border..." />
+
+// ✅ CORRECT — buttonVariants is safe in server components
+import { buttonVariants } from '@/components/ui/button';
+<Link className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))} />
+
+// ❌ WRONG — Select null guard (base-ui API)
+<Select onValueChange={(v) => { if (v !== null) setVal(v); }} />
+
+// ✅ CORRECT — Radix Select always returns string
+<Select onValueChange={setVal} />
+```
+
+### components.json (must always match)
+```json
+{
+  "style": "new-york",
+  "rsc": true,
+  "tailwind": { "css": "app/globals.css", "baseColor": "slate", "cssVariables": true }
+}
+```
 
 ---
 

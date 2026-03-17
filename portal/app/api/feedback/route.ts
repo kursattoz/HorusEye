@@ -5,7 +5,7 @@ import { log } from '@/lib/logger';
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const fileId = searchParams.get('file_id');
-  if (!fileId) return NextResponse.json({ error: 'file_id gereklidir.' }, { status: 400 });
+  if (!fileId) return NextResponse.json({ error: 'file_id is required.' }, { status: 400 });
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { file_id, content, feedback_type = 'general', line_ref } = await request.json();
-  if (!file_id || !content) return NextResponse.json({ error: 'file_id ve content gereklidir.' }, { status: 400 });
+  if (!file_id || !content) return NextResponse.json({ error: 'file_id and content are required.' }, { status: 400 });
 
   const { data: feedback, error } = await supabase.from('feedbacks').insert({
     file_id, author_id: user.id, content, feedback_type, line_ref: line_ref ?? null,

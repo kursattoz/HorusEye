@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
   const category    = (formData.get('category') as string) || 'other';
   const isPublic    = formData.get('is_public') === 'true';
 
-  if (!file) return NextResponse.json({ error: 'Dosya bulunamadı.' }, { status: 400 });
-  if (file.size > MAX_SIZE) return NextResponse.json({ error: 'Maksimum dosya boyutu 50MB.' }, { status: 400 });
+  if (!file) return NextResponse.json({ error: 'File not found.' }, { status: 400 });
+  if (file.size > MAX_SIZE) return NextResponse.json({ error: 'Maximum file size is 50MB.' }, { status: 400 });
 
   const fileType = ACCEPTED_TYPES[file.type];
-  if (!fileType) return NextResponse.json({ error: 'Desteklenmeyen dosya tipi.' }, { status: 400 });
+  if (!fileType) return NextResponse.json({ error: 'Unsupported file type.' }, { status: 400 });
 
   const bytes      = await file.arrayBuffer();
   const folder     = isPublic ? 'public' : 'private';

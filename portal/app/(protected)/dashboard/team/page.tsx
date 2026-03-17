@@ -23,9 +23,9 @@ export default async function TeamPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Takım Yönetimi</h1>
+        <h1 className="text-2xl font-semibold">Team Management</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Kullanıcıları görüntüleyin, rol atayın veya hesap durumunu değiştirin.
+          View users, assign roles, or change account status.
         </p>
       </div>
       <TeamTable users={users} />

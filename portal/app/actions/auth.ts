@@ -16,7 +16,7 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
   const password = formData.get('password') as string;
 
   if (!email || !password) {
-    return { error: 'Email ve şifre gereklidir.' };
+    return { error: 'Email and password are required.' };
   }
 
   const supabase = await createClient();
@@ -31,7 +31,7 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
       metadata:   { email },
     });
     // Generic message — do not differentiate between wrong password / no account (security)
-    return { error: 'Email veya şifre hatalı.' };
+    return { error: 'Invalid email or password.' };
   }
 
   // Fetch role for redirect

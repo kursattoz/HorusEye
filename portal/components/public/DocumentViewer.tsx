@@ -17,10 +17,10 @@ export function DocumentViewer({ file }: DocumentViewerProps) {
           👁️
         </div>
         <div>
-          <h2 className="text-xl font-semibold">HorusEye Doküman Merkezi</h2>
+          <h2 className="text-xl font-semibold">HorusEye Document Hub</h2>
           <p className="text-muted-foreground text-sm mt-1 max-w-md">
-            Sol panelden bir doküman seçerek görüntüleyebilirsiniz.
-            Tüm belgeler kamuya açıktır, giriş yapmanıza gerek yoktur.
+            Select a document from the left panel to view it.
+            All documents are publicly accessible — no login required.
           </p>
         </div>
       </div>
@@ -44,14 +44,14 @@ export function DocumentViewer({ file }: DocumentViewerProps) {
             rel="noopener noreferrer"
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
           >
-            <ExternalLink size={14} className="mr-1.5" /> Aç
+            <ExternalLink size={14} className="mr-1.5" /> Open
           </a>
           <a
             href={file.public_url}
             download
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
           >
-            <Download size={14} className="mr-1.5" /> İndir
+            <Download size={14} className="mr-1.5" /> Download
           </a>
         </div>
       </div>
@@ -103,9 +103,9 @@ function FileRenderer({ file }: { file: PublicFile }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4">
-      <p className="text-muted-foreground text-sm">Bu dosya tarayıcıda görüntülenemiyor.</p>
+      <p className="text-muted-foreground text-sm">This file cannot be previewed in the browser.</p>
       <a href={public_url} download className={cn(buttonVariants())}>
-        <Download size={14} className="mr-2" /> Dosyayı İndir
+        <Download size={14} className="mr-2" /> Download File
       </a>
     </div>
   );

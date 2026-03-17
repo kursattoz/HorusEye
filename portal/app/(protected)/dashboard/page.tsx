@@ -30,15 +30,15 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Hoş geldiniz, {user?.full_name ?? user?.email}
+          Welcome, {user?.full_name ?? user?.email}
         </p>
       </div>
 
       {isAdmin && stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard title="Dosyalar"     value={stats.files}     icon={FileText}      />
-          <StatCard title="Yorumlar"     value={stats.feedbacks} icon={MessageSquare} />
-          <StatCard title="Kullanıcılar" value={stats.users}     icon={Users}         />
+          <StatCard title="Files"     value={stats.files}     icon={FileText}      />
+          <StatCard title="Comments"  value={stats.feedbacks} icon={MessageSquare} />
+          <StatCard title="Users"     value={stats.users}     icon={Users}         />
         </div>
       )}
 
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              Sol menüden <strong>Feedback</strong> bölümüne geçerek dosyalara yorum yapabilirsiniz.
+              Use the <strong>Feedback</strong> section in the left menu to leave comments on files.
             </p>
           </CardContent>
         </Card>

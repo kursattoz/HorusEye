@@ -23,7 +23,7 @@ export default async function FeedbackPage() {
       <div>
         <h1 className="text-2xl font-semibold">Feedback</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Dosyaları görüntüleyin ve yorum yapın.
+          View files and leave comments.
         </p>
       </div>
       <FeedbackView files={files} userRole={user.role} userId={user.id} />

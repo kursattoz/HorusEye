@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const files = await getFiles();
   const file  = files.find(f => (f.slug ?? f.id) === slug);
-  if (!file) return { title: 'Doküman Bulunamadı — HorusEye' };
+  if (!file) return { title: 'Document Not Found — HorusEye' };
   return {
     title:       `${file.display_name} — HorusEye`,
     description: file.description ?? undefined,

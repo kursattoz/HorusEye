@@ -18,10 +18,10 @@ const ACCEPTED = '.pdf,.pptx,.docx,.png,.jpg,.jpeg,.webp';
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
 
 const CATEGORIES = [
-  { value: 'reports',       label: 'Raporlar' },
-  { value: 'presentations', label: 'Sunumlar' },
-  { value: 'documents',     label: 'Dokümanlar' },
-  { value: 'other',         label: 'Diğer' },
+  { value: 'reports',       label: 'Reports' },
+  { value: 'presentations', label: 'Presentations' },
+  { value: 'documents',     label: 'Documents' },
+  { value: 'other',         label: 'Other' },
 ];
 
 interface FileUploadDialogProps {
@@ -41,7 +41,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
   const [dragging, setDragging]   = useState(false);
 
   function pickFile(f: File) {
-    if (f.size > MAX_SIZE) { toast.error('Maksimum dosya boyutu 50MB.'); return; }
+    if (f.size > MAX_SIZE) { toast.error('Maximum file size is 50MB.'); return; }
     setFile(f);
     setDisplayName(f.name.replace(/\.[^.]+$/, ''));
   }
@@ -70,14 +70,14 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
       setProgress(90);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? 'Upload başarısız');
+        throw new Error(err.error ?? 'Upload failed');
       }
       const data = await res.json();
       setProgress(100);
       onUploaded(data.file);
       resetState();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Yükleme hatası.');
+      toast.error(err instanceof Error ? err.message : 'Upload error.');
     } finally {
       setUploading(false);
       setProgress(0);
@@ -93,7 +93,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
     <Dialog open={open} onOpenChange={() => { if (!uploading) { resetState(); onClose(); } }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Dosya Yükle</DialogTitle>
+          <DialogTitle>Upload File</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -124,7 +124,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
               <div className="space-y-1">
                 <Upload size={24} className="mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Dosyayı buraya sürükleyin veya <span className="text-primary underline">seçin</span>
+                  Drag and drop a file here or <span className="text-primary underline">choose one</span>
                 </p>
                 <p className="text-xs text-muted-foreground">PDF, PPTX, DOCX, PNG, JPG — max 50MB</p>
               </div>
@@ -134,12 +134,12 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
             onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); }} />
 
           <div className="space-y-2">
-            <Label htmlFor="display-name">Görünen İsim</Label>
-            <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="Dosya adı" />
+            <Label htmlFor="display-name">Display Name</Label>
+            <Input id="display-name" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="File name" />
           </div>
 
           <div className="space-y-2">
-            <Label>Kategori</Label>
+            <Label>Category</Label>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -152,16 +152,16 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
 
           <div className="flex items-center gap-3">
             <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
-            <Label htmlFor="public">Public (herkese açık)</Label>
+            <Label htmlFor="public">Public (visible to everyone)</Label>
           </div>
 
           {uploading && <Progress value={progress} className="h-1.5" />}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => { resetState(); onClose(); }} disabled={uploading}>İptal</Button>
+          <Button variant="outline" onClick={() => { resetState(); onClose(); }} disabled={uploading}>Cancel</Button>
           <Button onClick={handleUpload} disabled={!file || uploading}>
-            {uploading ? 'Yükleniyor...' : 'Yükle'}
+            {uploading ? 'Uploading...' : 'Upload'}
           </Button>
         </DialogFooter>
       </DialogContent>

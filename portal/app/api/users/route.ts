@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error }, { status });
 
   const { email, full_name, role } = await request.json();
-  if (!email || !role) return NextResponse.json({ error: 'Email ve rol gereklidir.' }, { status: 400 });
-  if (role === 'admin') return NextResponse.json({ error: 'Admin rolü UI üzerinden atanamaz.' }, { status: 400 });
+  if (!email || !role) return NextResponse.json({ error: 'Email and role are required.' }, { status: 400 });
+  if (role === 'admin') return NextResponse.json({ error: 'Admin role cannot be assigned through the UI.' }, { status: 400 });
 
   // Create auth user with service role client
   const adminClient = await createClient({ serviceRole: true });

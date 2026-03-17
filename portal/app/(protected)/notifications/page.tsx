@@ -3,7 +3,7 @@ import { Bell, FileText, Users, MessageSquare, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'Bildirimler — HorusEye',
+  title: 'Notifications — HorusEye',
 };
 
 interface Notification {
@@ -17,16 +17,16 @@ interface Notification {
 }
 
 const ALL_NOTIFICATIONS: Notification[] = [
-  { id: 1,  icon: FileText,      category: 'Dosyalar',  title: 'Yeni dosya yüklendi',           desc: 'Sınav_2025_Final.pdf sisteme eklendi.',              time: '2 dakika önce',   unread: true  },
-  { id: 2,  icon: MessageSquare, category: 'Feedback',  title: 'Yeni feedback',                 desc: 'Öğrenci #4821 bir geri bildirim bıraktı.',           time: '8 dakika önce',   unread: true  },
-  { id: 3,  icon: Users,         category: 'Takım',     title: 'Yeni kullanıcı eklendi',        desc: 'ayse.kaya@tedu.edu.tr sisteme katıldı.',             time: '15 dakika önce',  unread: true  },
-  { id: 4,  icon: Activity,      category: 'Sistem',    title: 'Sistem sağlığı uyarısı',        desc: 'CPU kullanımı %85 eşiğini geçti. Kontrol edin.',     time: '32 dakika önce',  unread: true  },
-  { id: 5,  icon: FileText,      category: 'Dosyalar',  title: 'Dosya güncellendi',             desc: 'Yönerge_2025.pdf dökümanı revize edildi.',           time: '1 saat önce',     unread: true  },
-  { id: 6,  icon: MessageSquare, category: 'Feedback',  title: 'Feedback çözüme kavuştu',       desc: 'Öğrenci #3310\'un sorunu kapatıldı.',               time: '2 saat önce',     unread: false },
-  { id: 7,  icon: Users,         category: 'Takım',     title: 'Rol değişikliği',               desc: 'mehmet.demir kullanıcısının rolü supervisor olarak güncellendi.', time: '3 saat önce', unread: false },
-  { id: 8,  icon: FileText,      category: 'Dosyalar',  title: 'Dosya silindi',                 desc: 'Eski_Sınav_2024.pdf arşivden kaldırıldı.',           time: '5 saat önce',     unread: false },
-  { id: 9,  icon: Activity,      category: 'Sistem',    title: 'Monitor oturumu başladı',       desc: 'Gözetim #7 oturumu aktif hale geldi.',               time: '1 gün önce',      unread: false },
-  { id: 10, icon: MessageSquare, category: 'Feedback',  title: '5 yeni feedback bekliyor',      desc: 'İncelenmemiş geri bildirimler bulunuyor.',           time: '1 gün önce',      unread: false },
+  { id: 1,  icon: FileText,      category: 'Files',     title: 'New file uploaded',          desc: 'Exam_2025_Final.pdf was added to the system.',              time: '2 minutes ago',  unread: true  },
+  { id: 2,  icon: MessageSquare, category: 'Feedback',  title: 'New feedback',               desc: 'Student #4821 left a feedback.',                           time: '8 minutes ago',  unread: true  },
+  { id: 3,  icon: Users,         category: 'Team',      title: 'New user added',             desc: 'ayse.kaya@tedu.edu.tr joined the system.',                  time: '15 minutes ago', unread: true  },
+  { id: 4,  icon: Activity,      category: 'System',    title: 'System health warning',      desc: 'CPU usage exceeded 85% threshold. Please check.',           time: '32 minutes ago', unread: true  },
+  { id: 5,  icon: FileText,      category: 'Files',     title: 'File updated',               desc: 'Guidelines_2025.pdf document was revised.',                time: '1 hour ago',     unread: true  },
+  { id: 6,  icon: MessageSquare, category: 'Feedback',  title: 'Feedback resolved',          desc: 'Student #3310\'s issue has been closed.',                  time: '2 hours ago',    unread: false },
+  { id: 7,  icon: Users,         category: 'Team',      title: 'Role changed',               desc: 'mehmet.demir\'s role was updated to supervisor.',           time: '3 hours ago',    unread: false },
+  { id: 8,  icon: FileText,      category: 'Files',     title: 'File deleted',               desc: 'Old_Exam_2024.pdf was removed from the archive.',           time: '5 hours ago',    unread: false },
+  { id: 9,  icon: Activity,      category: 'System',    title: 'Monitor session started',    desc: 'Supervision session #7 became active.',                    time: '1 day ago',      unread: false },
+  { id: 10, icon: MessageSquare, category: 'Feedback',  title: '5 new feedbacks pending',    desc: 'There are unreviewed feedback submissions.',                time: '1 day ago',      unread: false },
 ];
 
 export default function NotificationsPage() {
@@ -35,11 +35,11 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Bildirimler</h1>
+        <h1 className="text-2xl font-semibold">Notifications</h1>
         <p className="text-muted-foreground text-sm mt-1">
           {unreadCount > 0
-            ? `${unreadCount} okunmamış bildiriminiz var.`
-            : 'Tüm bildirimler okundu.'}
+            ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}.`
+            : 'All notifications have been read.'}
         </p>
       </div>
 

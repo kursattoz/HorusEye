@@ -35,15 +35,15 @@ export function ProfileTab({ user }: ProfileTabProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ full_name: fullName }),
     });
-    if (res.ok) toast.success('Profil güncellendi.');
-    else toast.error('Güncelleme başarısız.');
+    if (res.ok) toast.success('Profile updated.');
+    else toast.error('Update failed.');
     setSaving(false);
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Profil Bilgileri</CardTitle>
+        <CardTitle className="text-base">Profile Information</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Avatar */}
@@ -53,7 +53,7 @@ export function ProfileTab({ user }: ProfileTabProps) {
             <AvatarFallback className="text-lg">{getInitials(user.full_name, user.email)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium">{user.full_name ?? 'İsim girilmemiş'}</p>
+            <p className="text-sm font-medium">{user.full_name ?? 'No name set'}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
         </div>
@@ -61,36 +61,36 @@ export function ProfileTab({ user }: ProfileTabProps) {
         {/* Fields */}
         <div className="space-y-4 max-w-sm">
           <div className="space-y-2">
-            <Label htmlFor="full-name">Ad Soyad</Label>
+            <Label htmlFor="full-name">Full Name</Label>
             <Input
               id="full-name"
               value={fullName}
               onChange={e => setFullName(e.target.value.slice(0, 100))}
-              placeholder="Ad Soyad"
+              placeholder="Full Name"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Email</Label>
             <Input value={user.email} disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">Email değişikliği admin tarafından yapılır.</p>
+            <p className="text-xs text-muted-foreground">Email changes are managed by an admin.</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Rol</Label>
+            <Label>Role</Label>
             <div>
               <Badge variant="secondary" className="capitalize">{user.role}</Badge>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Takım</Label>
+            <Label>Team</Label>
             <Input value="horuseye-team" disabled className="bg-muted" />
           </div>
         </div>
 
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? 'Kaydediliyor...' : 'Kaydet'}
+          {saving ? 'Saving...' : 'Save'}
         </Button>
       </CardContent>
     </Card>

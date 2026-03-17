@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     .eq('slug', slug)
     .single();
 
-  if (!data) return NextResponse.json({ error: 'Dosya bulunamadı.' }, { status: 404 });
+  if (!data) return NextResponse.json({ error: 'File not found.' }, { status: 404 });
 
   // Log view event (no auth required)
   await log({ event_type: 'file.view', severity: 'info', action: `Viewed file: ${slug}`, metadata: { slug } });

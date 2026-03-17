@@ -22,16 +22,16 @@ interface Notification {
 }
 
 const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 1,  icon: FileText,      title: 'Yeni dosya yüklendi',         desc: 'Sınav_2025_Final.pdf eklendi.',            time: '2 dk',   unread: true  },
-  { id: 2,  icon: MessageSquare, title: 'Yeni feedback',               desc: 'Öğrenci #4821 geri bildirim bıraktı.',    time: '8 dk',   unread: true  },
-  { id: 3,  icon: Users,         title: 'Yeni kullanıcı eklendi',      desc: 'ayse.kaya@tedu.edu.tr sisteme katıldı.', time: '15 dk',  unread: true  },
-  { id: 4,  icon: Activity,      title: 'Sistem sağlığı uyarısı',      desc: 'CPU kullanımı %85 eşiğini geçti.',       time: '32 dk',  unread: true  },
-  { id: 5,  icon: FileText,      title: 'Dosya güncellendi',           desc: 'Yönerge_2025.pdf revize edildi.',         time: '1 sa',   unread: true  },
-  { id: 6,  icon: MessageSquare, title: 'Feedback çözüme kavuştu',     desc: 'Öğrenci #3310 sorunu kapatıldı.',        time: '2 sa',   unread: false },
-  { id: 7,  icon: Users,         title: 'Rol değişikliği',             desc: 'mehmet.demir rolü supervisor oldu.',     time: '3 sa',   unread: false },
-  { id: 8,  icon: FileText,      title: 'Dosya silindi',               desc: 'Eski_Sınav_2024.pdf kaldırıldı.',        time: '5 sa',   unread: false },
-  { id: 9,  icon: Activity,      title: 'Monitor oturumu başladı',     desc: 'Gözetim #7 oturumu aktif.',              time: '1 gün',  unread: false },
-  { id: 10, icon: MessageSquare, title: '5 yeni feedback bekliyor',    desc: 'İncelenmemiş geri bildirimler var.',     time: '1 gün',  unread: false },
+  { id: 1,  icon: FileText,      title: 'New file uploaded',         desc: 'Exam_2025_Final.pdf was added.',              time: '2 min',  unread: true  },
+  { id: 2,  icon: MessageSquare, title: 'New feedback',              desc: 'Student #4821 left feedback.',                time: '8 min',  unread: true  },
+  { id: 3,  icon: Users,         title: 'New user added',            desc: 'ayse.kaya@tedu.edu.tr joined the system.',    time: '15 min', unread: true  },
+  { id: 4,  icon: Activity,      title: 'System health warning',     desc: 'CPU usage exceeded 85% threshold.',           time: '32 min', unread: true  },
+  { id: 5,  icon: FileText,      title: 'File updated',              desc: 'Guidelines_2025.pdf was revised.',            time: '1 hr',   unread: true  },
+  { id: 6,  icon: MessageSquare, title: 'Feedback resolved',         desc: 'Student #3310\'s issue was closed.',          time: '2 hr',   unread: false },
+  { id: 7,  icon: Users,         title: 'Role changed',              desc: 'mehmet.demir\'s role changed to supervisor.', time: '3 hr',   unread: false },
+  { id: 8,  icon: FileText,      title: 'File deleted',              desc: 'Old_Exam_2024.pdf was removed.',              time: '5 hr',   unread: false },
+  { id: 9,  icon: Activity,      title: 'Monitor session started',   desc: 'Supervision session #7 became active.',       time: '1 day',  unread: false },
+  { id: 10, icon: MessageSquare, title: '5 new feedbacks pending',   desc: 'There are unreviewed feedback submissions.',  time: '1 day',  unread: false },
 ];
 
 export function NotificationBell() {
@@ -47,7 +47,7 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Bildirimler">
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
@@ -59,7 +59,7 @@ export function NotificationBell() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">Bildirimler</span>
+            <span className="font-semibold text-sm">Notifications</span>
             {unreadCount > 0 && (
               <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-xs font-medium">
                 {unreadCount}
@@ -72,7 +72,7 @@ export function NotificationBell() {
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <CheckCheck size={12} />
-              Tümünü oku
+              Mark all as read
             </button>
           )}
         </div>
@@ -114,7 +114,7 @@ export function NotificationBell() {
             onClick={() => setOpen(false)}
             className="flex items-center justify-center text-xs text-muted-foreground hover:text-foreground transition-colors font-medium w-full"
           >
-            Tüm bildirimleri gör →
+            View all notifications →
           </Link>
         </div>
       </PopoverContent>

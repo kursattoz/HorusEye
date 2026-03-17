@@ -17,7 +17,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         <div className="flex items-center gap-1">
           <ThemeToggle />
           <Link href={routes.login} className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
-            Giriş Yap →
+            Sign In →
           </Link>
         </div>
       </header>

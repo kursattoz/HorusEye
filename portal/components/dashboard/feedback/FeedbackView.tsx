@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator }  from '@/components/ui/separator';
 import { toast }      from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { enUS } from 'date-fns/locale';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 
 interface FeedbackItem {
@@ -46,7 +46,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
     fetch(`/api/feedback?file_id=${selectedFile.id}`)
       .then(r => r.json())
       .then(data => setFeedbacks(data.feedbacks ?? []))
-      .catch(() => toast.error('Yorumlar yüklenemedi.'))
+      .catch(() => toast.error('Failed to load comments.'))
       .finally(() => setLoading(false));
   }, [selectedFile]);
 
@@ -62,9 +62,9 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
       const data = await res.json();
       setFeedbacks(prev => [data.feedback, ...prev]);
       setContent('');
-      toast.success('Yorum eklendi.');
+      toast.success('Comment added.');
     } else {
-      toast.error('Yorum gönderilemedi.');
+      toast.error('Failed to send comment.');
     }
     setSubmitting(false);
   }
@@ -73,7 +73,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
     const res = await fetch(`/api/feedback/${id}/resolve`, { method: 'POST' });
     if (res.ok) {
       setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, resolved: true } : f));
-      toast.success('Yorum çözüldü olarak işaretlendi.');
+      toast.success('Comment marked as resolved.');
     }
   }
 
@@ -94,7 +94,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
       <div className="flex-1 flex flex-col border rounded-lg overflow-hidden">
         {!selectedFile ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-            Sol panelden bir dosya seçin.
+            Select a file from the left panel.
           </div>
         ) : (
           <>
@@ -104,7 +104,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
                 onClick={() => setShowResolved(v => !v)}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                {showResolved ? 'Çözülenleri Gizle' : 'Çözülenleri Göster'}
+                {showResolved ? 'Hide Resolved' : 'Show Resolved'}
               </button>
             </div>
 
@@ -116,7 +116,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
               )}
               {!loading && visible.length === 0 && (
                 <p className="text-center text-muted-foreground text-sm py-8">
-                  Henüz yorum yok.
+                  No comments yet.
                 </p>
               )}
               <div className="space-y-4">
@@ -129,11 +129,11 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
                     </Avatar>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium">{fb.author?.full_name ?? fb.author?.email ?? 'Kullanıcı'}</span>
+                        <span className="text-xs font-medium">{fb.author?.full_name ?? fb.author?.email ?? 'User'}</span>
                         <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true, locale: tr })}
+                          {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true, locale: enUS })}
                         </span>
-                        {fb.resolved && <Badge variant="secondary" className="text-[10px] px-1 py-0">Çözüldü</Badge>}
+                        {fb.resolved && <Badge variant="secondary" className="text-[10px] px-1 py-0">Resolved</Badge>}
                       </div>
                       <p className="text-sm whitespace-pre-wrap">{fb.content}</p>
                       {isAdmin && !fb.resolved && (
@@ -141,7 +141,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
                           onClick={() => resolveComment(fb.id)}
                           className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
                         >
-                          <CheckCircle2 size={12} /> Çözüldü işaretle
+                          <CheckCircle2 size={12} /> Mark as resolved
                         </button>
                       )}
                     </div>
@@ -157,7 +157,7 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
               {canWrite ? (
                 <>
                   <Textarea
-                    placeholder="Yorum yazın... (max 2000 karakter)"
+                    placeholder="Write a comment... (max 2000 characters)"
                     value={content}
                     onChange={e => setContent(e.target.value.slice(0, 2000))}
                     rows={3}
@@ -167,13 +167,13 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
                     <span className="text-xs text-muted-foreground">{content.length}/2000</span>
                     <Button size="sm" onClick={submitFeedback} disabled={!content.trim() || submitting}>
                       {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Gönder
+                      Submit
                     </Button>
                   </div>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground text-center">
-                  Yorum yazmak için supervisor veya admin yetkisi gereklidir.
+                  Supervisor or admin permission is required to write comments.
                 </p>
               )}
             </div>

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn }          from '@/lib/utils';
 import { Search }      from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { tr }          from 'date-fns/locale';
+import { enUS }        from 'date-fns/locale';
 
 interface AuditLog {
   id:         string;
@@ -65,7 +65,7 @@ export function MonitorView({ auditLogs, errorLogs }: MonitorViewProps) {
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Log ara..."
+          placeholder="Search logs..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="pl-8 h-8 text-sm"
@@ -82,7 +82,7 @@ export function MonitorView({ auditLogs, errorLogs }: MonitorViewProps) {
           <ScrollArea className="h-[500px] rounded-md border">
             <div className="p-1 space-y-px">
               {filteredAudit.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-8">Log bulunamadı.</p>
+                <p className="text-center text-muted-foreground text-sm py-8">No logs found.</p>
               )}
               {filteredAudit.map(log => (
                 <div key={log.id} className="flex items-start gap-3 px-3 py-2 hover:bg-muted/50 rounded text-sm">
@@ -93,7 +93,7 @@ export function MonitorView({ auditLogs, errorLogs }: MonitorViewProps) {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-xs font-mono text-muted-foreground">{log.event_type}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: tr })}
+                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: enUS })}
                       </span>
                     </div>
                     <p className="truncate text-xs">{log.action}</p>
@@ -108,7 +108,7 @@ export function MonitorView({ auditLogs, errorLogs }: MonitorViewProps) {
           <ScrollArea className="h-[500px] rounded-md border">
             <div className="p-1 space-y-px">
               {filteredErrors.length === 0 && (
-                <p className="text-center text-muted-foreground text-sm py-8">Hata logu bulunamadı.</p>
+                <p className="text-center text-muted-foreground text-sm py-8">No error logs found.</p>
               )}
               {filteredErrors.map(log => (
                 <div key={log.id} className="flex items-start gap-3 px-3 py-2 hover:bg-muted/50 rounded text-sm">
@@ -121,7 +121,7 @@ export function MonitorView({ auditLogs, errorLogs }: MonitorViewProps) {
                         <Badge variant="outline" className="text-[10px] px-1 py-0 font-mono">{log.error_code}</Badge>
                       )}
                       <span className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: tr })}
+                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: enUS })}
                       </span>
                     </div>
                     <p className="truncate text-xs">{log.error_message}</p>
@@ -153,12 +153,12 @@ function HealthCard() {
   return (
     <Card>
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-sm">Sistem Sağlığı</CardTitle>
-        <button onClick={check} className="text-xs text-primary hover:underline">Kontrol Et</button>
+        <CardTitle className="text-sm">System Health</CardTitle>
+        <button onClick={check} className="text-xs text-primary hover:underline">Check</button>
       </CardHeader>
       <CardContent>
         {!checked ? (
-          <p className="text-xs text-muted-foreground">"Kontrol Et" butonuna basın.</p>
+          <p className="text-xs text-muted-foreground">Press "Check" to run a health check.</p>
         ) : status ? (
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">

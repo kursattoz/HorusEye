@@ -32,8 +32,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: routes.dashboard, icon: LayoutDashboard, roles: ['admin','supervisor','assistant'] },
-  { label: 'Dosyalar',  href: routes.files,     icon: FileText,        roles: ['admin'] },
-  { label: 'Takım',     href: routes.team,      icon: Users,           roles: ['admin'] },
+  { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
+  { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
   { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
   { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
 ];
@@ -91,7 +91,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
       )}
     >
       <Settings size={16} className="shrink-0" />
-      {!collapsed && <span>Ayarlar</span>}
+      {!collapsed && <span>Settings</span>}
     </Link>
   );
 
@@ -114,7 +114,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>{settingsInner}</TooltipTrigger>
-              <TooltipContent side="right">Ayarlar</TooltipContent>
+              <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>
           ) : settingsInner}
 

@@ -37,8 +37,8 @@ export function UsersTab() {
       {/* User list */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Kullanıcılar</CardTitle>
-          <CardDescription>Sistemdeki tüm kullanıcılar. Detaylı yönetim için Takım sayfasını kullanın.</CardDescription>
+          <CardTitle className="text-base">Users</CardTitle>
+          <CardDescription>All users in the system. Use the Team page for detailed management.</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -49,10 +49,10 @@ export function UsersTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Ad</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Durum</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -63,7 +63,7 @@ export function UsersTab() {
                     <TableCell><Badge variant="secondary" className="capitalize">{u.role}</Badge></TableCell>
                     <TableCell>
                       <Badge variant={u.is_active ? 'default' : 'outline'}>
-                        {u.is_active ? 'Aktif' : 'Pasif'}
+                        {u.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -79,9 +79,9 @@ export function UsersTab() {
       {/* Permission matrix */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Yetki Matrisi</CardTitle>
+          <CardTitle className="text-base">Permission Matrix</CardTitle>
           <CardDescription>
-            Rol bazlı yetki tablosu. Checkbox'lar salt okunur — yetki değişikliği için kullanıcı rolünü güncelleyin.
+            Role-based permission table. Checkboxes are read-only — update the user role to change permissions.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,7 +89,7 @@ export function UsersTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-48">İzin</TableHead>
+                  <TableHead className="min-w-48">Permission</TableHead>
                   {ROLES.map(r => (
                     <TableHead key={r} className="text-center capitalize">{r}</TableHead>
                   ))}

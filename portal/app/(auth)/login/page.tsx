@@ -7,7 +7,7 @@ import { routes }        from '@/constants/routes';
 import type { PublicFile } from '@/components/public/FileTree';
 
 export const metadata: Metadata = {
-  title: 'Giriş Yap — HorusEye',
+  title: 'Sign In — HorusEye',
 };
 
 async function getPublicFiles(): Promise<PublicFile[]> {
@@ -38,16 +38,16 @@ export default async function LoginPage() {
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs space-y-6">
             <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">Giriş Yap</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
               <p className="text-sm text-muted-foreground">
-                Hesabınıza erişmek için bilgilerinizi girin.
+                Enter your credentials to access your account.
               </p>
             </div>
 
             <LoginForm />
 
             <p className="text-center text-xs text-muted-foreground">
-              Hesap oluşturma yalnızca admin tarafından yapılabilir.
+              Account creation is managed by administrators.
             </p>
           </div>
         </div>

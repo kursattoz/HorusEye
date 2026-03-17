@@ -39,7 +39,7 @@ function formatSize(bytes: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 export function FilesTable({ files: initial }: FilesTableProps) {
@@ -57,7 +57,7 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     if (res.ok) {
       setFiles(prev => prev.map(f => f.id === id ? { ...f, is_public: !current } : f));
     } else {
-      toast.error('Güncelleme başarısız.');
+      toast.error('Update failed.');
     }
   }
 
@@ -66,9 +66,9 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     const res = await fetch(`/api/files/${deleting}`, { method: 'DELETE' });
     if (res.ok) {
       setFiles(prev => prev.filter(f => f.id !== deleting));
-      toast.success('Dosya silindi.');
+      toast.success('File deleted.');
     } else {
-      toast.error('Silme işlemi başarısız.');
+      toast.error('Delete operation failed.');
     }
     setDeleting(null);
   }
@@ -76,14 +76,14 @@ export function FilesTable({ files: initial }: FilesTableProps) {
   function handleUploaded(file: Record<string, unknown>) {
     startTransition(() => setFiles(prev => [file as unknown as FileRow, ...prev]));
     setUploadOpen(false);
-    toast.success(`"${file.display_name}" yüklendi.`);
+    toast.success(`"${file.display_name}" uploaded.`);
   }
 
   return (
     <>
       <div className="flex justify-end mb-4">
         <Button onClick={() => setUploadOpen(true)}>
-          <Upload size={15} className="mr-2" /> Dosya Yükle
+          <Upload size={15} className="mr-2" /> Upload File
         </Button>
       </div>
 
@@ -91,11 +91,11 @@ export function FilesTable({ files: initial }: FilesTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>İsim</TableHead>
-              <TableHead>Tip</TableHead>
-              <TableHead>Boyut</TableHead>
-              <TableHead>Tarih</TableHead>
-              <TableHead>Durum</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -103,7 +103,7 @@ export function FilesTable({ files: initial }: FilesTableProps) {
             {files.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Henüz dosya yüklenmemiş.
+                  No files uploaded yet.
                 </TableCell>
               </TableRow>
             )}
@@ -139,7 +139,7 @@ export function FilesTable({ files: initial }: FilesTableProps) {
                         className="text-destructive focus:text-destructive"
                         onClick={() => setDeleting(file.id)}
                       >
-                        <Trash2 size={13} className="mr-2" /> Sil
+                        <Trash2 size={13} className="mr-2" /> Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -154,14 +154,14 @@ export function FilesTable({ files: initial }: FilesTableProps) {
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Dosyayı Sil</DialogTitle>
+            <DialogTitle>Delete File</DialogTitle>
             <DialogDescription>
-              Bu dosyayı silmek istediğinizden emin misiniz? Public alanda görünmez hale gelir.
+              Are you sure you want to delete this file? It will no longer be visible in the public area.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleting(null)}>İptal</Button>
-            <Button variant="destructive" onClick={confirmDelete}>Sil</Button>
+            <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

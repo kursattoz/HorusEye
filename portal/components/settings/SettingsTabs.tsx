@@ -22,10 +22,10 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
   return (
     <Tabs defaultValue="appearance">
       <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
-        <TabsTrigger value="appearance">Görünüm</TabsTrigger>
-        <TabsTrigger value="profile">Profil</TabsTrigger>
-        <TabsTrigger value="account">Hesap</TabsTrigger>
-        {isAdmin && <TabsTrigger value="users">Kullanıcılar</TabsTrigger>}
+        <TabsTrigger value="appearance">Appearance</TabsTrigger>
+        <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="account">Account</TabsTrigger>
+        {isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
       </TabsList>
 
       <TabsContent value="appearance" className="mt-6">

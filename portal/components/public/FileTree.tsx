@@ -37,10 +37,10 @@ function formatSize(bytes?: number): string {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  reports:       'Raporlar',
-  presentations: 'Sunumlar',
-  documents:     'Dokümanlar',
-  other:         'Diğer',
+  reports:       'Reports',
+  presentations: 'Presentations',
+  documents:     'Documents',
+  other:         'Other',
 };
 
 interface FileTreeProps {
@@ -72,7 +72,7 @@ export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Doküman ara..."
+            placeholder="Search documents..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
@@ -117,7 +117,7 @@ export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
                     download
                     onClick={e => e.stopPropagation()}
                     className="shrink-0 opacity-0 group-hover:opacity-100 hover:text-primary"
-                    aria-label="İndir"
+                    aria-label="Download"
                   >
                     <Download size={13} />
                   </a>
@@ -129,7 +129,7 @@ export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
 
         {filtered.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">
-            {search ? 'Sonuç bulunamadı.' : 'Henüz yayınlanmış doküman bulunmuyor.'}
+            {search ? 'No results found.' : 'No published documents yet.'}
           </p>
         )}
       </div>

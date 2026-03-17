@@ -70,16 +70,16 @@ export function TeamTable({ users: initial }: TeamTableProps) {
     });
     if (res.ok) {
       setUsers(prev => prev.map(u => u.id === id ? { ...u, is_active: !current } : u));
-      toast.success(!current ? 'Kullanıcı aktif edildi.' : 'Kullanıcı deaktif edildi.');
+      toast.success(!current ? 'User activated.' : 'User deactivated.');
     } else {
-      toast.error('İşlem başarısız.');
+      toast.error('Operation failed.');
     }
   }
 
   async function sendReset(id: string) {
     const res = await fetch(`/api/users/${id}/reset`, { method: 'POST' });
-    if (res.ok) toast.success('Şifre sıfırlama emaili gönderildi.');
-    else toast.error('Email gönderilemedi.');
+    if (res.ok) toast.success('Password reset email sent.');
+    else toast.error('Failed to send email.');
   }
 
   async function handleAddUser() {
@@ -92,11 +92,11 @@ export function TeamTable({ users: initial }: TeamTableProps) {
     if (res.ok) {
       const data = await res.json();
       setUsers(prev => [...prev, data.user]);
-      toast.success(`${newEmail} kullanıcısı oluşturuldu.`);
+      toast.success(`User ${newEmail} created.`);
       setAddOpen(false); setNewName(''); setNewEmail(''); setNewRole('supervisor');
     } else {
       const err = await res.json().catch(() => ({}));
-      toast.error(err.error ?? 'Kullanıcı oluşturulamadı.');
+      toast.error(err.error ?? 'Failed to create user.');
     }
     setAdding(false);
   }
@@ -107,14 +107,14 @@ export function TeamTable({ users: initial }: TeamTableProps) {
         <div className="relative w-64">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Kullanıcı ara..."
+            placeholder="Search users..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
           />
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)}>
-          <UserPlus size={14} className="mr-2" /> Kullanıcı Ekle
+          <UserPlus size={14} className="mr-2" /> Add User
         </Button>
       </div>
 
@@ -122,10 +122,10 @@ export function TeamTable({ users: initial }: TeamTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Kullanıcı</TableHead>
+              <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Rol</TableHead>
-              <TableHead>Durum</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -149,7 +149,7 @@ export function TeamTable({ users: initial }: TeamTableProps) {
                 </TableCell>
                 <TableCell>
                   <Badge variant={u.is_active ? 'default' : 'secondary'}>
-                    {u.is_active ? 'Aktif' : 'Pasif'}
+                    {u.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -161,10 +161,10 @@ export function TeamTable({ users: initial }: TeamTableProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => toggleActive(u.id, u.is_active)}>
-                        {u.is_active ? 'Deaktif Et' : 'Aktif Et'}
+                        {u.is_active ? 'Deactivate' : 'Activate'}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => sendReset(u.id)}>
-                        Şifre Sıfırla
+                        Reset Password
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -179,22 +179,22 @@ export function TeamTable({ users: initial }: TeamTableProps) {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Yeni Kullanıcı Ekle</DialogTitle>
+            <DialogTitle>Add New User</DialogTitle>
             <DialogDescription>
-              Kullanıcıya hoş geldin emaili gönderilecektir.
+              A welcome email will be sent to the user.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Ad Soyad</Label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Kullanıcı adı" />
+              <Label>Full Name</Label>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="User's full name" />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
               <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="email@example.com" />
             </div>
             <div className="space-y-2">
-              <Label>Rol</Label>
+              <Label>Role</Label>
               <Select value={newRole} onValueChange={setNewRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -205,9 +205,9 @@ export function TeamTable({ users: initial }: TeamTableProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>İptal</Button>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAddUser} disabled={!newEmail || adding}>
-              {adding ? 'Gönderiliyor...' : 'Davet Gönder'}
+              {adding ? 'Sending...' : 'Send Invite'}
             </Button>
           </DialogFooter>
         </DialogContent>

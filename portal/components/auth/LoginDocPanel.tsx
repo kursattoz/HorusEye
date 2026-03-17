@@ -23,7 +23,7 @@ const FILE_TYPE_COLORS: Record<string, string> = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 interface LoginDocPanelProps {
@@ -56,8 +56,8 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
           <div className="h-6 w-6 rounded-md bg-white/10 border border-white/10 flex items-center justify-center text-white font-bold text-xs">
             H
           </div>
-          <span className="text-sm font-semibold text-zinc-100">Doküman Merkezi</span>
-          <span className="ml-auto text-xs text-zinc-500">{files.length} belge</span>
+          <span className="text-sm font-semibold text-zinc-100">Document Hub</span>
+          <span className="ml-auto text-xs text-zinc-500">{files.length} document{files.length !== 1 ? 's' : ''}</span>
         </div>
 
         {/* Body */}
@@ -71,7 +71,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Ara..."
+                  placeholder="Search..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full rounded-md bg-zinc-800 border border-zinc-700 pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 outline-none focus:ring-1 focus:ring-zinc-500"
@@ -83,7 +83,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
             <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
               {filtered.length === 0 && (
                 <p className="text-center text-xs text-zinc-500 py-8">
-                  {search ? 'Sonuç bulunamadı.' : 'Henüz belge yok.'}
+                  {search ? 'No results found.' : 'No documents yet.'}
                 </p>
               )}
               {filtered.map(file => {
@@ -137,14 +137,14 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                       rel="noopener noreferrer"
                       className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800"
                     >
-                      <ExternalLink size={10} /> Aç
+                      <ExternalLink size={10} /> Open
                     </a>
                     <a
                       href={selected.public_url}
                       download
                       className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200 transition-colors px-1.5 py-0.5 rounded hover:bg-zinc-800"
                     >
-                      <Download size={10} /> İndir
+                      <Download size={10} /> Download
                     </a>
                   </div>
                 </div>
@@ -164,8 +164,8 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                 <div className="h-12 w-12 rounded-xl bg-zinc-800 flex items-center justify-center">
                   <BookOpen size={20} className="text-zinc-500" />
                 </div>
-                <p className="text-sm font-medium text-zinc-400">Belge seçin</p>
-                <p className="text-xs text-zinc-600">Soldaki listeden bir belge seçerek önizleyebilirsiniz.</p>
+                <p className="text-sm font-medium text-zinc-400">Select a document</p>
+                <p className="text-xs text-zinc-600">Choose a document from the list on the left to preview it.</p>
               </div>
             )}
           </div>
@@ -219,13 +219,13 @@ function DocViewer({ file, onLoad }: { file: PublicFile; onLoad: () => void }) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4">
-      <p className="text-xs text-zinc-500">Bu dosya tarayıcıda önizlenemiyor.</p>
+      <p className="text-xs text-zinc-500">This file cannot be previewed in the browser.</p>
       <a
         href={public_url}
         download
         className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-md transition-colors"
       >
-        <Download size={12} /> Dosyayı İndir
+        <Download size={12} /> Download File
       </a>
     </div>
   );
