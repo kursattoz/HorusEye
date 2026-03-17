@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
@@ -62,6 +63,8 @@ interface SidebarProps {
 export function Sidebar({ role, collapsed }: SidebarProps) {
   const pathname             = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const visible = NAV_ITEMS.filter(item => item.roles.includes(role));
 
@@ -190,7 +193,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
               onClick={() => setTheme('light')}
               className={cn(
                 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
-                resolvedTheme === 'light'
+                mounted && resolvedTheme === 'light'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
@@ -199,7 +202,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                 size={13}
                 className={cn(
                   'shrink-0',
-                  resolvedTheme === 'light' && '[animation:sun-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                  mounted && resolvedTheme === 'light' && '[animation:sun-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
                 )}
               />
               {!collapsed && 'Light'}
@@ -208,7 +211,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
               onClick={() => setTheme('dark')}
               className={cn(
                 'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
-                resolvedTheme === 'dark'
+                mounted && resolvedTheme === 'dark'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               )}
@@ -217,7 +220,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                 size={13}
                 className={cn(
                   'shrink-0',
-                  resolvedTheme === 'dark' && '[animation:moon-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                  mounted && resolvedTheme === 'dark' && '[animation:moon-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
                 )}
               />
               {!collapsed && 'Dark'}
