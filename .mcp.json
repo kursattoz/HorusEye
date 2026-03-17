@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "supabase": {
-      "type": "http",
-      "url": "https://mcp.supabase.com?features=account%2Cdocs%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cstorage%2Cbranching"
-    }
-  }
-}
