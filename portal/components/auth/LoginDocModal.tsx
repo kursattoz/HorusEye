@@ -32,7 +32,7 @@ export function LoginDocModal({ files }: LoginDocModalProps) {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="w-full h-[100svh] sm:h-[90svh] max-w-none sm:max-w-4xl p-0 overflow-hidden bg-zinc-950 border-zinc-800 rounded-none sm:rounded-lg"
+          className="w-full h-[100svh] sm:h-[90svh] max-w-none sm:max-w-4xl p-0 overflow-hidden bg-background border-border rounded-none sm:rounded-lg"
           showCloseButton={true}
         >
           <DialogTitle className="sr-only">Document Hub</DialogTitle>

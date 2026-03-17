@@ -60,9 +60,7 @@ export default async function LoginPage() {
       </div>
 
       {/* Right — document panel */}
-      <div className="relative hidden lg:block bg-zinc-950">
-        {/* Subtle radial glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_40%,rgba(255,255,255,0.04),transparent)]" />
+      <div className="relative hidden lg:block bg-muted">
         <div className="relative h-full">
           <LoginDocPanel files={files} />
         </div>
