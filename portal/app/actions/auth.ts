@@ -11,12 +11,30 @@ export interface AuthState {
   error?: string;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 export async function loginAction(_prev: AuthState, formData: FormData): Promise<AuthState> {
-  const email    = formData.get('email')    as string;
-  const password = formData.get('password') as string;
+  const rawEmail    = formData.get('email');
+  const rawPassword = formData.get('password');
+
+  // Type guard — FormData values must be strings
+  if (typeof rawEmail !== 'string' || typeof rawPassword !== 'string') {
+    return { error: 'Invalid request.' };
+  }
+
+  const email    = rawEmail.trim().slice(0, 254);
+  const password = rawPassword.slice(0, 128);
 
   if (!email || !password) {
     return { error: 'Email and password are required.' };
+  }
+
+  if (!EMAIL_RE.test(email)) {
+    return { error: 'Please enter a valid email address.' };
+  }
+
+  if (password.length < 6) {
+    return { error: 'Invalid email or password.' };
   }
 
   const supabase = await createClient();

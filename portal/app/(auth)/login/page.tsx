@@ -2,12 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LoginForm }     from '@/components/auth/LoginForm';
 import { LoginDocPanel } from '@/components/auth/LoginDocPanel';
+import { LoginDocModal } from '@/components/auth/LoginDocModal';
 import { createClient }  from '@/lib/supabase/server';
 import { routes }        from '@/constants/routes';
 import type { PublicFile } from '@/components/public/FileTree';
 
 export const metadata: Metadata = {
-  title: 'Sign In — HorusEye',
+  title: 'Login — HorusEye',
 };
 
 async function getPublicFiles(): Promise<PublicFile[]> {
@@ -26,19 +27,23 @@ export default async function LoginPage() {
     <div className="min-h-svh grid lg:grid-cols-2">
       {/* Left — form */}
       <div className="flex flex-col gap-4 p-6 md:p-10">
-        <div className="flex justify-start">
+        <div className="flex items-center justify-between">
           <Link href={routes.home} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
               H
             </div>
             <span className="font-semibold text-sm">HorusEye</span>
           </Link>
+          {/* Show doc modal button on mobile/tablet only (desktop has the panel) */}
+          <div className="lg:hidden">
+            <LoginDocModal files={files} />
+          </div>
         </div>
 
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs space-y-6">
             <div className="space-y-2 text-center">
-              <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Login</h1>
               <p className="text-sm text-muted-foreground">
                 Enter your credentials to access your account.
               </p>
