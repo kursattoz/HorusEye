@@ -10,6 +10,7 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  // Verify the caller is authenticated (anon client reads session cookie)
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,10 +24,13 @@ export async function POST(request: NextRequest) {
   const ext = ALLOWED_TYPES[file.type];
   if (!ext) return NextResponse.json({ error: 'Only JPG, PNG, and WebP are allowed.' }, { status: 400 });
 
+  // Use service role to bypass RLS for storage upload and profile update
+  const admin = await createClient({ serviceRole: true });
+
   const storagePath = `avatars/${user.id}/${Date.now()}.${ext}`;
   const bytes = await file.arrayBuffer();
 
-  const { error: uploadErr } = await supabase.storage
+  const { error: uploadErr } = await admin.storage
     .from('horuseye-files')
     .upload(storagePath, bytes, { contentType: file.type, upsert: true });
 
@@ -34,9 +38,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: uploadErr.message }, { status: 500 });
   }
 
-  const { data: { publicUrl } } = supabase.storage.from('horuseye-files').getPublicUrl(storagePath);
+  const { data: { publicUrl } } = admin.storage.from('horuseye-files').getPublicUrl(storagePath);
 
-  const { error: updateErr } = await supabase
+  const { error: updateErr } = await admin
     .from('user_profiles')
     .update({ avatar_url: publicUrl })
     .eq('id', user.id);

@@ -195,7 +195,13 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Sun size={13} className="shrink-0" />
+              <Sun
+                size={13}
+                className={cn(
+                  'shrink-0',
+                  resolvedTheme === 'light' && '[animation:sun-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                )}
+              />
               {!collapsed && 'Light'}
             </button>
             <button
@@ -207,7 +213,13 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Moon size={13} className="shrink-0" />
+              <Moon
+                size={13}
+                className={cn(
+                  'shrink-0',
+                  resolvedTheme === 'dark' && '[animation:moon-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                )}
+              />
               {!collapsed && 'Dark'}
             </button>
           </div>
