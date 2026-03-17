@@ -202,7 +202,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                 size={13}
                 className={cn(
                   'shrink-0',
-                  mounted && resolvedTheme === 'light' && '[animation:sun-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                  mounted && resolvedTheme === 'light' && 'animate-sun-appear'
                 )}
               />
               {!collapsed && 'Light'}
@@ -220,7 +220,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
                 size={13}
                 className={cn(
                   'shrink-0',
-                  mounted && resolvedTheme === 'dark' && '[animation:moon-appear_300ms_cubic-bezier(0.34,1.56,0.64,1)_both]'
+                  mounted && resolvedTheme === 'dark' && 'animate-moon-appear'
                 )}
               />
               {!collapsed && 'Dark'}
