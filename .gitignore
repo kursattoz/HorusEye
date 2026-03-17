@@ -1,0 +1,44 @@
+# ─── Node ───────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ─── Next.js ────────────────────────────────────
+portal/.next/
+portal/out/
+portal/build/
+
+# ─── Environment ────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── Testing ────────────────────────────────────
+portal/coverage/
+portal/playwright-report/
+portal/test-results/
+
+# ─── TypeScript ─────────────────────────────────
+*.tsbuildinfo
+portal/next-env.d.ts
+
+# ─── AI Service ─────────────────────────────────
+ai-service/.venv/
+ai-service/__pycache__/
+ai-service/*.pyc
+ai-service/models/*.pt
+ai-service/models/*.weights
+
+# ─── OS ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── IDE ────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+
+# ─── Local tool configs (not project code) ──────
+.mcp.json
+.agents/
+.agent/

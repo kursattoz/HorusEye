@@ -1,0 +1,13 @@
+{
+  "name": "horuseye",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HorusEye — AI-Based Exam Proctoring System (monorepo root)",
+  "scripts": {
+    "validate:prd": "node scripts/validate-prd-interfaces.js",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "husky": "^9"
+  }
+}

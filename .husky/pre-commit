@@ -1,0 +1,13 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo ""
+echo "Running PRD interface validation..."
+node scripts/validate-prd-interfaces.js
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Commit blocked: PRD interface dependencies are out of sync."
+  echo "   Fix the stale PRDs listed above, then try committing again."
+  echo ""
+  exit 1
+fi
