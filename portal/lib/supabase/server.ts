@@ -1,15 +1,17 @@
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 // Server-side Supabase client
 // Pass { serviceRole: true } to bypass RLS (for server-side log writes, etc.)
 export async function createClient(options?: { serviceRole?: boolean }) {
-  // Service role client: empty cookies so the user JWT doesn't override the service_role via Authorization header
+  // Service role client: use @supabase/supabase-js directly so the service_role
+  // JWT is correctly sent as Authorization header (bypasses RLS).
   if (options?.serviceRole) {
-    return createServerClient(
+    return createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { cookies: { getAll: () => [], setAll: () => {} } }
+      { auth: { persistSession: false, autoRefreshToken: false } }
     );
   }
 
