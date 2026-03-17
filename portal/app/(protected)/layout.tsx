@@ -1,8 +1,7 @@
-import { redirect } from 'next/navigation';
+import { redirect }  from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
-import { Topbar }  from '@/components/layout/Topbar';
-import { Sidebar } from '@/components/layout/Sidebar';
-import { routes }  from '@/constants/routes';
+import { AppShell }  from '@/components/layout/AppShell';
+import { routes }    from '@/constants/routes';
 import type { UserRole } from '@/types';
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -13,21 +12,16 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="h-svh flex flex-col">
-      <Topbar
-        user={{
-          full_name:  user.full_name,
-          email:      user.email,
-          avatar_url: user.avatar_url,
-          role:       user.role,
-        }}
-      />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar role={user.role as UserRole} />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AppShell
+      user={{
+        full_name:  user.full_name,
+        email:      user.email,
+        avatar_url: user.avatar_url,
+        role:       user.role,
+      }}
+      role={user.role as UserRole}
+    >
+      {children}
+    </AppShell>
   );
 }

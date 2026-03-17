@@ -2,7 +2,7 @@
 
 import { Download, ExternalLink } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
-import { cn }             from '@/lib/utils/cn';
+import { cn }             from '@/lib/utils';
 import type { PublicFile } from './FileTree';
 
 interface DocumentViewerProps {

@@ -6,7 +6,7 @@ import { Badge }       from '@/components/ui/badge';
 import { Input }       from '@/components/ui/input';
 import { ScrollArea }  from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn }          from '@/lib/utils/cn';
+import { cn }          from '@/lib/utils';
 import { Search }      from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { tr }          from 'date-fns/locale';

@@ -8,6 +8,7 @@ export const routes = {
   team:            '/dashboard/team',
   feedback:        '/dashboard/feedback',
   settings:        '/settings',
+  notifications:   '/notifications',
   monitor:         '/dev/monitor',
   health:          '/api/health',
   healthDetailed:  '/api/health/detailed',
@@ -17,6 +18,7 @@ export const routes = {
 export const PROTECTED_ROUTES = [
   '/dashboard',
   '/settings',
+  '/notifications',
   '/dev',
 ] as const;
 

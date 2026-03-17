@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { FileText, FileImage, Presentation, Search, Download } from 'lucide-react';
 import { Input }  from '@/components/ui/input';
 import { Badge }  from '@/components/ui/badge';
-import { cn }     from '@/lib/utils/cn';
+import { cn }     from '@/lib/utils';
 
 export interface PublicFile {
   id:          string;

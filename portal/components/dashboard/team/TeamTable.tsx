@@ -154,11 +154,10 @@ export function TeamTable({ users: initial }: TeamTableProps) {
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={
+                    <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-7 w-7">
                         <MoreHorizontal size={14} />
                       </Button>
-                    }>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => toggleActive(u.id, u.is_active)}>
@@ -196,7 +195,7 @@ export function TeamTable({ users: initial }: TeamTableProps) {
             </div>
             <div className="space-y-2">
               <Label>Rol</Label>
-              <Select value={newRole} onValueChange={(v) => { if (v !== null) setNewRole(v); }}>
+              <Select value={newRole} onValueChange={setNewRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="supervisor">Supervisor</SelectItem>

@@ -2,64 +2,156 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils/cn';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   FileText,
   Users,
   MessageSquare,
   Activity,
+  Settings,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
 import type { UserRole } from '@/types';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface NavItem {
-  label:    string;
-  href:     string;
-  icon:     React.ElementType;
-  roles:    UserRole[];
+  label: string;
+  href:  string;
+  icon:  React.ElementType;
+  roles: UserRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',  href: routes.dashboard,  icon: LayoutDashboard, roles: ['admin','supervisor','assistant'] },
-  { label: 'Dosyalar',   href: routes.files,       icon: FileText,        roles: ['admin'] },
-  { label: 'Takım',      href: routes.team,        icon: Users,           roles: ['admin'] },
-  { label: 'Feedback',   href: routes.feedback,    icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
-  { label: 'Monitor',    href: routes.monitor,     icon: Activity,        roles: ['admin'] },
+  { label: 'Dashboard', href: routes.dashboard, icon: LayoutDashboard, roles: ['admin','supervisor','assistant'] },
+  { label: 'Dosyalar',  href: routes.files,     icon: FileText,        roles: ['admin'] },
+  { label: 'Takım',     href: routes.team,      icon: Users,           roles: ['admin'] },
+  { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
+  { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
 ];
 
 interface SidebarProps {
-  role: UserRole;
+  role:      UserRole;
+  collapsed: boolean;
 }
 
-export function Sidebar({ role }: SidebarProps) {
-  const pathname = usePathname();
+export function Sidebar({ role, collapsed }: SidebarProps) {
+  const pathname             = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const visible = NAV_ITEMS.filter(item => item.roles.includes(role));
 
+  function NavLink({ item }: { item: NavItem }) {
+    const Icon   = item.icon;
+    const active = pathname === item.href || pathname.startsWith(item.href + '/');
+
+    const inner = (
+      <Link
+        href={item.href}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+          collapsed && 'justify-center px-2',
+          active
+            ? 'bg-accent text-accent-foreground font-medium'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        )}
+      >
+        <Icon size={16} className="shrink-0" />
+        {!collapsed && <span>{item.label}</span>}
+      </Link>
+    );
+
+    if (!collapsed) return inner;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{inner}</TooltipTrigger>
+        <TooltipContent side="right">{item.label}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  const settingsActive = pathname === routes.settings;
+  const settingsInner  = (
+    <Link
+      href={routes.settings}
+      className={cn(
+        'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+        collapsed && 'justify-center px-2',
+        settingsActive
+          ? 'bg-accent text-accent-foreground font-medium'
+          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+      )}
+    >
+      <Settings size={16} className="shrink-0" />
+      {!collapsed && <span>Ayarlar</span>}
+    </Link>
+  );
+
   return (
-    <aside className="w-56 border-r bg-background flex flex-col shrink-0">
-      <nav className="flex-1 px-2 py-3 space-y-0.5">
-        {visible.map(item => {
-          const Icon = item.icon;
-          const active = pathname === item.href || pathname.startsWith(item.href + '/');
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
+    <TooltipProvider delayDuration={0}>
+      <aside
+        className={cn(
+          'border-r bg-background flex flex-col shrink-0 transition-all duration-200 ease-in-out overflow-hidden',
+          collapsed ? 'w-14' : 'w-56'
+        )}
+      >
+        {/* Main nav */}
+        <nav className="flex-1 px-2 py-3 space-y-0.5">
+          {visible.map(item => <NavLink key={item.href} item={item} />)}
+        </nav>
+
+        {/* Bottom section */}
+        <div className="border-t px-2 py-2 space-y-1">
+          {/* Settings */}
+          {collapsed ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{settingsInner}</TooltipTrigger>
+              <TooltipContent side="right">Ayarlar</TooltipContent>
+            </Tooltip>
+          ) : settingsInner}
+
+          {/* Theme toggle */}
+          <div
+            className={cn(
+              'flex rounded-lg bg-muted p-0.5 gap-0.5',
+              collapsed ? 'flex-col' : 'flex-row'
+            )}
+          >
+            <button
+              onClick={() => setTheme('light')}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-                active
-                  ? 'bg-accent text-accent-foreground font-medium'
-                  : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
+                resolvedTheme === 'light'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon size={16} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+              <Sun size={13} className="shrink-0" />
+              {!collapsed && 'Light'}
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={cn(
+                'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition-all',
+                resolvedTheme === 'dark'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Moon size={13} className="shrink-0" />
+              {!collapsed && 'Dark'}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

@@ -6,7 +6,6 @@ export interface AuthUser {
   id: string;
   email: string;
   role: UserRole;
-  team_id: string | null;
   created_at: string;
 }
 

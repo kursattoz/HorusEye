@@ -6,7 +6,7 @@ import { Button }   from '@/components/ui/button';
 import { Input }    from '@/components/ui/input';
 import { Label }    from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 const initialState: AuthState = {};
@@ -16,9 +16,10 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-4">
       {state.error && (
         <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
           <AlertDescription>{state.error}</AlertDescription>
         </Alert>
       )}
@@ -54,6 +55,7 @@ export function LoginForm() {
             onClick={() => setShowPassword(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             tabIndex={-1}
+            aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
           >
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -61,8 +63,14 @@ export function LoginForm() {
       </div>
 
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Giriş Yap
+        {pending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Giriş yapılıyor...
+          </>
+        ) : (
+          'Giriş Yap'
+        )}
       </Button>
     </form>
   );

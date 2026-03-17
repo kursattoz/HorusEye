@@ -76,14 +76,16 @@ export async function logoutAction(): Promise<void> {
 export async function getCurrentUser() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) console.error('[getCurrentUser] auth error:', authError.message);
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('id, email, full_name, role, avatar_url, team_id, is_active')
+    .select('id, email, full_name, role, avatar_url, is_active')
     .eq('id', user.id)
     .single();
 
+  if (profileError) console.error('[getCurrentUser] profile error:', profileError.message, profileError.code);
   return profile;
 }

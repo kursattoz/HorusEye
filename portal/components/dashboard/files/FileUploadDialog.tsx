@@ -12,7 +12,7 @@ import { Switch }   from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Upload, X } from 'lucide-react';
 import { toast }    from 'sonner';
-import { cn }       from '@/lib/utils/cn';
+import { cn }       from '@/lib/utils';
 
 const ACCEPTED = '.pdf,.pptx,.docx,.png,.jpg,.jpeg,.webp';
 const MAX_SIZE  = 50 * 1024 * 1024; // 50 MB
@@ -140,7 +140,7 @@ export function FileUploadDialog({ open, onClose, onUploaded }: FileUploadDialog
 
           <div className="space-y-2">
             <Label>Kategori</Label>
-            <Select value={category} onValueChange={(v) => { if (v !== null) setCategory(v); }}>
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map(c => (
