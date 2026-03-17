@@ -32,7 +32,7 @@ export interface HorusFile {
 // @interface LogEvent @version 1.0
 export type LogEventType =
   | 'auth.login' | 'auth.logout' | 'auth.failed' | 'auth.password_reset'
-  | 'file.upload' | 'file.download' | 'file.delete' | 'file.view'
+  | 'file.upload' | 'file.download' | 'file.delete' | 'file.view' | 'file.update' | 'file.restore'
   | 'feedback.create' | 'feedback.update' | 'feedback.delete'
   | 'user.create' | 'user.update' | 'user.delete'
   | 'system.error' | 'system.warning' | 'page.visit';
