@@ -27,21 +27,16 @@ export async function GET(
     return new NextResponse('File not found.', { status: 404 });
   }
 
-  // Resolve the URL: public files use permanent URL, private files get a signed URL
-  let fileUrl: string;
+  // Always use signed URLs — never expose permanent Supabase URLs in email links.
+  // Login page preview uses public_url directly (not this route).
+  const { data: signed, error } = await admin.storage
+    .from('horuseye-files')
+    .createSignedUrl(file.storage_path, SIGNED_URL_EXPIRY);
 
-  if (file.is_public && file.public_url) {
-    fileUrl = file.public_url;
-  } else {
-    const { data: signed, error } = await admin.storage
-      .from('horuseye-files')
-      .createSignedUrl(file.storage_path, SIGNED_URL_EXPIRY);
-
-    if (error || !signed?.signedUrl) {
-      return new NextResponse('File unavailable.', { status: 502 });
-    }
-    fileUrl = signed.signedUrl;
+  if (error || !signed?.signedUrl) {
+    return new NextResponse('File unavailable.', { status: 502 });
   }
+  const fileUrl = signed.signedUrl;
 
   const forceDownload = request.nextUrl.searchParams.get('dl') === '1';
 
