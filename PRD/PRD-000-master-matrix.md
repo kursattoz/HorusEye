@@ -33,7 +33,7 @@ Script: `npm run validate:prd`
 | PRD-002 | PRD-002-public-docs.md | Public Dokümantasyon Alanı | AKTIF | 1.0 | PRD-000, PRD-001 |
 | PRD-003 | PRD-003-file-management.md | Dosya Yönetimi (Team Upload) | AKTIF | 1.0 | PRD-000, PRD-001 |
 | PRD-004 | PRD-004-feedback.md | Feedback Sistemi | AKTIF | 1.0 | PRD-000, PRD-001, PRD-003 |
-| PRD-005 | PRD-005-cicd.md | CI/CD Pipeline & Repo Yapısı | AKTIF | 1.0 | PRD-000 |
+| PRD-005 | PRD-005-cicd.md | CI/CD Pipeline & Repo Yapısı | AKTIF | 2.0 | PRD-000 |
 | PRD-006 | PRD-006-error-management-logging.md | Hata Yönetimi & Loglama | AKTIF | 1.0 | PRD-000, PRD-001 |
 | PRD-007 | PRD-007-system-monitor-dashboard.md | Sistem Monitör Dashboard | AKTIF | 1.0 | PRD-000, PRD-001, PRD-006 |
 | PRD-008 | PRD-008-pwa-responsive-design.md | PWA & Responsive Tasarım | AKTIF | 1.0 | PRD-000, PRD-002 |
@@ -307,7 +307,7 @@ auth.users (Supabase managed)
 | Error Tracking | Sentry | latest | Kritik hatalar |
 | App Logging | Supabase (audit_logs tablosu) | — | Kullanıcı hareketleri |
 | CI/CD | GitHub Actions | — | Ücretsiz, entegre |
-| Deploy | Vercel | — | Next.js native, preview URLs |
+| Deploy | AWS ECS Fargate + ALB | — | Container-based, AI/ML genişlemeye uygun |
 | PWA | next-pwa | latest | Service worker yönetimi |
 | Monitoring | Custom /dev/monitor sayfası | — | DB + backend + servis health |
 

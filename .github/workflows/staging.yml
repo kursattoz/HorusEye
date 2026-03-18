@@ -4,37 +4,31 @@ on:
   push:
     branches: [develop]
 
-defaults:
-  run:
-    working-directory: portal
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REPO: horuseye/portal
+  ECS_CLUSTER: HorusEye-Staging-Cluster
+  ECS_SERVICE: HorusEye-Staging-Service
 
 jobs:
   deploy-staging:
-    name: Deploy to Vercel (staging)
+    name: Build & Deploy to AWS (staging)
     runs-on: ubuntu-latest
     environment: staging
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.STAGING_SUPABASE_SERVICE_ROLE_KEY }}
-      NEXT_PUBLIC_ENV: staging
-      NEXT_PUBLIC_CAMERA_MODULE_ENABLED: false
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: portal/package-lock.json
-
+      # ── Supabase migrations ────────────────────────────────────
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Apply DB migrations to staging
+        working-directory: portal
         run: |
           supabase link --project-ref ${{ secrets.STAGING_PROJECT_ID }}
           supabase db push
@@ -42,8 +36,40 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
 
-      - run: npm ci
-      - run: npm run build
+      # ── AWS auth (OIDC) ────────────────────────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy to Vercel
-        run: npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --env NEXT_PUBLIC_ENV=staging
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Docker build & push ────────────────────────────────────
+      - name: Build and push Docker image
+        working-directory: portal
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=${{ secrets.STAGING_SUPABASE_URL }} \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.STAGING_SUPABASE_ANON_KEY }} \
+            --build-arg NEXT_PUBLIC_ENV=staging \
+            --build-arg NEXT_PUBLIC_CAMERA_MODULE_ENABLED=false \
+            -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPO:latest \
+            .
+          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPO:latest
+
+      # ── ECS deploy ─────────────────────────────────────────────
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --force-new-deployment \
+            --no-cli-pager

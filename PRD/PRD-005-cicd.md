@@ -1,7 +1,7 @@
 # PRD-005 — CI/CD Pipeline & Repo Yapısı
-**Versiyon:** 1.0  
-**Bağımlılıklar:** PRD-000  
-**Bloke ettiği:** —  
+**Versiyon:** 2.0
+**Bağımlılıklar:** PRD-000
+**Bloke ettiği:** —
 **Durum:** AKTIF
 
 ---
@@ -15,6 +15,8 @@
 Her ekip üyesinin kendi branch'inde geliştirme yapabilmesi,
 staging'e otomatik deploy edilmesi, production'a manuel onay ile geçilmesi.
 Hiçbir DB migration elle uygulanmaz — her şey Git üzerinden gider.
+
+**Altyapı:** AWS ECS Fargate + ECR + ALB. Domain: `horuseye.app`.
 
 ---
 
@@ -96,9 +98,49 @@ git commit -m "feat: add files table migration"
 
 ---
 
-## 5. GitHub Actions Workflow
+## 5. Deploy Mimarisi
 
-### 5.1 CI — PR Açılınca (develop veya main'e)
+```
+                    ┌─────────────────────────────┐
+                    │        Route53               │
+                    │  horuseye.app                │
+                    │  staging.horuseye.app        │
+                    └──────────┬──────────────────┘
+                               │
+                    ┌──────────▼──────────────────┐
+                    │     ALB + ACM (HTTPS)        │
+                    │     :443 → :3000             │
+                    └──────────┬──────────────────┘
+                               │
+                    ┌──────────▼──────────────────┐
+                    │   ECS Fargate Cluster        │
+                    │   Next.js Container          │
+                    │   (0.25 vCPU, 512 MB)        │
+                    └──────────┬──────────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+         Supabase         SSM Params      CloudWatch
+         (DB/Auth)        (Secrets)        (Logs)
+```
+
+**Container:** Next.js `output: 'standalone'` ile multi-stage Docker build.
+**Altyapı kodu:** `infra/` dizininde AWS CDK (TypeScript) ile tanımlı.
+
+### CDK Stack'ler
+
+| Stack | İçerik |
+|-------|--------|
+| `HorusEye-Network` | VPC (2 AZ, public + private subnet, NAT yok) |
+| `HorusEye-Registry` | ECR repo (`horuseye/portal`) |
+| `HorusEye-Staging` | ECS Fargate + ALB + ACM + Route53 (1 task) |
+| `HorusEye-Production` | ECS Fargate + ALB + ACM + Route53 (2 task) |
+
+---
+
+## 6. GitHub Actions Workflow
+
+### 6.1 CI — PR Açılınca (develop veya main'e)
 
 CI pipeline 5 ayrı job'dan oluşur (paralel çalışır, build en sona):
 
@@ -119,40 +161,18 @@ jobs:
   build:             # npm run build (test + e2e sonrası)
 ```
 
-**Test job detayları:**
-```yaml
-  test:
-    needs: lint-typecheck
-    steps:
-      - supabase start
-      - supabase db reset      # tüm migration'ları uygula
-      - supabase db lint       # SQL lint
-      - export supabase env vars (API_URL, ANON_KEY, SERVICE_ROLE_KEY)
-      - npm run test:coverage
-      - upload coverage artifact
-```
-
-**E2E job detayları:**
-```yaml
-  e2e:
-    needs: lint-typecheck
-    steps:
-      - supabase start
-      - supabase db reset
-      - export supabase env vars
-      - npx playwright install --with-deps chromium
-      - npm run test:e2e
-      - upload playwright-report artifact (on failure)
-```
-
-### 5.2 Staging Deploy — develop'a merge olunca
+### 6.2 Staging Deploy — develop'a merge olunca
 
 ```yaml
 # .github/workflows/staging.yml
-name: Deploy to Staging
+name: Deploy — Staging
 on:
   push:
     branches: [develop]
+
+permissions:
+  id-token: write   # GitHub OIDC → AWS IAM Role
+  contents: read
 
 jobs:
   deploy-staging:
@@ -161,80 +181,75 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
-      - name: Apply DB migrations to staging
-        run: |
-          supabase link --project-ref ${{ secrets.STAGING_PROJECT_ID }}
-          supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
-      - name: Deploy to Vercel (staging)
-        run: vercel deploy --token ${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Apply DB migrations
+        run: supabase link && supabase db push
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build & push Docker image
+        run: docker build + push (sha + latest tag)
+      - name: Deploy to ECS
+        run: aws ecs update-service --force-new-deployment
 ```
 
-### 5.3 Production Deploy — main'e merge olunca
+### 6.3 Production Deploy — main'e merge olunca
 
 ```yaml
 # .github/workflows/production.yml
-name: Deploy to Production
+name: Deploy — Production
 on:
   push:
     branches: [main]
 
 jobs:
   deploy-production:
-    runs-on: ubuntu-latest
     environment: production   # GitHub'da manuel onay gerektirir
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
-      - name: Apply DB migrations to production
-        run: |
-          supabase link --project-ref ${{ secrets.PROD_PROJECT_ID }}
-          supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD }}
-      - name: Deploy to Vercel (production)
-        run: vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
+      # Staging ile aynı akış, production secrets ile
 ```
+
+**Auth:** GitHub OIDC → IAM Role (uzun ömürlü AWS key yok).
 
 ---
 
-## 6. Ortam Yapısı
+## 7. Ortam Yapısı
 
-| Ortam | Branch | Supabase | Vercel URL | DB |
-|-------|--------|----------|------------|-----|
+| Ortam | Branch | Supabase | URL | DB |
+|-------|--------|----------|-----|-----|
 | Local | feature/* | Docker local | localhost:3000 | Local Docker |
-| Staging | develop | Supabase staging project | staging.horuseye.vercel.app | Staging DB |
-| Production | main | Supabase prod project | horuseye.vercel.app | Prod DB |
+| Staging | develop | Supabase staging project | staging.horuseye.app | Staging DB |
+| Production | main | Supabase prod project | horuseye.app | Prod DB |
 
 **Her ortamın ayrı Supabase projesi var.**
 Staging verisi production'a geçmez, tam izolasyon.
 
 ---
 
-## 7. GitHub Secrets
+## 8. GitHub Secrets
 
 ```
+# AWS
+AWS_DEPLOY_ROLE_ARN              # GitHub OIDC → IAM Role ARN
+
 # Tüm ortamlar
-SUPABASE_ACCESS_TOKEN          # Personal access token
+SUPABASE_ACCESS_TOKEN            # Personal access token
 
 # Staging
 STAGING_PROJECT_ID
 STAGING_DB_PASSWORD
+STAGING_SUPABASE_URL
+STAGING_SUPABASE_ANON_KEY
+STAGING_SUPABASE_SERVICE_ROLE_KEY
 
 # Production
 PROD_PROJECT_ID
 PROD_DB_PASSWORD
-
-# Vercel
-VERCEL_TOKEN
-VERCEL_ORG_ID
-VERCEL_PROJECT_ID
+PROD_SUPABASE_URL
+PROD_SUPABASE_ANON_KEY
+PROD_SUPABASE_SERVICE_ROLE_KEY
 
 # Sentry (PRD-006)
 SENTRY_AUTH_TOKEN
@@ -243,42 +258,59 @@ NEXT_PUBLIC_SENTRY_DSN
 
 ---
 
-## 8. Repo Klasör Yapısı
+## 9. AWS Manuel Kurulum (Bir Kez)
+
+Bu adımlar CDK deploy öncesi AWS Console/CLI ile yapılır:
+
+1. **Route53:** `horuseye.app` hosted zone oluştur → registrar'da NS kayıtlarını güncelle
+2. **IAM OIDC Provider:** GitHub Actions için OIDC identity provider oluştur
+3. **IAM Role:** `GitHubActionsDeployRole` — ECR push + ECS deploy + SSM read yetkileri
+4. **SSM Parameter Store:** Her ortam için secret'ları gir (`/horuseye/staging/*`, `/horuseye/production/*`)
+5. **CDK Bootstrap:** `cd infra && cdk bootstrap`
+6. **CDK Deploy:** `cdk deploy --all`
+
+---
+
+## 10. Repo Klasör Yapısı
 
 ```
-horuseye-portal/
+horuseye/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml
-│       ├── staging.yml
-│       └── production.yml
-├── app/
-│   ├── (public)/          → Guest erişimli sayfalar
-│   ├── (protected)/       → Auth gerektiren sayfalar
-│   └── api/               → API routes
-├── components/
-│   ├── auth/
-│   ├── public/
-│   ├── dashboard/
-│   └── ui/                → shadcn/ui bileşenleri
-├── lib/
-│   ├── auth/
+│       ├── ci.yml              → CI pipeline (lint, test, build)
+│       ├── staging.yml         → ECR push + ECS deploy (develop)
+│       └── production.yml      → ECR push + ECS deploy (main)
+├── portal/
+│   ├── Dockerfile              → Multi-stage Next.js container
+│   ├── .dockerignore
+│   ├── app/
+│   │   ├── (public)/           → Guest erişimli sayfalar
+│   │   ├── (protected)/        → Auth gerektiren sayfalar
+│   │   └── api/
+│   │       └── health/         → ALB health check endpoint
+│   ├── components/
+│   ├── lib/
 │   ├── supabase/
-│   ├── logger/            → PRD-006 log sistemi
-│   └── utils/
-├── supabase/
-│   ├── migrations/        → Tüm DB migration'ları
-│   └── seed.sql           → Test verisi
-├── public/
-│   └── sw.js              → PWA service worker (PRD-008)
-├── .env.example
-├── .env.local             → Git'e commit edilmez
+│   │   ├── migrations/         → Tüm DB migration'ları
+│   │   └── seed.sql            → Test verisi
+│   ├── public/
+│   └── package.json
+├── infra/
+│   ├── bin/infra.ts            → CDK app entry
+│   ├── lib/
+│   │   ├── network-stack.ts    → VPC
+│   │   ├── registry-stack.ts   → ECR
+│   │   └── service-stack.ts    → ECS + ALB + ACM + Route53
+│   ├── cdk.json
+│   ├── package.json
+│   └── tsconfig.json
+├── PRD/
 └── package.json
 ```
 
 ---
 
-## 9. Code Review Checklist (PR Template)
+## 11. Code Review Checklist (PR Template)
 
 ```markdown
 ## Değişiklik Özeti
@@ -292,6 +324,7 @@ horuseye-portal/
 - [ ] Lint geçiyor
 - [ ] Type check geçiyor
 - [ ] Migration temiz uygulanıyor
+- [ ] Docker build başarılı (infra değişikliğinde)
 
 ## Breaking Change var mı?
 - [ ] Evet → PRD-000 güncellendi
