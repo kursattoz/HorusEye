@@ -1,0 +1,132 @@
+{
+ "Resources": {
+  "PortalRepoD1C66B77": {
+   "Type": "AWS::ECR::Repository",
+   "Properties": {
+    "LifecyclePolicy": {
+     "LifecyclePolicyText": "{\"rules\":[{\"rulePriority\":1,\"description\":\"Keep last 20 images\",\"selection\":{\"tagStatus\":\"any\",\"countType\":\"imageCountMoreThan\",\"countNumber\":20},\"action\":{\"type\":\"expire\"}}]}"
+    },
+    "RepositoryName": "horuseye/portal"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "HorusEye-Registry/PortalRepo/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzIx1jNQTCwv1k1OydbNyUzSqw4uSUzO1gEKxacmF+lVB6UW5BdnluQXVeo4p+UheLUgrn9pSUFpSa1OXn5Kql5WsX6ZkameBdDArOLMTN2i0rySzNxUvSAIDQANo31ybQAAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "HorusEye-Registry/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "RepoUri": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      {
+       "Fn::Select": [
+        4,
+        {
+         "Fn::Split": [
+          ":",
+          {
+           "Fn::GetAtt": [
+            "PortalRepoD1C66B77",
+            "Arn"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      ".dkr.ecr.",
+      {
+       "Fn::Select": [
+        3,
+        {
+         "Fn::Split": [
+          ":",
+          {
+           "Fn::GetAtt": [
+            "PortalRepoD1C66B77",
+            "Arn"
+           ]
+          }
+         ]
+        }
+       ]
+      },
+      ".",
+      {
+       "Ref": "AWS::URLSuffix"
+      },
+      "/",
+      {
+       "Ref": "PortalRepoD1C66B77"
+      }
+     ]
+    ]
+   }
+  },
+  "ExportsOutputFnGetAttPortalRepoD1C66B77Arn8605A8F2": {
+   "Value": {
+    "Fn::GetAtt": [
+     "PortalRepoD1C66B77",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "HorusEye-Registry:ExportsOutputFnGetAttPortalRepoD1C66B77Arn8605A8F2"
+   }
+  },
+  "ExportsOutputRefPortalRepoD1C66B77458800C5": {
+   "Value": {
+    "Ref": "PortalRepoD1C66B77"
+   },
+   "Export": {
+    "Name": "HorusEye-Registry:ExportsOutputRefPortalRepoD1C66B77458800C5"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

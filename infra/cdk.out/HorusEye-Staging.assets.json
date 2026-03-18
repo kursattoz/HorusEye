@@ -1,0 +1,21 @@
+{
+  "version": "52.0.0",
+  "files": {
+    "2ac1c5a0907af9a4e4e8458fb4f633831456ab8cb3e6b10b879584119357e450": {
+      "displayName": "HorusEye-Staging Template",
+      "source": {
+        "path": "HorusEye-Staging.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "266087050294-eu-west-1-8775f869": {
+          "bucketName": "cdk-hnb659fds-assets-266087050294-eu-west-1",
+          "objectKey": "2ac1c5a0907af9a4e4e8458fb4f633831456ab8cb3e6b10b879584119357e450.json",
+          "region": "eu-west-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::266087050294:role/cdk-hnb659fds-file-publishing-role-266087050294-eu-west-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

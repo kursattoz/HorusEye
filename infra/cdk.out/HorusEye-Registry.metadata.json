@@ -1,0 +1,44 @@
+{
+  "/HorusEye-Registry/RepoUri": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "RepoUri"
+    }
+  ],
+  "/HorusEye-Registry/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/HorusEye-Registry/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/HorusEye-Registry/PortalRepo/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PortalRepoD1C66B77"
+    }
+  ],
+  "/HorusEye-Registry/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/HorusEye-Registry/Exports/Output{\"Fn::GetAtt\":[\"PortalRepoD1C66B77\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttPortalRepoD1C66B77Arn8605A8F2"
+    }
+  ],
+  "/HorusEye-Registry/Exports/Output{\"Ref\":\"PortalRepoD1C66B77\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefPortalRepoD1C66B77458800C5"
+    }
+  ]
+}
