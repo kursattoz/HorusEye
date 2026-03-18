@@ -11,10 +11,74 @@ defaults:
     working-directory: portal
 
 jobs:
+  # ── 0. Security gate — block secrets & dangerous files ──────────────────
+  security:
+    name: Security Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Block committed secrets & credentials
+        run: |
+          FORBIDDEN_PATTERNS=(
+            '\.env\.local$'
+            '\.env\.production$'
+            '\.env\.staging$'
+            '\.pem$'
+            '\.key$'
+            '\.p12$'
+            '\.pfx$'
+            'credentials\.json$'
+            'service-account.*\.json$'
+            '\.credentials$'
+          )
+          FOUND=0
+          for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+            MATCHES=$(git diff --name-only origin/main...HEAD | grep -E "$pattern" || true)
+            if [ -n "$MATCHES" ]; then
+              echo "::error::Forbidden file committed: $MATCHES"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo "::error::Remove secret/credential files before merging."
+            exit 1
+          fi
+
+      - name: Scan for hardcoded secrets in code
+        run: |
+          PATTERNS='(SUPABASE_SERVICE_ROLE_KEY|SENTRY_AUTH_TOKEN|AWS_SECRET_ACCESS_KEY|private_key)[\s]*[:=][\s]*["\x27][A-Za-z0-9+/=_-]{20,}'
+          HITS=$(git diff origin/main...HEAD -U0 -- '*.ts' '*.tsx' '*.js' '*.json' '*.yml' '*.yaml' | grep -P "$PATTERNS" || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::Possible hardcoded secret detected in diff:"
+            echo "$HITS"
+            exit 1
+          fi
+          echo "No hardcoded secrets found."
+
+      - name: Block large files (>5MB)
+        run: |
+          LARGE=$(git diff --name-only origin/main...HEAD | while read f; do
+            if [ -f "$f" ]; then
+              SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+              if [ "$SIZE" -gt 5242880 ]; then echo "$f ($((SIZE/1024/1024))MB)"; fi
+            fi
+          done)
+          if [ -n "$LARGE" ]; then
+            echo "::error::Files over 5MB detected: $LARGE"
+            exit 1
+          fi
+
   # ── 1. PRD interface version guard ────────────────────────────────────────
   validate:
     name: Validate PRDs
     runs-on: ubuntu-latest
+    needs: security
     defaults:
       run:
         working-directory: .
