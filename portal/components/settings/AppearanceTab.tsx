@@ -1,7 +1,7 @@
 'use client';
 
 import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { switchTheme } from '@/lib/utils/switchTheme';
 import { Sun, Moon, Monitor, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -54,19 +54,17 @@ function applyColorTheme(value: ColorTheme) {
 
 /* ─── Component ───────────────────────────────────────────────────────────── */
 
+function getStoredColorTheme(): ColorTheme {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY) as ColorTheme | null;
+    if (stored && COLOR_THEMES.some(c => c.value === stored)) return stored;
+  } catch { /* noop */ }
+  return 'red';
+}
+
 export function AppearanceTab() {
   const { theme, setTheme } = useTheme();
-  const [colorTheme, setColorTheme] = useState<ColorTheme>('red');
-
-  /* Hydrate from localStorage after mount */
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as ColorTheme | null;
-      if (stored && COLOR_THEMES.some(c => c.value === stored)) {
-        setColorTheme(stored);
-      }
-    } catch { /* noop */ }
-  }, []);
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(getStoredColorTheme);
 
   function handleColorTheme(value: ColorTheme) {
     setColorTheme(value);

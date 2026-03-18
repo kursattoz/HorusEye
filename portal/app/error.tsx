@@ -1,9 +1,18 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { config } from '@/constants/config';
+
+function isChunkLoadError(error: Error): boolean {
+  return (
+    error.name === 'ChunkLoadError' ||
+    error.message.includes('Failed to load chunk') ||
+    error.message.includes('Loading chunk') ||
+    error.message.includes('Failed to fetch dynamically imported module')
+  );
+}
 
 export default function Error({
   error,
@@ -12,6 +21,9 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const [countdown, setCountdown] = useState(3);
+  const isChunkError = isChunkLoadError(error);
+
   useEffect(() => {
     if (!config.isDev) {
       import('@sentry/nextjs')
@@ -21,6 +33,39 @@ export default function Error({
       console.error('[Error boundary]', error);
     }
   }, [error]);
+
+  // Auto-reload on chunk load errors (new deployment)
+  useEffect(() => {
+    if (!isChunkError) return;
+
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          window.location.reload();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isChunkError]);
+
+  if (isChunkError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">
+        <RefreshCw className="h-10 w-10 text-primary animate-spin" />
+        <h1 className="text-xl font-semibold">Updating...</h1>
+        <p className="text-muted-foreground max-w-sm text-sm">
+          A new version has been deployed. The page will refresh automatically in {countdown} seconds.
+        </p>
+        <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+          Refresh now
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-6 text-center">

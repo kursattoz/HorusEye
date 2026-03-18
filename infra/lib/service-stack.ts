@@ -61,6 +61,9 @@ export class ServiceStack extends cdk.Stack {
     const supabaseAnonKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_ANON_KEY`);
     const supabaseServiceKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_SERVICE_ROLE_KEY`);
 
+    const smtpEncryptionKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SMTP_ENCRYPTION_KEY`);
+    const appUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_APP_URL`);
+
     const environment: Record<string, string> = {
       NEXT_PUBLIC_ENV: envName,
       NEXT_PUBLIC_CAMERA_MODULE_ENABLED: 'false',
@@ -68,6 +71,8 @@ export class ServiceStack extends cdk.Stack {
       NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
+      SMTP_ENCRYPTION_KEY: smtpEncryptionKey,
+      NEXT_PUBLIC_APP_URL: appUrl,
     };
 
     if (envName === 'production') {
@@ -92,6 +97,8 @@ export class ServiceStack extends cdk.Stack {
       desiredCount: props.desiredCount,
       assignPublicIp: true, // No NAT gateway — tasks in public subnets
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      minHealthyPercent: 100, // keep old container running until new one is healthy
+      maxHealthyPercent: 200, // allow double capacity during deploys
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
 

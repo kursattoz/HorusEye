@@ -55,7 +55,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: uploadErr.message }, { status: 500 });
   }
 
-  const { data: { publicUrl } } = supabase.storage.from('horuseye-files').getPublicUrl(storagePath);
+  const publicUrl = isPublic
+    ? supabase.storage.from('horuseye-files').getPublicUrl(storagePath).data.publicUrl
+    : null;
 
   const { data: fileRow, error: dbErr } = await supabase.from('files').insert({
     name:            file.name,

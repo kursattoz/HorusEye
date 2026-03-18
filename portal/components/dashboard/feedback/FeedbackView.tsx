@@ -37,7 +37,7 @@ interface FeedbackViewProps {
   userId:   string;
 }
 
-export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
+export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewProps) {
   const [selectedFile, setSelectedFile]   = useState<PublicFile | null>(null);
   const [feedbacks, setFeedbacks]         = useState<FeedbackItem[]>([]);
   const [pubFeedbacks, setPubFeedbacks]   = useState<PublicFeedbackItem[]>([]);
@@ -50,23 +50,28 @@ export function FeedbackView({ files, userRole, userId }: FeedbackViewProps) {
   const canWrite = userRole === 'admin' || userRole === 'supervisor';
   const isAdmin  = userRole === 'admin';
 
+  /* eslint-disable react-hooks/set-state-in-effect -- data fetching on dependency change */
   useEffect(() => {
     if (!selectedFile) return;
 
+    let cancelled = false;
     setLoading(true);
     fetch(`/api/feedback?file_id=${selectedFile.id}`)
       .then(r => r.json())
-      .then(data => setFeedbacks(data.feedbacks ?? []))
-      .catch(() => toast.error('Failed to load comments.'))
-      .finally(() => setLoading(false));
+      .then(data => { if (!cancelled) setFeedbacks(data.feedbacks ?? []); })
+      .catch(() => { if (!cancelled) toast.error('Failed to load comments.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     setPubLoading(true);
     fetch(`/api/public/feedback?file_id=${selectedFile.id}`)
       .then(r => r.json())
-      .then(data => setPubFeedbacks(data.feedbacks ?? []))
-      .catch(() => toast.error('Failed to load public feedback.'))
-      .finally(() => setPubLoading(false));
+      .then(data => { if (!cancelled) setPubFeedbacks(data.feedbacks ?? []); })
+      .catch(() => { if (!cancelled) toast.error('Failed to load public feedback.'); })
+      .finally(() => { if (!cancelled) setPubLoading(false); });
+
+    return () => { cancelled = true; };
   }, [selectedFile]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function submitFeedback() {
     if (!selectedFile || !content.trim()) return;

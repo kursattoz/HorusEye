@@ -59,10 +59,10 @@ Phase 0 — Foundation ✅ COMPLETE (2026-03-18)
              ✅ PWA icons (192, 512, 512-maskable) from favicon.svg
              ✅ Migration 20240003 (force_password_change, color_theme columns)
 
-Phase 1 — Core (authentication + basic UI)  ← CURRENT PHASE
-├── PRD-001: Auth (login, RBAC, proxy.ts, user profiles)
-├── PRD-006: Logger (audit_logs, error_logs, Sentry)
-└── PRD-002: Public documentation area (landing page)
+Phase 1 — Core (authentication + basic UI)  ← CURRENT PHASE (2026-03-18)
+├── PRD-001: Auth (login, RBAC, proxy.ts, user profiles)        ← in progress
+├── PRD-006: Logger (audit_logs, error_logs, Sentry)             ← in progress
+└── PRD-002: Public documentation area (landing page)           ← pending
 
 Phase 2 — Features
 ├── PRD-003: File management (upload, storage, CRUD)
@@ -105,8 +105,8 @@ Supabase (MCP: horuseye-staging / horuseye-production)
     │   └── public.error_logs                 → PRD-006
     ├── Auth                                  → JWT, RBAC
     └── Storage
-        ├── bucket: documents                 → Team files (private)
-        └── bucket: avatars                   → User avatars (private)
+        ├── bucket: horuseye-files            → Team files (public/ + private/ subpaths) — PRD-003
+        └── bucket: avatars                   → User avatars (private) — PRD-010
 
 External Services
     ├── Sentry                                → Critical error tracking
@@ -142,7 +142,8 @@ External Services
 | Storage | Supabase Storage | PDF, PPTX, images |
 | Error Tracking | Sentry | Critical errors + stack traces |
 | CI/CD | GitHub Actions | 3 workflows: CI, staging, production |
-| Deployment | Vercel | Preview URLs for PRs |
+| Deployment (staging/prod) | AWS ECS Fargate + ALB | Route53 + ACM (HTTPS), CDK stacks |
+| Deployment (PR preview) | Vercel | Auto PR preview URLs via GitHub App |
 | Testing | Vitest + Playwright | Unit + integration + E2E |
 | PWA | next-pwa | Service worker, offline cache |
 

@@ -158,7 +158,7 @@ function HealthCard() {
       </CardHeader>
       <CardContent>
         {!checked ? (
-          <p className="text-xs text-muted-foreground">Press "Check" to run a health check.</p>
+          <p className="text-xs text-muted-foreground">Press &quot;Check&quot; to run a health check.</p>
         ) : status ? (
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">

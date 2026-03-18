@@ -77,6 +77,19 @@ Thumbs.db
 .trae/
 skills-lock.json
 
+# ─── Local docs & scripts (not project code) ─────
+LLD-MASTER-PROMPT.md
+generate_lld.py
+docs/GELISTIRICI-BASLANGIC-REHBERI.md
+docs/HorusEye-Ekip-Rol-Dagilimi.pdf
+docs/HorusEye-Gelistirici-Baslangic-Rehberi.pdf
+docs/HorusEye-LLD-Report.pdf
+docs/Project-documents/
+docs/cover-icon.png
+docs/cover-wordmark.png
+docs/generate_guide_pdf.py
+docs/team-roles.html
+
 # ─── Binaries & large files ─────────────────────
 *.zip
 *.tar.gz

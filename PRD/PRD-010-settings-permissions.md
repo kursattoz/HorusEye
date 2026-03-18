@@ -1,7 +1,7 @@
 # PRD-010 — Settings Page & Permission Management
-**Version:** 1.0
+**Version:** 1.1
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000, PRD-001, PRD-009
+**Dependencies:** PRD-000, PRD-001, PRD-009, PRD-013
 **Blocks:** —
 **Status:** ACTIVE
 
@@ -12,10 +12,12 @@ AuthUser: @1.0
 -->
 
 ## ⚠️ LLM INSTRUCTION
-The settings page is a tabbed layout at `/settings`. Each tab is a separate component.
+The settings page uses a hub layout at `/settings` with a left sidebar and right content area (URL-based routing).
+Each section is a separate page under `/settings/{section}`.
 User management data comes from PRD-001 (`user_profiles` table). Do not duplicate table definitions here.
 Permission matrix is display-only for non-admins. Only Admin can modify permissions.
 Theme settings are driven by PRD-009 (UI Design System). Implement using `next-themes` as defined there.
+SMTP/Integrations implementation details are in PRD-013. Do not duplicate DB schema here.
 Interface dependencies are declared in the INTERFACE_DEPS block above. If PRD-000 version changes, update this block or `validate:prd` will fail.
 
 ---
@@ -31,16 +33,23 @@ Access: All authenticated roles (tab visibility varies by role — see Section 3
 
 ## 2. Page Layout
 
+Hub layout: left sidebar navigation + right content area. Active section highlighted in sidebar.
+URL-based routing — each section is a separate Next.js page.
+
 ```
-/settings
-├── Tab: Appearance       → All roles
-├── Tab: Profile          → All roles (own profile only)
-├── Tab: Account          → All roles (own account only)
-└── Tab: Users & Permissions  → Admin only (hidden from other roles)
+/settings                     → redirects to /settings/appearance
+/settings/appearance          → All roles
+/settings/profile             → All roles (own profile only)
+/settings/account             → All roles (own account only)
+/settings/users               → Admin only
+/settings/integrations        → Admin only (SMTP)
 ```
 
-Tabs are rendered via shadcn `Tabs` component.
-On mobile: tabs become a select dropdown (shadcn `Select`).
+Sidebar sections:
+- **USER:** Appearance, Profile, Account
+- **ADMIN** (shown only to admin): Users, Integrations
+
+On mobile: sidebar collapses to top nav or drawer.
 
 ---
 
@@ -203,7 +212,43 @@ Admin cannot create another admin via this dialog (must be done via Supabase das
 
 ---
 
-## 7. Supabase MCP Integration
+## 7. Section: Integrations (Admin only)
+
+**Route:** `/settings/integrations`
+**Accessible by:** Admin only
+
+SMTP configuration panel for the email notification system (see PRD-013 for full spec).
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Email (SMTP)                    ● Connected  [Test] │
+│                                                      │
+│  SERVER                                              │
+│  Host: [smtp.hostinger.com    ]  Port: [465]  TLS ✓  │
+│                                                      │
+│  AUTHENTICATION                                      │
+│  Username: [info@horuseye.app ]                      │
+│  Password: [●●●●●●●●●●●●●●●● ]                       │
+│                                                      │
+│  SENDER                                              │
+│  From name:  [HorusEye        ]                      │
+│  From email: [info@horuseye.app]                     │
+│                                                      │
+│  NOTIFICATIONS                                       │
+│  Admin email: [taha@horuseye.app]                    │
+│                                                      │
+│                              [Save Settings]         │
+└─────────────────────────────────────────────────────┘
+```
+
+- Password is stored AES-256-GCM encrypted in `smtp_settings` table
+- "Test Connection" sends a `VERIFY` command to the SMTP server (no email sent)
+- Connection status badge: `not_configured` | `connected` | `error`
+- Only one SMTP configuration exists system-wide (singleton row, id=1)
+
+---
+
+## 8. Supabase MCP Integration
 
 All user management writes must use MCP where possible.
 MCP project name: **`horuseye-staging`**
@@ -216,7 +261,7 @@ MCP project name: **`horuseye-staging`**
 
 ---
 
-## 8. Test Scenarios
+## 9. Test Scenarios
 
 - [ ] Appearance tab: clicking "Dark" switches theme immediately, no save needed
 - [ ] Profile tab: update full name → saved → topbar avatar name updates
@@ -231,3 +276,7 @@ MCP project name: **`horuseye-staging`**
 - [ ] Add User dialog: cannot select "admin" in role dropdown
 - [ ] Add User: sends welcome email
 - [ ] Permission matrix: all checkboxes are disabled (display-only)
+- [ ] Integrations tab: visible to admin, hidden from other roles
+- [ ] Save SMTP: password encrypted in DB, plain value never stored
+- [ ] Test Connection: returns success/error badge without sending email
+- [ ] SMTP not configured: notification events fail silently (fire-and-forget)

@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   Activity,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { routes } from '@/constants/routes';
@@ -24,7 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: routes.dashboard, icon: LayoutDashboard, roles: ['admin', 'supervisor', 'assistant'] },
   { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
   { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin', 'supervisor', 'assistant'] },
-  { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
+  { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin', 'supervisor', 'assistant'] },
   { label: 'Settings',  href: routes.settings,  icon: Settings,        roles: ['admin', 'supervisor', 'assistant'] },
 ];
 

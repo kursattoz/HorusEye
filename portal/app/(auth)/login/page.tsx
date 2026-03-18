@@ -60,6 +60,22 @@ export default async function LoginPage() {
             </p>
           </div>
         </div>
+
+        {/* Footer — TED University attribution */}
+        <div className="flex flex-col items-center gap-1.5 mt-auto pt-6 pb-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/ted-logo.png"
+            alt="TED University"
+            width={34}
+            height={34}
+            className="rounded-full opacity-50"
+            style={{ imageRendering: 'auto' }}
+          />
+          <p className="text-center text-[9px] text-muted-foreground/50 leading-relaxed max-w-[220px]">
+            This project is developed by TED University CMPE students as part of the CMPE 492 Senior Project.
+          </p>
+        </div>
       </div>
 
       {/* Right — document panel */}

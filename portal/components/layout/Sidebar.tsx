@@ -47,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
   { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
   { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
+  { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
   { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
 ];
 
@@ -66,6 +67,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
   const pathname             = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard: must detect client mount
   useEffect(() => { setMounted(true); }, []);
 
   const visible = NAV_ITEMS.filter(item => item.roles.includes(role));
