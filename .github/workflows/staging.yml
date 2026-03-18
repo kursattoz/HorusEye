@@ -11,8 +11,7 @@ permissions:
 env:
   AWS_REGION: eu-west-1
   ECR_REPO: horuseye/portal
-  ECS_CLUSTER: HorusEye-Staging-Cluster
-  ECS_SERVICE: HorusEye-Staging-Service
+  CDK_STACK: HorusEye-Staging
 
 jobs:
   deploy-staging:
@@ -66,10 +65,20 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPO:latest
 
       # ── ECS deploy ─────────────────────────────────────────────
+      - name: Resolve ECS names from CDK stack outputs
+        id: ecs
+        run: |
+          CLUSTER=$(aws cloudformation describe-stacks --stack-name $CDK_STACK \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterArn'].OutputValue" --output text)
+          SERVICE=$(aws cloudformation describe-stacks --stack-name $CDK_STACK \
+            --query "Stacks[0].Outputs[?OutputKey=='ServiceArn'].OutputValue" --output text)
+          echo "cluster=$CLUSTER" >> $GITHUB_OUTPUT
+          echo "service=$SERVICE" >> $GITHUB_OUTPUT
+
       - name: Deploy to ECS
         run: |
           aws ecs update-service \
-            --cluster $ECS_CLUSTER \
-            --service $ECS_SERVICE \
+            --cluster ${{ steps.ecs.outputs.cluster }} \
+            --service ${{ steps.ecs.outputs.service }} \
             --force-new-deployment \
             --no-cli-pager

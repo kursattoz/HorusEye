@@ -23,6 +23,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Determine diff base
+        id: base
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "ref=origin/${{ github.base_ref }}" >> $GITHUB_OUTPUT
+          elif git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "ref=HEAD~1" >> $GITHUB_OUTPUT
+          else
+            echo "ref=$(git hash-object -t tree /dev/null)" >> $GITHUB_OUTPUT
+          fi
+
       - name: Block committed secrets & credentials
         run: |
           FORBIDDEN_PATTERNS=(
@@ -39,7 +50,7 @@ jobs:
           )
           FOUND=0
           for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
-            MATCHES=$(git diff --name-only origin/main...HEAD | grep -E "$pattern" || true)
+            MATCHES=$(git diff --name-only ${{ steps.base.outputs.ref }}...HEAD | grep -E "$pattern" || true)
             if [ -n "$MATCHES" ]; then
               echo "::error::Forbidden file committed: $MATCHES"
               FOUND=1
@@ -52,8 +63,8 @@ jobs:
 
       - name: Scan for hardcoded secrets in code
         run: |
-          PATTERNS='(SUPABASE_SERVICE_ROLE_KEY|SENTRY_AUTH_TOKEN|AWS_SECRET_ACCESS_KEY|private_key)[\s]*[:=][\s]*["\x27][A-Za-z0-9+/=_-]{20,}'
-          HITS=$(git diff origin/main...HEAD -U0 -- '*.ts' '*.tsx' '*.js' '*.json' '*.yml' '*.yaml' | grep -P "$PATTERNS" || true)
+          HITS=$(git diff ${{ steps.base.outputs.ref }}...HEAD -U0 -- '*.ts' '*.tsx' '*.js' '*.json' '*.yml' '*.yaml' \
+            | grep -E '(SUPABASE_SERVICE_ROLE_KEY|SENTRY_AUTH_TOKEN|AWS_SECRET_ACCESS_KEY|private_key)\s*[:=]\s*["'"'"'][A-Za-z0-9+/=_-]{20,}' || true)
           if [ -n "$HITS" ]; then
             echo "::error::Possible hardcoded secret detected in diff:"
             echo "$HITS"
@@ -63,9 +74,9 @@ jobs:
 
       - name: Block large files (>5MB)
         run: |
-          LARGE=$(git diff --name-only origin/main...HEAD | while read f; do
+          LARGE=$(git diff --name-only ${{ steps.base.outputs.ref }}...HEAD | while read f; do
             if [ -f "$f" ]; then
-              SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo 0)
+              SIZE=$(stat -c%s "$f" 2>/dev/null || echo 0)
               if [ "$SIZE" -gt 5242880 ]; then echo "$f ($((SIZE/1024/1024))MB)"; fi
             fi
           done)
@@ -78,7 +89,6 @@ jobs:
   validate:
     name: Validate PRDs
     runs-on: ubuntu-latest
-    needs: security
     defaults:
       run:
         working-directory: .
@@ -93,7 +103,7 @@ jobs:
   lint-typecheck:
     name: Lint & Type-check
     runs-on: ubuntu-latest
-    needs: validate
+    needs: [security, validate]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
