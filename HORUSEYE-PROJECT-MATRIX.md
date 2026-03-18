@@ -1,5 +1,5 @@
 # HorusEye — Project Master Reference
-**Last Updated:** 2026-03-17
+**Last Updated:** 2026-03-18
 **Project:** HorusEye — AI-Based Exam Proctoring System
 **Team:** Çağla Abazaoğlu, Gizem Nur İpek, Taha Kürşat Öztürk, Ali Sahil, Tuğba Hilal Kırer
 **Supervisor:** Fırat Akba (TED University, CMPE491/492)
@@ -51,14 +51,16 @@
 ## Recommended Implementation Order
 
 ```
-Phase 0 — Foundation (do these before writing any feature code)
-├── PRD-012: Set up folder structure, tsconfig, eslint, Tailwind
-├── PRD-009: Install shadcn, configure design tokens, dark/light mode
-├── PRD-005: Set up Git branches, GitHub Actions CI
-└── PRD-011: Set up Vitest, Playwright, test infrastructure
+Phase 0 — Foundation ✅ COMPLETE (2026-03-18)
+├── PRD-012: ✅ Folder structure, tsconfig, eslint, Tailwind v4 (@theme inline)
+├── PRD-009: ✅ shadcn/ui, design tokens, dark/light/system mode, HorusEye logo
+├── PRD-005: ✅ Git branches (main/develop), GitHub Actions CI (5 jobs), Husky pre-commit
+└── PRD-011: ✅ Vitest + Playwright config, unit/integration/e2e test infrastructure
+             ✅ PWA icons (192, 512, 512-maskable) from favicon.svg
+             ✅ Migration 20240003 (force_password_change, color_theme columns)
 
-Phase 1 — Core (authentication + basic UI)
-├── PRD-001: Auth (login, RBAC, middleware, user profiles)
+Phase 1 — Core (authentication + basic UI)  ← CURRENT PHASE
+├── PRD-001: Auth (login, RBAC, proxy.ts, user profiles)
 ├── PRD-006: Logger (audit_logs, error_logs, Sentry)
 └── PRD-002: Public documentation area (landing page)
 

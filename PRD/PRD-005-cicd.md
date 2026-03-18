@@ -100,39 +100,49 @@ git commit -m "feat: add files table migration"
 
 ### 5.1 CI — PR Açılınca (develop veya main'e)
 
+CI pipeline 5 ayrı job'dan oluşur (paralel çalışır, build en sona):
+
 ```yaml
-# .github/workflows/ci.yml
+# .github/workflows/ci.yml (gerçek implementasyon)
 name: CI
 on:
+  push:
+    branches: [main, develop]
   pull_request:
-    branches: [develop, main]
+    branches: [main, develop]
 
 jobs:
-  validate:
-    runs-on: ubuntu-latest
+  validate:          # PRD interface version check (en hızlı, ilk çalışır)
+  lint-typecheck:    # eslint + tsc --noEmit (validate sonrası)
+  test:              # Vitest unit+integration, local Supabase Docker (lint sonrası)
+  e2e:               # Playwright Chromium + Mobile Chrome (lint sonrası, test ile paralel)
+  build:             # npm run build (test + e2e sonrası)
+```
+
+**Test job detayları:**
+```yaml
+  test:
+    needs: lint-typecheck
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - run: npm ci
+      - supabase start
+      - supabase db reset      # tüm migration'ları uygula
+      - supabase db lint       # SQL lint
+      - export supabase env vars (API_URL, ANON_KEY, SERVICE_ROLE_KEY)
+      - npm run test:coverage
+      - upload coverage artifact
+```
 
-      # ── PRD Interface Validation (runs first — fastest check) ──
-      - name: Validate PRD interface dependencies
-        run: npm run validate:prd
-        # Fails if any PRD references an outdated interface version from PRD-000.
-        # This is the first gate — no point running lint/tests if PRDs are stale.
-
-      # ── Code Quality ──
-      - run: npm run lint
-      - run: npm run type-check
-
-      # ── Tests ──
-      - uses: supabase/setup-cli@v1
-      - run: supabase start
-      - run: supabase db reset    # Migration'ların temiz uygulandığını test et
-      - run: supabase db lint     # SQL lint
-      - run: npm run test:coverage
-      - run: npm run test:e2e
+**E2E job detayları:**
+```yaml
+  e2e:
+    needs: lint-typecheck
+    steps:
+      - supabase start
+      - supabase db reset
+      - export supabase env vars
+      - npx playwright install --with-deps chromium
+      - npm run test:e2e
+      - upload playwright-report artifact (on failure)
 ```
 
 ### 5.2 Staging Deploy — develop'a merge olunca
