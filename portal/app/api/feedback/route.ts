@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
+import { sendMail } from '@/lib/mailer';
+import { fileFeedbackTemplate } from '@/lib/mailer/templates';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -44,5 +46,37 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   await log({ event_type: 'feedback.create', severity: 'info', user_id: user.id, action: `Feedback on file ${file_id}` });
+
+  // ── Notify file uploader (skip if they're the one leaving feedback) ────────
+  const adminClient = await createClient({ serviceRole: true });
+  const { data: fileRow } = await adminClient
+    .from('files')
+    .select('display_name, uploaded_by')
+    .eq('id', file_id)
+    .maybeSingle();
+
+  if (fileRow?.uploaded_by && fileRow.uploaded_by !== user.id) {
+    const { data: uploader } = await adminClient
+      .from('user_profiles')
+      .select('full_name, email')
+      .eq('id', fileRow.uploaded_by)
+      .maybeSingle();
+
+    if (uploader?.email) {
+      const authorName = (feedback as { author?: { full_name?: string; email?: string } })
+        .author?.full_name ?? 'A team member';
+
+      const { subject, html } = fileFeedbackTemplate({
+        uploaderName: uploader.full_name ?? uploader.email,
+        fileName:     fileRow.display_name,
+        feedbackType: feedback_type,
+        authorName,
+        content,
+        submittedAt:  new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }),
+      });
+      sendMail({ to: uploader.email, subject, html });
+    }
+  }
+
   return NextResponse.json({ feedback }, { status: 201 });
 }

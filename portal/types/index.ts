@@ -18,7 +18,7 @@ export interface HorusFile {
   display_name: string;
   file_type: FileType;
   storage_path: string;
-  public_url: string;
+  public_url: string | null;
   is_public: boolean;
   uploaded_by: string;
   team_id: string;

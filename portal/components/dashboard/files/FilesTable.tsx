@@ -23,7 +23,7 @@ interface FileRow {
   file_type:       string;
   file_size_bytes: number;
   is_public:       boolean;
-  public_url:      string;
+  public_url:      string | null;
   metadata:        Record<string, unknown>;
   created_at:      string;
   deleted_at:      string | null;

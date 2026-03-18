@@ -5,6 +5,7 @@ import { AppearanceTab }  from './AppearanceTab';
 import { ProfileTab }     from './ProfileTab';
 import { AccountTab }     from './AccountTab';
 import { UsersTab }       from './UsersTab';
+import { SmtpTab }        from './SmtpTab';
 
 interface SettingsTabsProps {
   user: {
@@ -18,14 +19,16 @@ interface SettingsTabsProps {
 
 export function SettingsTabs({ user }: SettingsTabsProps) {
   const isAdmin = user.role === 'admin';
+  const colCount = isAdmin ? 5 : 3;
 
   return (
     <Tabs defaultValue="appearance">
-      <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      <TabsList className={`grid w-full grid-cols-${colCount}`}>
         <TabsTrigger value="appearance">Appearance</TabsTrigger>
         <TabsTrigger value="profile">Profile</TabsTrigger>
         <TabsTrigger value="account">Account</TabsTrigger>
         {isAdmin && <TabsTrigger value="users">Users</TabsTrigger>}
+        {isAdmin && <TabsTrigger value="integrations">Integrations</TabsTrigger>}
       </TabsList>
 
       <TabsContent value="appearance" className="mt-6">
@@ -40,6 +43,11 @@ export function SettingsTabs({ user }: SettingsTabsProps) {
       {isAdmin && (
         <TabsContent value="users" className="mt-6">
           <UsersTab />
+        </TabsContent>
+      )}
+      {isAdmin && (
+        <TabsContent value="integrations" className="mt-6">
+          <SmtpTab />
         </TabsContent>
       )}
     </Tabs>
