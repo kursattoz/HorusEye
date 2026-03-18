@@ -21,125 +21,109 @@ Import aliases (`@/`) always resolve from the project root — never use relativ
 
 ## 1. Complete Folder Structure
 
+> **Actual implementation state (2026-03-18).** Items marked `[DEVIATION]` differ from the original spec — these are intentional decisions, not errors.
+
 ```
 horuseye-portal/
 │
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci.yml                     ← PR validation (lint, type, test)
+│   │   ├── ci.yml                     ← PR validation (lint, type, test, e2e, build)
 │   │   ├── staging.yml                ← Auto-deploy on develop merge
 │   │   └── production.yml             ← Manual-approval deploy on main merge
 │   └── PULL_REQUEST_TEMPLATE.md
 │
 ├── app/                               ← Next.js App Router
-│   ├── (public)/                      ← Guest-accessible routes (no auth required)
+│   ├── (public)/                      ← Guest-accessible public area
 │   │   ├── page.tsx                   ← / (landing + public docs)
-│   │   ├── docs/
-│   │   │   └── [slug]/
-│   │   │       └── page.tsx           ← /docs/[slug]
-│   │   └── login/
-│   │       └── page.tsx               ← /login
+│   │   └── docs/
+│   │       └── [slug]/
+│   │           └── page.tsx           ← /docs/[slug]
+│   │
+│   ├── (auth)/                        ← [DEVIATION] Auth UI routes (login, change-password)
+│   │   ├── layout.tsx                 ← Minimal layout (no sidebar/topbar)
+│   │   ├── login/
+│   │   │   └── page.tsx               ← /login
+│   │   └── change-password/
+│   │       └── page.tsx               ← /change-password (force-reset flow)
 │   │
 │   ├── (protected)/                   ← Auth-required routes
 │   │   ├── layout.tsx                 ← Auth guard + app shell (sidebar, topbar)
 │   │   ├── dashboard/
-│   │   │   ├── page.tsx               ← /dashboard
-│   │   │   ├── files/
-│   │   │   │   └── page.tsx           ← /dashboard/files (admin only)
-│   │   │   ├── team/
-│   │   │   │   └── page.tsx           ← /dashboard/team (admin only)
-│   │   │   └── feedback/
-│   │   │       └── page.tsx           ← /dashboard/feedback
+│   │   │   └── page.tsx               ← /dashboard
+│   │   ├── files/                     ← [DEVIATION] Flat route — was /dashboard/files
+│   │   │   └── page.tsx               ← /files (admin only)
+│   │   ├── team/                      ← [DEVIATION] Flat route — was /dashboard/team
+│   │   │   └── page.tsx               ← /team (admin only)
+│   │   ├── feedback/                  ← [DEVIATION] Flat route — was /dashboard/feedback
+│   │   │   └── page.tsx               ← /feedback
+│   │   ├── notifications/             ← /notifications
+│   │   │   └── page.tsx
 │   │   ├── settings/
 │   │   │   └── page.tsx               ← /settings (all roles)
 │   │   └── dev/
 │   │       └── monitor/
 │   │           └── page.tsx           ← /dev/monitor (admin only)
 │   │
+│   ├── actions/                       ← Next.js Server Actions
+│   │   └── auth.ts                    ← loginAction, logoutAction, getCurrentUser, changePasswordAction
+│   │
 │   ├── api/                           ← API Routes
 │   │   ├── auth/
 │   │   │   ├── login/route.ts
 │   │   │   ├── logout/route.ts
-│   │   │   ├── me/route.ts
-│   │   │   └── reset-password/route.ts
+│   │   │   └── me/route.ts
 │   │   ├── users/
 │   │   │   ├── route.ts               ← GET (list), POST (create)
+│   │   │   ├── avatar/route.ts        ← POST (avatar upload)
 │   │   │   └── [id]/
 │   │   │       ├── route.ts           ← PUT, DELETE
 │   │   │       └── reset/route.ts     ← POST (send reset email)
 │   │   ├── files/
-│   │   │   ├── route.ts               ← GET (list), POST (upload)
+│   │   │   ├── route.ts               ← GET (list)
+│   │   │   ├── upload/route.ts        ← POST (upload)
 │   │   │   └── [id]/route.ts          ← GET, DELETE
 │   │   ├── public/
-│   │   │   └── files/route.ts         ← Public file list (no auth)
+│   │   │   ├── files/route.ts         ← Public file list (no auth)
+│   │   │   ├── files/[slug]/route.ts  ← Public file by slug
+│   │   │   └── feedback/route.ts      ← Public feedback list
 │   │   ├── feedback/
 │   │   │   ├── route.ts               ← GET (list), POST (create)
-│   │   │   └── [id]/route.ts          ← PUT, DELETE
+│   │   │   └── [id]/
+│   │   │       ├── route.ts           ← PUT, DELETE
+│   │   │       └── resolve/route.ts   ← POST (mark resolved)
+│   │   ├── log/
+│   │   │   └── page/route.ts          ← POST (page.visit event logging)
 │   │   └── health/
-│   │       ├── route.ts               ← GET /api/health (public)
-│   │       └── detailed/route.ts      ← GET /api/health/detailed (admin)
+│   │       └── route.ts               ← GET /api/health (public)
 │   │
 │   ├── layout.tsx                     ← Root layout (ThemeProvider, fonts)
-│   ├── globals.css                    ← Design tokens, Tailwind directives
+│   ├── globals.css                    ← Design tokens via @theme inline (Tailwind v4)
 │   ├── error.tsx                      ← Root error boundary
 │   └── not-found.tsx                  ← 404 page
 │
 ├── components/
 │   ├── ui/                            ← shadcn/ui generated components (DO NOT EDIT)
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── avatar.tsx
-│   │   ├── chart.tsx
-│   │   ├── dialog.tsx
-│   │   ├── dropdown-menu.tsx
-│   │   ├── table.tsx
 │   │   └── ... (all shadcn components)
 │   │
 │   ├── layout/                        ← App shell components
-│   │   ├── AppSidebar.tsx             ← Collapsible sidebar with nav items
-│   │   ├── Topbar.tsx                 ← Top navigation bar
-│   │   ├── TopbarUserMenu.tsx         ← Avatar + dropdown menu (PRD-009)
-│   │   ├── ThemeToggle.tsx            ← Dark/light/system switcher (PRD-009)
-│   │   ├── BottomNav.tsx              ← Mobile bottom tab bar (PRD-008)
-│   │   └── PageContainer.tsx          ← Max-width content wrapper
+│   │   ├── AppSidebar.tsx
+│   │   ├── Topbar.tsx
+│   │   ├── TopbarUserMenu.tsx
+│   │   ├── ThemeToggle.tsx
+│   │   ├── BottomNav.tsx
+│   │   └── PageContainer.tsx
 │   │
 │   ├── auth/                          ← Auth-specific UI
-│   │   ├── LoginForm.tsx
-│   │   └── SessionExpiredModal.tsx
+│   │   └── LoginForm.tsx
 │   │
 │   ├── public/                        ← Public area components
-│   │   ├── DocumentList.tsx
-│   │   ├── DocumentViewer.tsx
-│   │   └── PublicDocumentCard.tsx
-│   │
 │   ├── dashboard/                     ← Dashboard-specific components
-│   │   ├── files/
-│   │   │   ├── FileTable.tsx
-│   │   │   ├── FileUploadDialog.tsx
-│   │   │   └── FileDeleteDialog.tsx
-│   │   ├── team/
-│   │   │   ├── UserTable.tsx
-│   │   │   └── AddUserDialog.tsx
-│   │   └── feedback/
-│   │       ├── FeedbackList.tsx
-│   │       ├── FeedbackForm.tsx
-│   │       └── InlineFeedbackTooltip.tsx
-│   │
 │   ├── settings/                      ← Settings page tabs
-│   │   ├── AppearanceTab.tsx
-│   │   ├── ProfileTab.tsx
-│   │   ├── AccountTab.tsx
-│   │   └── UsersPermissionsTab.tsx
-│   │
 │   ├── monitor/                       ← Monitor dashboard components
-│   │   ├── ServiceHealthCard.tsx
-│   │   ├── ErrorLogTable.tsx
-│   │   ├── ActivityFeed.tsx
-│   │   └── StatsCards.tsx
 │   │
 │   ├── error/
-│   │   ├── ErrorBoundary.tsx          ← React error boundary (PRD-006)
-│   │   └── OfflinePage.tsx            ← Shown when offline + auth route (PRD-008)
+│   │   └── ErrorBoundary.tsx          ← React error boundary (PRD-006)
 │   │
 │   └── pwa/
 │       └── InstallPrompt.tsx          ← PWA install banner (PRD-008)
@@ -148,75 +132,99 @@ horuseye-portal/
 │   ├── supabase/
 │   │   ├── client.ts                  ← Browser Supabase client (singleton)
 │   │   ├── server.ts                  ← Server-side Supabase client (with service_role option)
-│   │   └── middleware.ts              ← Supabase auth for Next.js middleware
+│   │   └── middleware.ts              ← Supabase session refresh for proxy.ts
 │   ├── auth/
-│   │   ├── guards.ts                  ← RBAC guard functions (canAccess, requireRole)
-│   │   └── session.ts                 ← Session helpers (getUser, getUserRole)
+│   │   └── guards.ts                  ← RBAC guard functions (canAccess, requireRole)
+│   │                                  ← [DEVIATION] session.ts removed — getCurrentUser() is in app/actions/auth.ts
 │   ├── logger/
 │   │   └── index.ts                   ← Two-layer logger (Sentry + Supabase) (PRD-006)
 │   └── utils/
 │       ├── cn.ts                      ← Tailwind class merge utility
 │       ├── file.ts                    ← File type helpers, size formatters
-│       └── date.ts                    ← Date formatting helpers
+│       ├── date.ts                    ← Date formatting helpers
+│       └── switchTheme.ts             ← View Transition API wrapper for theme changes
 │
 ├── hooks/                             ← Custom React hooks
 │   ├── usePageTracking.ts             ← Auto page visit logging (PRD-006)
-│   ├── useCurrentUser.ts              ← Current user from Supabase session
+│   ├── useCurrentUser.ts              ← Current user via GET /api/auth/me
 │   ├── useTheme.ts                    ← Re-export from next-themes
 │   └── usePWAInstall.ts               ← beforeinstallprompt handler (PRD-008)
 │
 ├── types/                             ← Global TypeScript types
-│   ├── database.ts                    ← Generated Supabase types (auto-generated, do not edit)
-│   ├── auth.ts                        ← AuthUser, UserRole (from PRD-000)
-│   ├── files.ts                       ← HorusFile, FileType (from PRD-000)
-│   ├── logs.ts                        ← LogEvent, LogPayload (from PRD-000)
-│   └── index.ts                       ← Re-exports all types
+│   └── index.ts                       ← [DEVIATION] All PRD-000 interfaces consolidated here
+│                                      ←   (not split into auth.ts/files.ts/logs.ts)
 │
 ├── constants/
 │   ├── permissions.ts                 ← PERMISSION_MATRIX (PRD-010)
-│   ├── routes.ts                      ← All route paths as constants
+│   ├── routes.ts                      ← All route paths as constants (flat routes)
 │   └── config.ts                      ← Feature flags, app config
 │
 ├── supabase/
 │   ├── migrations/                    ← All DB migrations (append-only)
-│   │   ├── 20250101000001_create_user_profiles.sql
-│   │   ├── 20250101000002_create_files.sql
-│   │   ├── 20250101000003_create_feedbacks.sql
-│   │   └── 20250101000004_create_logs.sql
+│   │   ├── 20240001_user_profiles.sql       ← user_profiles table + RLS
+│   │   ├── 20240002_logging_tables.sql      ← audit_logs + error_logs + indexes
+│   │   └── 20240003_user_profiles_extend.sql ← force_password_change + color_theme columns
 │   └── seed.sql                       ← Test data for local dev + CI
 │
 ├── tests/
-│   ├── setup.ts                       ← Global test setup
-│   ├── unit/                          ← Unit tests (PRD-011)
-│   ├── integration/                   ← Integration tests (PRD-011)
-│   └── e2e/                           ← Playwright E2E tests (PRD-011)
+│   ├── setup.ts                       ← Global test setup (env vars, jest-dom)
+│   ├── unit/
+│   │   ├── lib/
+│   │   │   ├── file-utils.test.ts     ← getFileType, formatFileSize, isAllowedMimeType
+│   │   │   ├── logger.test.ts         ← log(), severity helpers
+│   │   │   ├── auth-utils.test.ts     ← canAccess, requireRole
+│   │   │   └── switchTheme.test.ts    ← View Transition API fallback
+│   │   ├── components/                ← (pending: ErrorBoundary, TopbarUserMenu, ThemeToggle)
+│   │   └── hooks/
+│   │       └── usePageTracking.test.ts
+│   ├── integration/
+│   │   ├── api/
+│   │   │   ├── auth.test.ts           ← /api/auth/* routes
+│   │   │   └── health.test.ts         ← /api/health
+│   │   └── db/
+│   │       ├── rls-policies.test.ts   ← RLS blocks anon reads
+│   │       └── audit-logs.test.ts     ← DB constraints + jsonb
+│   └── e2e/
+│       ├── auth.spec.ts               ← Login flow, redirects
+│       └── monitor.spec.ts            ← /api/health, /monitor redirect
 │
 ├── public/
 │   ├── manifest.json                  ← PWA manifest (PRD-008)
-│   ├── sw.js                          ← Service worker (generated by next-pwa)
 │   └── icons/
-│       ├── icon-192.png
+│       ├── icon-192.png               ← Generated from favicon.svg via sharp
 │       ├── icon-512.png
 │       └── icon-512-maskable.png
 │
 ├── scripts/
-│   └── validate-prd-interfaces.js     ← PRD interface version checker (PRD-000 → all PRDs)
+│   └── validate-prd-interfaces.js     ← PRD interface version checker
 │
 ├── .husky/
 │   └── pre-commit                     ← Runs validate:prd before every commit
 │
-├── middleware.ts                      ← Next.js middleware (auth + RBAC routing)
-├── next.config.js                     ← Next.js + PWA config
-├── tailwind.config.ts                 ← Tailwind theme extensions
-├── tsconfig.json                      ← TypeScript config (strict mode, @ alias)
-├── vitest.config.ts                   ← Vitest config (PRD-011)
-├── playwright.config.ts               ← Playwright config (PRD-011)
-├── .env.example                       ← All required env vars (no values)
-├── .env.local                         ← Local values (git-ignored)
-├── .eslintrc.json                     ← ESLint config
-├── .gitignore
+├── proxy.ts                           ← [DEVIATION] Next.js middleware (named proxy.ts not middleware.ts)
+│                                      ←   Exports `proxy` fn + config.matcher. Works identically.
+├── next.config.ts                     ← [DEVIATION] TypeScript config (not .js)
+├── eslint.config.mjs                  ← [DEVIATION] Flat ESLint config (not .eslintrc.json)
+├── postcss.config.mjs                 ← PostCSS config for Tailwind v4
+├── tsconfig.json
+├── vitest.config.ts
+├── playwright.config.ts
+├── .env.example
 └── package.json
 ```
+
+### Known Intentional Deviations
+
+| Item | PRD Spec | Actual | Reason |
+|------|----------|--------|--------|
+| `proxy.ts` | `middleware.ts` | `proxy.ts` | Renamed early in project; Next.js picks it up via `export { proxy as middleware }` |
+| Route structure | `/dashboard/files`, `/dashboard/team`, `/dashboard/feedback` | `/files`, `/team`, `/feedback` | Flat routes cleaner for UX; sidebar nav unchanged |
+| Auth UI group | `(public)/login` | `(auth)/login` | Separate layout group for auth pages (no sidebar) |
+| Types file | `types/auth.ts`, `types/files.ts`, etc. | `types/index.ts` | Consolidated for simplicity; re-export pattern if splitting needed later |
+| Session helper | `lib/auth/session.ts` | `app/actions/auth.ts` | `getCurrentUser()` is a server action — correct location for App Router pattern |
+| Tailwind config | `tailwind.config.ts` | None (uses `@theme inline` in globals.css) | Tailwind v4 — config file is optional |
+| ESLint config | `.eslintrc.json` | `eslint.config.mjs` | ESLint v9 flat config format |
+| Next config | `next.config.js` | `next.config.ts` | TypeScript config preferred |
 
 ---
 

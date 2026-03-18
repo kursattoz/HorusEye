@@ -125,36 +125,40 @@ export default defineConfig({
 
 ## 4. Folder Structure
 
+> **Status as of 2026-03-18.** ✅ = implemented, ⏳ = pending (Phase 1+)
+
 ```
 tests/
-├── setup.ts                          ← Global test setup (MSW, env vars)
+├── setup.ts                          ✅ Global test setup (env vars, jest-dom)
 ├── unit/
+│   ├── canAccess.test.ts             ✅ canAccess guard (quick smoke tests)
 │   ├── lib/
-│   │   ├── logger.test.ts            ← Logger utility
-│   │   ├── auth-utils.test.ts        ← RBAC helpers
-│   │   └── file-utils.test.ts        ← File type helpers
+│   │   ├── logger.test.ts            ✅ log(), severity helpers
+│   │   ├── auth-utils.test.ts        ✅ canAccess, requireRole
+│   │   ├── file-utils.test.ts        ✅ getFileType, formatFileSize, isAllowedMimeType
+│   │   └── switchTheme.test.ts       ✅ View Transition API + fallback
 │   ├── components/
-│   │   ├── ErrorBoundary.test.tsx    ← Error boundary rendering
-│   │   ├── TopbarUserMenu.test.tsx   ← Avatar dropdown
-│   │   └── ThemeToggle.test.tsx      ← Theme switching
+│   │   ├── ErrorBoundary.test.tsx    ⏳ Error boundary rendering
+│   │   ├── TopbarUserMenu.test.tsx   ⏳ Avatar dropdown
+│   │   └── ThemeToggle.test.tsx      ⏳ Theme switching
 │   └── hooks/
-│       └── usePageTracking.test.ts   ← Page tracking hook
+│       └── usePageTracking.test.ts   ✅ fetch mock, pathname dedup
 ├── integration/
 │   ├── api/
-│   │   ├── auth.test.ts              ← POST /api/auth/login, /logout
-│   │   ├── users.test.ts             ← GET/POST/PUT/DELETE /api/users
-│   │   ├── files.test.ts             ← File upload, delete, list
-│   │   └── health.test.ts            ← GET /api/health
+│   │   ├── auth.test.ts              ✅ /api/auth/me (401), login error handling
+│   │   ├── health.test.ts            ✅ /api/health response shape
+│   │   ├── users.test.ts             ⏳ GET/POST/PUT/DELETE /api/users
+│   │   └── files.test.ts             ⏳ File upload, delete, list
 │   └── db/
-│       ├── rls-policies.test.ts      ← RLS: role X cannot access table Y
-│       └── audit-logs.test.ts        ← Every action writes to audit_logs
+│       ├── rls-policies.test.ts      ✅ RLS blocks anon reads, service_role writes
+│       └── audit-logs.test.ts        ✅ Severity constraints, jsonb metadata
 └── e2e/
-    ├── auth.spec.ts                  ← Login, logout, rate limiting
-    ├── file-management.spec.ts       ← Upload, download, delete flow
-    ├── feedback.spec.ts              ← Add feedback, resolve, inline
-    ├── settings.spec.ts              ← Theme toggle, profile update, user mgmt
-    ├── monitor.spec.ts               ← /dev/monitor access control
-    └── pwa.spec.ts                   ← Offline behavior, install prompt
+    ├── auth.spec.ts                  ✅ Redirect flow, login validation, invalid credentials
+    ├── monitor.spec.ts               ✅ /api/health shape, /monitor redirect
+    ├── file-management.spec.ts       ⏳ Upload, download, delete flow
+    ├── feedback.spec.ts              ⏳ Add feedback, resolve, inline
+    ├── settings.spec.ts              ⏳ Theme toggle, profile update, user mgmt
+    └── pwa.spec.ts                   ⏳ Offline behavior, install prompt
 ```
 
 ---
