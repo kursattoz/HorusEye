@@ -21,10 +21,14 @@ export const metadata: Metadata = {
   title:       'HorusEye — AI Exam Proctoring',
   description: 'AI-based exam proctoring and monitoring system',
   manifest:    '/manifest.json',
+  appleWebApp: {
+    capable:        true,
+    statusBarStyle: 'default',
+    title:          'HorusEye',
+  },
   icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-    ],
+    icon:  [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/icons/icon-192.png', sizes: '192x192' }],
   },
 };
 

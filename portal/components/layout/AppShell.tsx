@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { ColorThemeInitializer } from './ColorThemeInitializer';
 import type { UserRole } from '@/types';
 
@@ -31,12 +32,17 @@ export function AppShell({ user, role, colorTheme, children }: AppShellProps) {
           onToggleSidebar={() => setCollapsed(c => !c)}
         />
         <div className="flex flex-1 overflow-hidden">
-          <Sidebar role={role} collapsed={collapsed} />
-          <main className="flex-1 overflow-y-auto p-6">
+          {/* Sidebar — hidden on mobile, visible md+ */}
+          <div className="hidden md:flex">
+            <Sidebar role={role} collapsed={collapsed} />
+          </div>
+          <main className="flex-1 overflow-y-auto p-6 pb-[calc(1.5rem+64px)] md:pb-6">
             {children}
           </main>
         </div>
       </div>
+      {/* Bottom tab bar — mobile only */}
+      <BottomNav role={role} />
     </>
   );
 }
