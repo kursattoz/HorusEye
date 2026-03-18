@@ -53,12 +53,15 @@ When `true` (future):
 Physical Camera (IP/USB)
     ↓ RTSP / WebRTC stream
 Video Ingestion Service (Python)
-    ↓ frames @ configured FPS
-AI Processing Service (Python)
-    ├── YOLOv8 object detection      → phone, paper, earbuds
-    ├── MediaPipe / OpenCV gaze      → eye movement tracking
-    └── TensorFlow LSTM              → behavioral sequence anomalies
-    ↓ detection events
+    ↓ frames @ configured FPS (FrameBuffer)
+AI Processing Service (Python) — core pipeline:
+    ├── Step 1: YOLOv8 object detection   → detect persons + objects (phone, paper, earbuds)
+    ├── Step 2: ByteTrack multi-object tracking → assign persistent student_track_ids across frames
+    ├── Step 3: Per-student crop          → extract ROI for each tracked student
+    ├── Step 4: MediaPipe Face Mesh       → gaze vector, head pose estimation per student
+    └── Step 5: Rule-based RiskScorer    → aggregate detection events → risk score → incident
+         (Phase C: LSTM/GRU behavioral model replaces/augments rule-based scorer)
+    ↓ detection events + incident records
 Backend API (Next.js WebSocket)
     ↓ real-time push
 Proctor Dashboard (React)
@@ -70,6 +73,36 @@ Supabase PostgreSQL
     ├── incidents table
     ├── alert_queue table
     └── evidence references (video clips in Storage)
+```
+
+### AI Pipeline Sequence (Phase A — single camera)
+
+```
+Frame (JPEG/raw)
+    ↓
+[YOLOv8 ObjectDetector]
+    → BBox list: persons + objects (phone, earbuds, paper)
+    ↓
+[ByteTrack StudentTracker]
+    → Assigns track_id to each detected person (persistent across frames)
+    → Handles re-identification after occlusion
+    ↓
+[Per-student crop loop]
+    → For each track_id: extract ROI from frame
+    ↓
+[MediaPipe GazeTracker]
+    → Face mesh landmarks → gaze vector, head yaw/pitch/roll
+    → Output: gaze_diversion: bool, head_turn_angle: float
+    ↓
+[Rule-based RiskScorer]
+    → Inputs: object detections + gaze events (per track_id, time window)
+    → Rules: e.g. phone_detected=high, repeated_gaze_diversion(n>3/5min)=medium
+    → Output: risk_score (0.0–1.0) + triggered_rules[]
+    ↓
+[IncidentFactory]
+    → If risk_score > threshold: create Incident record
+    → Attach evidence (frame snapshot path)
+    → Push to WebSocket alert channel
 ```
 
 ---
@@ -262,12 +295,36 @@ When `NEXT_PUBLIC_CAMERA_MODULE_ENABLED=true`:
 
 ## 9. Implementation Phases (planned)
 
-| Phase | Scope | Prerequisite |
-|-------|-------|-------------|
-| Phase A | Single camera, single room, basic detection (phone, gaze) | PRD-001 through PRD-012 complete |
-| Phase B | Multi-camera per room, basic fusion | Phase A working |
-| Phase C | Full multi-view fusion, behavioral LSTM, post-exam reports | Phase B + model training complete |
-| Phase D | Multi-room parallel monitoring | Phase C + infrastructure scaling |
+| Phase | Scope | Tracking | Scoring | Prerequisite |
+|-------|-------|----------|---------|-------------|
+| Phase A | Single camera, single room, phone + gaze detection | ByteTrack (single cam) | Rule-based RiskScorer | PRD-001 through PRD-012 complete |
+| Phase B | Multi-camera per room, basic spatial fusion | ByteTrack per cam + fusion | Rule-based + multi-view confidence | Phase A working |
+| Phase C | Full multi-view fusion, behavioral anomaly model, post-exam reports | ByteTrack + track fusion | LSTM/GRU behavioral model augments rule-based | Phase B + model training data |
+| Phase D | Multi-room parallel monitoring, scaling | Distributed ByteTrack | Full behavioral model | Phase C + infra scaling |
+
+**AI Scoring Strategy by Phase:**
+- **Phase A–B**: Rule-based scoring only. Rules are deterministic, interpretable, and require no training data. Example rules: `phone_detected → high`, `gaze_diversion_count > 3 in 5min → medium`.
+- **Phase C**: LSTM/GRU behavioral sequence model trained on labeled incident data. The model augments (does not replace) rule-based scoring — output is a weighted combination.
+- **Rationale**: Rule-based first because (1) zero training data at Phase A start, (2) interpretability required for academic integrity decisions, (3) LSTM requires labeled incident corpus that only exists after Phase A/B production use.
 
 **This PRD moves to ACTIVE status at Phase A start.**
 Set `NEXT_PUBLIC_CAMERA_MODULE_ENABLED=true` only when Phase A backend is deployed.
+
+---
+
+## 10. Key Technical Decisions & Trade-offs
+
+### ByteTrack vs. DeepSORT for Multi-Student Tracking
+- **ByteTrack (selected):** High FPS (30+), no appearance feature extraction required, handles low-confidence detections via second-association step. Minimal latency overhead.
+- **DeepSORT:** Requires ReID embedding model per detection (higher latency), better in non-exam environments with heavy occlusion. Overkill for structured exam rooms.
+- **Accepted trade-off:** ByteTrack may lose track IDs after long occlusions (>2s). Mitigated by stable exam seating (students remain at fixed positions).
+
+### Rule-Based Scoring vs. LSTM/GRU Behavioral Model
+- **Rule-based (Phase A–B):** Transparent, no training data needed, auditable (know exactly which rule triggered). Required for academic integrity contexts.
+- **LSTM/GRU (Phase C):** Learns temporal patterns that rules miss (e.g., gradual behavioral drift). Requires 500+ labeled sessions.
+- **Accepted trade-off:** Rule-based may miss subtle multi-step cheating patterns. Mitigated by multi-camera fusion (Phase B) which increases signal coverage.
+
+### MediaPipe Face Mesh vs. L2CS-Net for Gaze Estimation
+- **MediaPipe (selected):** No training required, real-time CPU inference, head pose + face landmarks in one pass, maintained by Google.
+- **L2CS-Net:** Higher angular gaze accuracy in research benchmarks but requires GPU, separate model weight management, and more complex integration.
+- **Accepted trade-off:** MediaPipe gaze is head-pose-relative (not absolute gaze target). Sufficient for detecting "looking away from paper" without needing exact gaze coordinates.

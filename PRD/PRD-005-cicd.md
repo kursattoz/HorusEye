@@ -310,7 +310,31 @@ horuseye/
 
 ---
 
-## 11. Code Review Checklist (PR Template)
+## 11. Vercel PR Preview Deployments
+
+In addition to the AWS ECS staging/production deployments above, Vercel is integrated with the GitHub repository for **automatic PR preview deployments**.
+
+**What Vercel handles:**
+- Every PR opened against `develop` or `main` gets an automatic preview URL (e.g. `horuseye-git-feature-xyz-team.vercel.app`)
+- Preview uses production Supabase anon key but a separate Vercel environment (safe read-only preview)
+- Useful for design review, supervisor/stakeholder demos without touching staging infra
+
+**What AWS ECS handles:**
+- `develop` → `staging.horuseye.app` (persistent staging environment)
+- `main` → `horuseye.app` (production with manual approval gate)
+
+**Summary:**
+| Trigger | Platform | URL |
+|---------|----------|-----|
+| PR opened/updated | Vercel (auto) | `*.vercel.app` (ephemeral) |
+| develop merge | AWS ECS Fargate | `staging.horuseye.app` |
+| main merge | AWS ECS Fargate | `horuseye.app` |
+
+Vercel integration is configured via Vercel GitHub App — no additional workflow file needed for PR previews.
+
+---
+
+## 12. Code Review Checklist (PR Template)
 
 ```markdown
 ## Değişiklik Özeti

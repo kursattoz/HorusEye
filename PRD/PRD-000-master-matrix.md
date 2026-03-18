@@ -307,9 +307,16 @@ auth.users (Supabase managed)
 | Error Tracking | Sentry | latest | Kritik hatalar |
 | App Logging | Supabase (audit_logs tablosu) | — | Kullanıcı hareketleri |
 | CI/CD | GitHub Actions | — | Ücretsiz, entegre |
-| Deploy | AWS ECS Fargate + ALB | — | Container-based, AI/ML genişlemeye uygun |
+| Deploy (staging/prod) | AWS ECS Fargate + ALB | — | Container-based, AI/ML genişlemeye uygun |
+| Deploy (PR preview) | Vercel | — | Otomatik PR preview URL'leri (GitHub App entegrasyonu) |
 | PWA | next-pwa | latest | Service worker yönetimi |
 | Monitoring | Custom /dev/monitor sayfası | — | DB + backend + servis health |
+| AI — Object Detection | YOLOv8 (Ultralytics) | latest | Person + nesne tespiti (phone, paper, earbuds) — PRD-013 |
+| AI — Gaze Tracking | MediaPipe Face Mesh | latest | Göz hareketleri + baş pozisyonu — PRD-013 |
+| AI — Multi-Student Tracking | ByteTrack | latest | Çoklu kişi takibi, düşük gecikme — PRD-013 |
+| AI — Video Processing | OpenCV | 4.x | Frame pipeline, crop, format dönüşümü — PRD-013 |
+| AI — Behavioral Model (Phase C) | TensorFlow LSTM/GRU | 2.x | Davranış dizisi analizi, Phase A'da kullanılmaz — PRD-013 |
+| AI — Risk Scoring (Phase A–B) | Rule-based (custom Python) | — | Deterministik, yorumlanabilir, eğitim gerektirmez — PRD-013 |
 
 ---
 
