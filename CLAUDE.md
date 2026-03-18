@@ -67,3 +67,4 @@ If you add a new env var and only set it locally, staging/production WILL break.
 ## Code Style
 - Escape apostrophes in JSX (`&apos;` not `'`)
 - Next.js 15: route params are `Promise` — always `await params`
+- **Never use `request.nextUrl.origin` for building external URLs** — in ECS it returns the internal container hostname (e.g. `ip-10-0-1-159.eu-west-1.compute.internal`). Always use `process.env.NEXT_PUBLIC_APP_URL`.
