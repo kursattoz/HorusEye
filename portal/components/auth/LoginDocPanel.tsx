@@ -87,7 +87,7 @@ function TeduEmailInput({
 function SpamWarning() {
   return (
     <p className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2 leading-relaxed">
-      ⚠️ Can't find the email? Check your <strong>spam</strong> or <strong>junk</strong> folder.
+      ⚠️ Can&apos;t find the email? Check your <strong>spam</strong> or <strong>junk</strong> folder.
     </p>
   );
 }
@@ -300,7 +300,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Public feedback requires a <strong>@tedu.edu.tr</strong> account.
-                  We'll send a one-time code to verify your submission.
+                  We&apos;ll send a one-time code to verify your submission.
                 </p>
                 <TeduEmailInput
                   value={otpUsername}
@@ -350,7 +350,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                   onClick={() => { setOtpStep('email_input'); setOtpError(''); setOtpCode(''); }}
                   className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1.5"
                 >
-                  Didn't receive it? Send again
+                  Didn&apos;t receive it? Send again
                 </button>
               </div>
             )}
@@ -400,7 +400,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
             {accessStep === 'email_input' && (
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Enter your <strong>@tedu.edu.tr</strong> email and we'll send you a direct link to open or download this document.
+                  Enter your <strong>@tedu.edu.tr</strong> email and we&apos;ll send you a direct link to open or download this document.
                 </p>
                 <TeduEmailInput
                   value={accessUsername}
