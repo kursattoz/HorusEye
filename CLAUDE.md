@@ -44,6 +44,8 @@ When applying Supabase migrations via MCP (`apply_migration`), you MUST also cre
 All runtime env vars must exist in three places:
 1. **SSM Parameter Store:** `/horuseye/staging/{VAR_NAME}` and `/horuseye/production/{VAR_NAME}`
 2. **CDK service-stack.ts:** referenced via `ssm.StringParameter.valueFromLookup()` and passed to the container `environment` block
+
+**CRITICAL: SSM parameter type must be `String`, NOT `SecureString`.** CDK `valueFromLookup()` cannot resolve `SecureString` — it passes a KMS-encrypted blob instead of the actual value. After changing SSM params, run `npx cdk context --clear` before `cdk deploy`.
 3. **Local `.env.local`:** for development
 
 If you add a new env var and only set it locally, staging/production WILL break.
