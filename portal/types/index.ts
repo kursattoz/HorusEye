@@ -78,3 +78,31 @@ export interface HealthStatus {
 }
 
 export type Environment = 'local' | 'staging' | 'production';
+
+// @interface ReportDeliverable @version 1.0
+export type DeliverableStatus = 'pending' | 'in_progress' | 'completed';
+
+export interface ReportDeliverable {
+  id: string;
+  title: string;
+  description: string | null;
+  deadline: string;
+  deliverable_number: string;
+  status: DeliverableStatus;
+  assigned_to: string | null;
+  file_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// @interface ChecklistItem @version 1.0
+export interface ChecklistItem {
+  id: string;
+  deliverable_id: string;
+  label: string;
+  is_checked: boolean;
+  checked_by: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}

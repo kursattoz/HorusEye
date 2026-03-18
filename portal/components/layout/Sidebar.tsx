@@ -47,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
   { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
   { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
+  { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
   { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
 ];
 
