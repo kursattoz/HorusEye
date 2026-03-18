@@ -97,6 +97,8 @@ export class ServiceStack extends cdk.Stack {
       desiredCount: props.desiredCount,
       assignPublicIp: true, // No NAT gateway — tasks in public subnets
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      minHealthyPercent: 100, // keep old container running until new one is healthy
+      maxHealthyPercent: 200, // allow double capacity during deploys
       healthCheckGracePeriod: cdk.Duration.seconds(60),
     });
 
