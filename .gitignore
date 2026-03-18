@@ -1,17 +1,41 @@
 # ─── Node ───────────────────────────────────────
 node_modules/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
 # ─── Next.js ────────────────────────────────────
 portal/.next/
 portal/out/
 portal/build/
 
-# ─── Environment ────────────────────────────────
+# ─── Environment & Secrets ──────────────────────
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.csr
+credentials.json
+service-account*.json
+*.credentials
+
+# ─── AWS ────────────────────────────────────────
+.aws/
+aws-exports.js
+
+# ─── CDK ────────────────────────────────────────
+infra/cdk.out/
+infra/dist/
+infra/*.js
+infra/*.d.ts
+
+# ─── Docker ─────────────────────────────────────
+docker-compose.override.yml
 
 # ─── Testing ────────────────────────────────────
 portal/coverage/
@@ -28,15 +52,21 @@ ai-service/__pycache__/
 ai-service/*.pyc
 ai-service/models/*.pt
 ai-service/models/*.weights
+ai-service/models/*.onnx
 
 # ─── OS ─────────────────────────────────────────
 .DS_Store
 Thumbs.db
+*.tmp
+*.bak
+*~
 
 # ─── IDE ────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
+*.sublime-project
+*.sublime-workspace
 
 # ─── Local tool configs (not project code) ──────
 .mcp.json
@@ -46,3 +76,13 @@ Thumbs.db
 .qoder/
 .trae/
 skills-lock.json
+
+# ─── Binaries & large files ─────────────────────
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.exe
+*.dll
+*.so
+*.dylib
