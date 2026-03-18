@@ -15,7 +15,7 @@ export default async function ReportDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <ReportDetail deliverableId={id} userId={user.id} />
+      <ReportDetail deliverableId={id} />
     </div>
   );
 }

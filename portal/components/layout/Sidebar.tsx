@@ -67,6 +67,7 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
   const pathname             = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard: must detect client mount
   useEffect(() => { setMounted(true); }, []);
 
   const visible = NAV_ITEMS.filter(item => item.roles.includes(role));

@@ -24,7 +24,6 @@ interface TeamMember {
 
 interface ReportDetailProps {
   deliverableId: string;
-  userId: string;
 }
 
 const STATUS_OPTIONS: { value: DeliverableStatus; label: string }[] = [
@@ -39,7 +38,7 @@ const STATUS_VARIANT: Record<DeliverableStatus, 'secondary' | 'default' | 'outli
   completed: 'outline',
 };
 
-export function ReportDetail({ deliverableId, userId }: ReportDetailProps) {
+export function ReportDetail({ deliverableId }: ReportDetailProps) {
   const router = useRouter();
   const [deliverable, setDeliverable] = useState<ReportDeliverable | null>(null);
   const [items, setItems] = useState<ChecklistItem[]>([]);
@@ -71,11 +70,13 @@ export function ReportDetail({ deliverableId, userId }: ReportDetailProps) {
     }
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- data fetching on mount */
   useEffect(() => {
     fetchDeliverable();
     fetchChecklist();
     fetchTeam();
   }, [fetchDeliverable, fetchChecklist, fetchTeam]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function updateField(field: string, value: unknown) {
     const res = await fetch(`/api/reports/${deliverableId}`, {
