@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
+import { sendMail, getSmtpSettings } from '@/lib/mailer';
+import { publicFeedbackTemplate } from '@/lib/mailer/templates';
 
 // ─── Security constants ────────────────────────────────────────────────────
 const MAX_NAME    = 100;
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
-  const { file_id, author_name, content } = body as Record<string, unknown>;
+  const { file_id, author_name, content, otp_id } = body as Record<string, unknown>;
 
   // ── Validate ──────────────────────────────────────────────────────────────
   if (typeof file_id !== 'string' || !/^[0-9a-f-]{36}$/.test(file_id)) {
@@ -67,6 +69,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Feedback contains disallowed content.' }, { status: 400 });
   }
 
+  // ── Require verified OTP ──────────────────────────────────────────────────
+  if (typeof otp_id !== 'string' || !/^[0-9a-f-]{36}$/.test(otp_id)) {
+    return NextResponse.json({ error: 'Email verification is required.' }, { status: 403 });
+  }
+
   // ── Rate limiting (service role to bypass RLS on SELECT) ──────────────────
   const admin = await createClient({ serviceRole: true });
   const ip    = getIp(request);
@@ -81,6 +88,20 @@ export async function POST(request: NextRequest) {
 
   if ((count ?? 0) >= RATE_LIMIT) {
     return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 });
+  }
+
+  // ── Verify OTP is valid and recently verified ─────────────────────────────
+  const { data: otpRow } = await admin
+    .from('feedback_otps')
+    .select('verified_at, expires_at')
+    .eq('id', otp_id)
+    .maybeSingle();
+
+  if (!otpRow?.verified_at) {
+    return NextResponse.json({ error: 'Email verification is required.' }, { status: 403 });
+  }
+  if (new Date(otpRow.expires_at) < new Date()) {
+    return NextResponse.json({ error: 'Verification expired. Please verify again.' }, { status: 403 });
   }
 
   // ── Verify file exists ────────────────────────────────────────────────────
@@ -104,6 +125,24 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: 'Failed to save feedback.' }, { status: 500 });
+  }
+
+  // ── Notify admin via email (fire-and-forget) ──────────────────────────────
+  const { data: fileInfo } = await admin
+    .from('files')
+    .select('display_name')
+    .eq('id', file_id)
+    .maybeSingle();
+
+  const smtpSettings = await getSmtpSettings();
+  if (smtpSettings?.admin_email) {
+    const { subject, html } = publicFeedbackTemplate({
+      authorName:  name,
+      content:     text,
+      fileName:    fileInfo?.display_name ?? file_id,
+      submittedAt: new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }),
+    });
+    sendMail({ to: smtpSettings.admin_email, subject, html });
   }
 
   return NextResponse.json({ feedback: data }, { status: 201 });
