@@ -62,6 +62,7 @@ export class ServiceStack extends cdk.Stack {
     const supabaseServiceKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_SERVICE_ROLE_KEY`);
 
     const smtpEncryptionKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SMTP_ENCRYPTION_KEY`);
+    const appUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_APP_URL`);
 
     const environment: Record<string, string> = {
       NEXT_PUBLIC_ENV: envName,
@@ -71,6 +72,7 @@ export class ServiceStack extends cdk.Stack {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey,
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
       SMTP_ENCRYPTION_KEY: smtpEncryptionKey,
+      NEXT_PUBLIC_APP_URL: appUrl,
     };
 
     if (envName === 'production') {
