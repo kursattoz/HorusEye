@@ -38,9 +38,19 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
 
   return (
     <header className="h-14 border-b bg-background flex items-center justify-between pr-4 shrink-0">
-      {/* Left: logo area — same width as sidebar so arrow aligns to sidebar edge */}
+      {/* Mobile: static logo, no sidebar toggle */}
+      <div className="flex md:hidden items-center gap-2 pl-4">
+        <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+          <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
+        </div>
+        <span className="text-sm leading-none select-none">
+          <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
+        </span>
+      </div>
+
+      {/* Desktop: animated sidebar toggle area */}
       <div
-        className="flex items-center shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out"
+        className="hidden md:flex items-center shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out"
         style={{ width: sidebarCollapsed ? '56px' : '224px' }}
       >
         {sidebarCollapsed ? (
