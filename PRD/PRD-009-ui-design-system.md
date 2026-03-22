@@ -1,14 +1,14 @@
 # PRD-009 — UI Design System
-**Version:** 1.0
+**Versiyon:** 1.0
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000
-**Blocks:** All frontend PRDs (PRD-001 through PRD-008)
-**Status:** ACTIVE
+**Bağımlılıklar:** PRD-000
+**Bloke ettiği:** — (tüm frontend PRD'lerinin görsel kararları bu dokümana bağlıdır: PRD-002, PRD-008, PRD-010, PRD-012)
+**Durum:** ACTIVE
 
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
+AuthUser: @1.1
 -->
 
 ## ⚠️ LLM INSTRUCTION — STRICT RULES
@@ -102,6 +102,12 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // AvatarFallback: initials (first letter of name + first letter of surname)
 // AvatarImage: from user_profiles.avatar_url
+
+// Avatar initials kuralları:
+// - Tek isim ('Admin'): ilk 2 harf → 'AD'
+// - İki isim ('Test Admin'): ilk harfler → 'TA'
+// - Üç+ isim ('Ali Veli Can'): ilk ve son ismin ilk harfi → 'AC'
+// - Boş isim: '?' gösterilir
 ```
 
 ### Topbar User Menu (Avatar + Dropdown)
@@ -403,6 +409,9 @@ Uses shadcn's `Sidebar` component (or equivalent `Collapsible` + custom implemen
 
 // State: stored in localStorage 'sidebar-collapsed'
 // Icon-only mode when collapsed (tooltips show full label on hover)
+
+// Varsayılan: Desktop'ta sidebar açık (collapsed=false). Tablet'te kapalı.
+// localStorage key: sidebar-collapsed, değer: 'true' veya 'false'.
 ```
 
 ---
@@ -417,6 +426,11 @@ components/
 │   ├── avatar.tsx
 │   ├── chart.tsx
 │   └── ... (all shadcn components)
+│
+│   Versiyon kilidi: shadcn/ui component'ları `npx shadcn@latest add` ile eklenir
+│   ve components/ui/ altına kopyalanır. Versiyon kilidi package.json'da değil,
+│   kopyalanan dosyalardadır. shadcn CLI versiyonu package.json devDependencies'de sabitlenir.
+│
 ├── layout/
 │   ├── AppSidebar.tsx       ← Collapsible sidebar
 │   ├── Topbar.tsx           ← Top navigation bar

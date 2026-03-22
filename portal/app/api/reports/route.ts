@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('report_deliverables')
-    .select('*, checklist_items(id, is_checked)')
+    .select('*, checklist_items(id, is_checked), assignee:user_profiles!assigned_to(full_name, avatar_url)')
     .order('deadline', { ascending: true })
     .order('deliverable_number', { ascending: true });
 
@@ -18,8 +18,14 @@ export async function GET() {
     const items = d.checklist_items ?? [];
     const total = items.length;
     const checked = items.filter((i: { is_checked: boolean }) => i.is_checked).length;
-    const { checklist_items: _, ...rest } = d;
-    return { ...rest, checklist_total: total, checklist_checked: checked };
+    const { checklist_items: _, assignee, ...rest } = d;
+    return {
+      ...rest,
+      checklist_total: total,
+      checklist_checked: checked,
+      assignee_name: (assignee as { full_name: string; avatar_url: string | null } | null)?.full_name ?? null,
+      assignee_avatar: (assignee as { full_name: string; avatar_url: string | null } | null)?.avatar_url ?? null,
+    };
   });
 
   return NextResponse.json({ deliverables });

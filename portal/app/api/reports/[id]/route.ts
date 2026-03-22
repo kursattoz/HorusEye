@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendMail } from '@/lib/mailer';
 import { reportAssignedTemplate } from '@/lib/mailer/templates';
+import { createNotification } from '@/lib/notifications';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://horuseye.app';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -58,11 +61,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const adminClient = await createClient({ serviceRole: true });
 
     const [{ data: assignee }, { data: actorProfile }] = await Promise.all([
-      adminClient.from('user_profiles').select('full_name, email').eq('id', newAssignee).maybeSingle(),
+      adminClient.from('user_profiles').select('full_name, email, notification_preferences').eq('id', newAssignee).maybeSingle(),
       adminClient.from('user_profiles').select('full_name').eq('id', user.id).maybeSingle(),
     ]);
 
-    if (assignee?.email) {
+    // Respect user's notification preferences
+    const prefs = assignee?.notification_preferences as { email_on_assign?: boolean } | null;
+    const wantsEmail = prefs?.email_on_assign !== false; // default true
+
+    if (assignee?.email && wantsEmail) {
       const { subject, html } = reportAssignedTemplate({
         assigneeName:      assignee.full_name ?? assignee.email,
         deliverableTitle:  data.title ?? 'Untitled',
@@ -71,8 +78,21 @@ export async function PUT(request: NextRequest, { params }: Params) {
           ? new Date(data.deadline).toLocaleDateString('tr-TR')
           : '—',
         assignedByName:    actorProfile?.full_name ?? 'A team member',
+        appUrl:            APP_URL,
+        reportLink:        `/reports/${id}`,
       });
       sendMail({ to: assignee.email, subject, html });
+    }
+
+    // Notify assigned user
+    if (newAssignee) {
+      createNotification({
+        user_id: newAssignee,
+        category: 'feedback',
+        title: 'Deliverable assigned to you',
+        description: `You have been assigned to "${data.title}".`,
+        link: `/reports/${id}`,
+      });
     }
   }
 

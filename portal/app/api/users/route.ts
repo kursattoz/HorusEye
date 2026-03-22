@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
+import { notifyAdmins } from '@/lib/notifications';
 import { sendMail } from '@/lib/mailer';
 import { welcomeUserTemplate } from '@/lib/mailer/templates';
 import crypto from 'crypto';
@@ -92,5 +93,9 @@ export async function POST(request: NextRequest) {
   await sendMail({ to: email, subject, html });
 
   await log({ event_type: 'user.create', severity: 'info', user_id: adminId, action: `Created user: ${email}`, metadata: { role } });
+
+  // Notify all admins about new user
+  notifyAdmins('team', `New user added: ${email}`, `${full_name ?? email} joined as ${role}.`, '/settings/users');
+
   return NextResponse.json({ user: profile }, { status: 201 });
 }

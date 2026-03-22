@@ -1,9 +1,9 @@
 # PRD-012 — Folder Structure & Code Conventions
-**Version:** 1.0
+**Versiyon:** 1.0
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000, PRD-005, PRD-009
-**Blocks:** —
-**Status:** ACTIVE
+**Bağımlılıklar:** PRD-000, PRD-005, PRD-009
+**Bloke ettiği:** —
+**Durum:** ACTIVE
 
 ---
 
@@ -215,6 +215,8 @@ horuseye-portal/
 
 ### Known Intentional Deviations
 
+**Not:** Aşağıdaki sapmalar kalıcıdır ve gelecekte değiştirilmeyecektir. Yeni geliştiriciler bu yapıyı takip etmelidir.
+
 | Item | PRD Spec | Actual | Reason |
 |------|----------|--------|--------|
 | `proxy.ts` | `middleware.ts` | `proxy.ts` | Renamed early in project; Next.js picks it up via `export { proxy as middleware }` |
@@ -268,6 +270,19 @@ import { log } from '../../../lib/logger';
 | Test files | same name as file + `.test.ts` / `.spec.ts` | `logger.test.ts`, `auth.spec.ts` |
 | DB migrations | `[timestamp]_[description].sql` | `20250101000001_create_user_profiles.sql` |
 | CSS classes | Tailwind only, no custom class names | `className="flex items-center gap-4"` |
+
+**Export kuralları:**
+- React component'ler: `export default function ComponentName()` (Next.js page/layout convention)
+- Utility fonksiyonlar: named export (`export function utilName()`)
+- Type'lar: named export (`export interface TypeName`, `export type TypeName`)
+- Constants: named export (`export const CONSTANT_NAME`)
+
+**Dosya adlandırma:**
+- React component: PascalCase (`FileUploadDialog.tsx`)
+- Hook: camelCase, `use` prefix (`usePageTracking.ts`)
+- Utility: camelCase (`formatFileSize.ts`)
+- Constant: camelCase dosya, UPPER_SNAKE_CASE değişken (`constants/errorCodes.ts` → `export const FILE_TOO_LARGE = ...`)
+- API route: kebab-case dizin (`/api/files/[id]/route.ts`)
 
 ---
 

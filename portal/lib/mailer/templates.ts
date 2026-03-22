@@ -113,19 +113,27 @@ export interface ReportAssignedData {
   deliverableNumber: number | string;
   deadline:          string; // formatted date string
   assignedByName:    string;
+  appUrl:            string;
+  reportLink:        string; // e.g. /reports/{id}
 }
 
 export function reportAssignedTemplate(data: ReportAssignedData): { subject: string; html: string } {
-  const subject = `[HorusEye] You've been assigned to "${data.deliverableTitle}"`;
+  const subject = `[HorusEye] You&apos;ve been assigned to "${data.deliverableTitle}"`;
   const html = layout(subject, `
     ${heading('Report Deliverable Assigned')}
-    ${paragraph(`Hi ${data.assigneeName}, a report deliverable has been assigned to you.`)}
+    ${paragraph(`Hi ${escapeHtml(data.assigneeName)}, a report deliverable has been assigned to you.`)}
     ${infoBox([
-      { label: 'Deliverable',  value: `#${data.deliverableNumber} — ${data.deliverableTitle}` },
+      { label: 'Deliverable',  value: `#${data.deliverableNumber} — ${escapeHtml(data.deliverableTitle)}` },
       { label: 'Deadline',     value: data.deadline },
-      { label: 'Assigned by',  value: data.assignedByName },
+      { label: 'Assigned by',  value: escapeHtml(data.assignedByName) },
     ])}
-    ${paragraph('Please log in to HorusEye to view the details and update your progress.')}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}${data.reportLink}"
+        style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:-0.2px;font-family:'Helvetica Neue',Arial,sans-serif;">
+        View Deliverable
+      </a>
+    </div>
+    ${paragraph('Please complete the checklist items and upload the required file before the deadline.')}
   `);
   return { subject, html };
 }
@@ -232,6 +240,217 @@ export function welcomeUserTemplate(data: WelcomeUserData): { subject: string; h
       </a>
     </div>
     ${paragraph('If you did not expect this email, please contact your administrator.')}
+  `);
+  return { subject, html };
+}
+
+// ─── Template 7: Deadline reminder → assignee / fallback team member ─────────
+export interface DeadlineReminderData {
+  recipientName:     string;
+  deliverableTitle:  string;
+  deliverableNumber: number | string;
+  deadline:          string; // formatted date string
+  daysLeft:          number; // negative = overdue
+  checkedCount:      number;
+  totalCount:        number;
+  isFallback:        boolean; // true if this person is a fallback, not the original assignee
+  assigneeName?:     string; // original assignee name (shown when isFallback=true)
+  appUrl:            string;
+  reportLink:        string; // e.g. /reports/{id}
+}
+
+export function deadlineReminderTemplate(data: DeadlineReminderData): { subject: string; html: string } {
+  const urgency = data.daysLeft < 0
+    ? `OVERDUE by ${Math.abs(data.daysLeft)} day${Math.abs(data.daysLeft) > 1 ? 's' : ''}`
+    : data.daysLeft === 0
+      ? 'Due TODAY'
+      : `Due in ${data.daysLeft} day${data.daysLeft > 1 ? 's' : ''}`;
+
+  const subject = data.daysLeft < 0
+    ? `[HorusEye] OVERDUE: "${data.deliverableTitle}" deadline passed`
+    : `[HorusEye] Reminder: "${data.deliverableTitle}" — ${urgency}`;
+
+  const intro = data.isFallback
+    ? `Hi ${escapeHtml(data.recipientName)}, the deliverable below is ${data.daysLeft <= 0 ? 'overdue' : 'approaching its deadline'} and needs attention. The assigned person (${escapeHtml(data.assigneeName ?? 'unknown')}) has not completed the checklist.`
+    : `Hi ${escapeHtml(data.recipientName)}, this is a reminder that a deliverable assigned to you is ${data.daysLeft <= 0 ? 'overdue' : 'approaching its deadline'}.`;
+
+  const html = layout(subject, `
+    ${heading(urgency)}
+    ${paragraph(intro)}
+    ${infoBox([
+      { label: 'Deliverable',  value: `#${data.deliverableNumber} — ${escapeHtml(data.deliverableTitle)}` },
+      { label: 'Deadline',     value: data.deadline },
+      { label: 'Checklist',    value: `${data.checkedCount} / ${data.totalCount} completed` },
+    ])}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}${data.reportLink}"
+        style="display:inline-block;background:#dc2626;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:-0.2px;font-family:'Helvetica Neue',Arial,sans-serif;">
+        View Deliverable
+      </a>
+    </div>
+    ${paragraph('Please complete the remaining checklist items and upload the required file before the deadline.')}
+  `);
+  return { subject, html };
+}
+
+// ─── Template 8: Calendar event invitation → attendees ───────────────────────
+export interface CalendarEventData {
+  recipientName: string;
+  creatorName:   string;
+  eventTitle:    string;
+  eventDate:     string;
+  eventTime:     string;
+  eventType:     string;
+  location?:     string;
+  description?:  string;
+  reminderMinutes?: number;
+  appUrl:        string;
+}
+
+export function calendarEventTemplate(data: CalendarEventData): { subject: string; html: string } {
+  const typeLabel = data.eventType === 'meeting' ? 'Meeting' : 'Event';
+  const subject = `[HorusEye] ${typeLabel}: ${data.eventTitle} — ${data.eventDate}`;
+  const html = layout(subject, `
+    ${heading(`${typeLabel} Invitation`)}
+    ${paragraph(`Hi ${escapeHtml(data.recipientName)}, <strong>${escapeHtml(data.creatorName)}</strong> invited you to ${data.eventType === 'meeting' ? 'a meeting' : 'an event'}.`)}
+    ${infoBox([
+      { label: 'Title',    value: escapeHtml(data.eventTitle) },
+      { label: 'Date',     value: data.eventDate },
+      { label: 'Time',     value: data.eventTime },
+      ...(data.location    ? [{ label: 'Location', value: escapeHtml(data.location) }] : []),
+      ...(data.reminderMinutes != null ? [{ label: 'Reminder', value: `${data.reminderMinutes} minutes before` }] : []),
+    ])}
+    ${data.description ? paragraph(escapeHtml(data.description)) : ''}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}/calendar"
+        style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;">
+        Open Calendar
+      </a>
+    </div>
+  `);
+  return { subject, html };
+}
+
+// ─── Template 9: Calendar reminder → attendees ───────────────────────────────
+export interface CalendarReminderData {
+  recipientName: string;
+  eventTitle:    string;
+  eventDate:     string;
+  eventTime:     string;
+  minutesBefore: number;
+  location?:     string;
+  appUrl:        string;
+}
+
+export function calendarReminderTemplate(data: CalendarReminderData): { subject: string; html: string } {
+  const subject = `[HorusEye] Reminder: ${data.eventTitle} in ${data.minutesBefore} min`;
+  const html = layout(subject, `
+    ${heading('Event Reminder')}
+    ${paragraph(`Hi ${escapeHtml(data.recipientName)}, your event is starting soon.`)}
+    ${infoBox([
+      { label: 'Event',    value: escapeHtml(data.eventTitle) },
+      { label: 'When',     value: `${data.eventDate} at ${data.eventTime}` },
+      ...(data.location ? [{ label: 'Where', value: escapeHtml(data.location) }] : []),
+      { label: 'Starting', value: `in ${data.minutesBefore} minutes` },
+    ])}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}/calendar"
+        style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;">
+        Open Calendar
+      </a>
+    </div>
+  `);
+  return { subject, html };
+}
+
+// ─── Template 10: Review request → reviewer ──────────────────────────────────
+export interface ReviewRequestData {
+  reviewerName:  string;
+  requesterName: string;
+  taskId:        string;
+  taskTitle:     string;
+  appUrl:        string;
+}
+
+export function reviewRequestTemplate(data: ReviewRequestData): { subject: string; html: string } {
+  const subject = `[HorusEye] Review requested: ${data.taskId} — ${data.taskTitle}`;
+  const html = layout(subject, `
+    ${heading('Review Requested')}
+    ${paragraph(`Hi ${escapeHtml(data.reviewerName)}, <strong>${escapeHtml(data.requesterName)}</strong> submitted a task for your review.`)}
+    ${infoBox([
+      { label: 'Task',      value: `${data.taskId} — ${escapeHtml(data.taskTitle)}` },
+      { label: 'Action',    value: 'Please review, then approve or request changes' },
+    ])}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}/sprints"
+        style="display:inline-block;background:#18181b;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;">
+        Open Sprint Board
+      </a>
+    </div>
+  `);
+  return { subject, html };
+}
+
+// ─── Template 11: Review result → assignee ───────────────────────────────────
+export interface ReviewResultData {
+  assigneeName:  string;
+  reviewerName:  string;
+  taskId:        string;
+  taskTitle:     string;
+  approved:      boolean;
+  comment?:      string;
+  appUrl:        string;
+}
+
+export function reviewResultTemplate(data: ReviewResultData): { subject: string; html: string } {
+  const subject = data.approved
+    ? `[HorusEye] ${data.taskId} approved — ${data.taskTitle}`
+    : `[HorusEye] Changes requested on ${data.taskId} — ${data.taskTitle}`;
+  const html = layout(subject, `
+    ${heading(data.approved ? 'Task Approved ✓' : 'Changes Requested')}
+    ${paragraph(`Hi ${escapeHtml(data.assigneeName)}, <strong>${escapeHtml(data.reviewerName)}</strong> has ${data.approved ? 'approved' : 'requested changes on'} your task.`)}
+    ${infoBox([
+      { label: 'Task',   value: `${data.taskId} — ${escapeHtml(data.taskTitle)}` },
+      { label: 'Status', value: data.approved ? 'Approved — moved to Done' : 'Changes Requested — moved to In Progress' },
+      ...(data.comment ? [{ label: 'Comment', value: escapeHtml(data.comment) }] : []),
+    ])}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}/sprints"
+        style="display:inline-block;background:${data.approved ? '#22c55e' : '#f59e0b'};color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;">
+        ${data.approved ? 'View Completed Task' : 'Fix and Resubmit'}
+      </a>
+    </div>
+  `);
+  return { subject, html };
+}
+
+// ─── Template 12: Unblock request → blocker assignee ─────────────────────────
+export interface UnblockRequestData {
+  blockerAssigneeName: string;
+  requesterName:       string;
+  blockerTaskId:       string;
+  blockerTaskTitle:    string;
+  blockedTaskId:       string;
+  blockedTaskTitle:    string;
+  appUrl:              string;
+}
+
+export function unblockRequestTemplate(data: UnblockRequestData): { subject: string; html: string } {
+  const subject = `[HorusEye] Unblock request: ${data.blockerTaskId} — ${data.blockerTaskTitle}`;
+  const html = layout(subject, `
+    ${heading('Unblock Request')}
+    ${paragraph(`Hi ${escapeHtml(data.blockerAssigneeName)}, <strong>${escapeHtml(data.requesterName)}</strong> is waiting on your task to proceed.`)}
+    ${infoBox([
+      { label: 'Blocking',  value: `${data.blockerTaskId} — ${escapeHtml(data.blockerTaskTitle)}` },
+      { label: 'Blocked',   value: `${data.blockedTaskId} — ${escapeHtml(data.blockedTaskTitle)}` },
+      { label: 'Action',    value: 'Please prioritize completing the blocking task' },
+    ])}
+    <div style="text-align:center;margin:24px 0;">
+      <a href="${data.appUrl}/sprints"
+        style="display:inline-block;background:#dc2626;color:#ffffff;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;text-decoration:none;">
+        Open Sprint Board
+      </a>
+    </div>
   `);
   return { subject, html };
 }

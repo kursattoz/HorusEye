@@ -2,17 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Palette, User, Lock, Users, Plug } from 'lucide-react';
+import { Palette, User, Lock, Bell, Users, Plug, UserCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const USER_NAV = [
   { label: 'Appearance', href: '/settings/appearance', icon: Palette },
   { label: 'Profile',    href: '/settings/profile',    icon: User    },
-  { label: 'Account',    href: '/settings/account',    icon: Lock    },
+  { label: 'Account',       href: '/settings/account',       icon: Lock },
+  { label: 'Notifications', href: '/settings/notifications', icon: Bell },
 ];
 
 const ADMIN_NAV = [
-  { label: 'Users',        href: '/settings/users',        icon: Users },
+  { label: 'Users',        href: '/settings/users',        icon: Users   },
+  { label: 'Dev Roles',   href: '/settings/dev-roles',    icon: UserCog },
   { label: 'Integrations', href: '/settings/integrations', icon: Plug  },
 ];
 

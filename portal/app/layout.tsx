@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
+import { OfflineBanner } from '@/components/pwa/OfflineBanner';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import './globals.css';
 
 const inter = Inter({
@@ -57,6 +59,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange={false}
         >
+          <OfflineBanner />
+          <InstallPrompt />
           {children}
           <Toaster richColors closeButton />
         </ThemeProvider>

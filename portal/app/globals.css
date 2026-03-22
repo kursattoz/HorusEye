@@ -235,4 +235,11 @@
 
   /* PWA safe area — accounts for iOS home indicator bar */
   .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* Sprint filter glow — uses system primary color */
+  @keyframes glow-border {
+    0%, 100% { box-shadow: 0 0 4px 1px hsl(var(--primary) / 0.3); border-color: hsl(var(--primary) / 0.5); }
+    50%      { box-shadow: 0 0 10px 3px hsl(var(--primary) / 0.5); border-color: hsl(var(--primary) / 0.8); }
+  }
+  .animate-glow-border { animation: glow-border 2s ease-in-out infinite; }
 }

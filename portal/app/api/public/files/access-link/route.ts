@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     .insert({ email: normalizedEmail, file_id });
 
   // Always use the /d/[id] proxy route — it handles both public and private files
-  const origin   = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+  const origin   = process.env.NEXT_PUBLIC_APP_URL!;
   const cleanUrl = `${origin}/d/${fileRow.id}${isDownload ? '?dl=1' : ''}`;
 
   // Send access link email

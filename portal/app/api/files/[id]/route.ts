@@ -4,6 +4,23 @@ import { log } from '@/lib/logger';
 
 interface Params { params: Promise<{ id: string }> }
 
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { user, isAdmin } = await requireAdmin(supabase);
+  if (!user || !isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { data, error } = await supabase
+    .from('files')
+    .select('*')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: 'File not found.' }, { status: 404 });
+  return NextResponse.json({ file: data });
+}
+
 async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { user: null, isAdmin: false };
@@ -21,8 +38,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const allowed: Record<string, unknown> = {};
   if (body.display_name !== undefined) allowed.display_name = body.display_name;
   if (body.metadata     !== undefined) allowed.metadata     = body.metadata;
-  if (body.blurred_page !== undefined) allowed.blurred_page = body.blurred_page;
+  if (body.blurred_pages !== undefined) allowed.blurred_pages = body.blurred_pages;
   if (body.sort_order   !== undefined) allowed.sort_order   = body.sort_order;
+  if (body.document_date !== undefined) allowed.document_date = body.document_date;
 
   // When toggling is_public, update public_url accordingly
   if (body.is_public !== undefined) {

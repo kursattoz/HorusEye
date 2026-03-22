@@ -16,7 +16,7 @@ async function getPublicFiles(): Promise<PublicFile[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from('public_files')
-    .select('id, display_name, file_type, public_url, slug, category, description, created_at, blurred_page, sort_order')
+    .select('id, display_name, file_type, public_url, slug, category, description, created_at, blurred_pages, sort_order, document_date')
     .order('sort_order', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true });
   return (data ?? []) as PublicFile[];
@@ -26,9 +26,9 @@ export default async function LoginPage() {
   const files = await getPublicFiles();
 
   return (
-    <div className="min-h-svh grid lg:grid-cols-2">
+    <div className="min-h-svh grid lg:grid-cols-[1fr_1.2fr] 2xl:grid-cols-[1fr_1.5fr] portrait:lg:grid-cols-[1fr_1fr] portrait:2xl:grid-cols-[1fr_1.3fr]">
       {/* Left — form */}
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+      <div className="flex flex-col gap-4 p-6 md:p-10 2xl:p-14">
         <div className="flex items-center justify-between">
           <Link href={routes.home} className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">

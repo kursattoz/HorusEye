@@ -1,14 +1,14 @@
 # PRD-008 — PWA & Responsive Design
-**Version:** 1.0
+**Versiyon:** 1.0
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000, PRD-002
-**Blocks:** —
-**Status:** ACTIVE
+**Bağımlılıklar:** PRD-000, PRD-002
+**Bloke ettiği:** —
+**Durum:** ACTIVE
 
 ---
 
 <!-- INTERFACE_DEPS
-HorusFile: @1.0
+HorusFile: @1.4
 -->
 
 ## ⚠️ LLM INSTRUCTION
@@ -27,53 +27,45 @@ Make HorusEye installable as a Progressive Web App on mobile and desktop. All un
 
 ## 2. PWA Configuration
 
+Service worker `app/sw.ts` dosyasında Serwist (`@serwist/next`) ile yapılandırılmıştır:
+
 ```typescript
-// next.config.js
-const withPWA = require('next-pwa')({
-  dest:         'public',
-  register:     true,
-  skipWaiting:  true,
-  disable:      process.env.NODE_ENV === 'development', // SW disabled in dev (avoid cache confusion)
+// app/sw.ts — Serwist service worker (gerçek implementasyon)
+const serwist = new Serwist({
+  precacheEntries: sw.__SW_MANIFEST,  // Build-time injected
+  skipWaiting:     true,
+  clientsClaim:    true,
+  navigationPreload: false,
   runtimeCaching: [
     {
-      // Public file list API
-      urlPattern: /^\/api\/public\/files/,
-      handler:    'StaleWhileRevalidate',
-      options: {
-        cacheName:   'api-public-files',
-        expiration:  { maxAgeSeconds: 3_600, maxEntries: 50 }
-      }
+      // Cache Supabase API responses (short TTL, network-first)
+      matcher: ({ url }) => url.hostname.includes("supabase"),
+      handler: new NetworkFirst({
+        cacheName:  "supabase-cache",
+        plugins:    [{ cacheWillUpdate: async ({ response }) => response.status === 200 ? response : null }],
+        networkTimeoutSeconds: 3,
+      }),
     },
     {
-      // Public document content from Supabase Storage
-      urlPattern: /supabase.*\/public\/.*/,
-      handler:    'CacheFirst',
-      options: {
-        cacheName:   'public-documents',
-        expiration:  { maxAgeSeconds: 86_400, maxEntries: 100 }
-      }
+      // Cache Google Fonts (long TTL, cache-first)
+      matcher: ({ url }) => url.hostname === "fonts.gstatic.com",
+      handler: new CacheFirst({
+        cacheName: "fonts-cache",
+      }),
     },
-    {
-      // Static assets (JS, CSS, fonts)
-      urlPattern: /\.(js|css|woff2|woff|ttf)$/,
-      handler:    'CacheFirst',
-      options: {
-        cacheName:   'static-assets',
-        expiration:  { maxAgeSeconds: 604_800 }
-      }
-    },
-    {
-      // Next.js image optimization
-      urlPattern: /\/_next\/image\?url=.*/,
-      handler:    'CacheFirst',
-      options: {
-        cacheName:   'next-images',
-        expiration:  { maxAgeSeconds: 86_400, maxEntries: 200 }
-      }
-    }
-  ]
+  ],
 });
 ```
+
+**Not:** Precaching `@serwist/next` tarafından build-time'da inject edilir. Static assets ve Next.js sayfaları otomatik precache'lenir.
+
+**Cache stratejisi — route bazlı:**
+- **Cache'lenen (public):** `/`, `/docs/*`, `/login`, static assets (JS/CSS/fonts), `/api/public/*`
+- **Asla cache'lenmeyen (protected):** `/dashboard/*`, `/settings/*`, `/files/*`, `/feedback/*`, `/notifications/*`, `/dev/*`, `/api/auth/*`, `/api/files/*`, `/api/feedback/*`, `/api/users/*`, `/api/notifications/*`
+- **Kural:** URL `/api/public/` ile başlamıyorsa VE `/api/` ile başlıyorsa → NetworkOnly (cache yok)
+- Protected sayfa URL'leri service worker'da whitelist değil **blacklist** ile kontrol edilir: `(protected)` route grubu altındaki tüm path'ler cache dışı.
+
+**Cache limitleri:** Service worker cache toplam 50MB ile sınırlıdır. LRU eviction: en eski entry silinir. Font cache: 30 gün TTL. API cache: 1 saat TTL.
 
 ### Web App Manifest (`public/manifest.json`)
 
@@ -85,7 +77,7 @@ const withPWA = require('next-pwa')({
   "start_url":        "/",
   "display":          "standalone",
   "background_color": "#ffffff",
-  "theme_color":      "#1a1a2e",
+  "theme_color":      "#0f172a",
   "lang":             "tr",
   "icons": [
     { "src": "/icons/icon-192.png",          "sizes": "192x192", "type": "image/png" },
@@ -107,15 +99,19 @@ const withPWA = require('next-pwa')({
 | Any authenticated route (`/dashboard`, etc.) | Live | "Connection required" page |
 | API calls (non-cached) | Live | Fail gracefully with user message |
 
-**Offline banner:** When network is lost, a non-dismissable banner appears at the top:
+**Offline banner:** (implementasyon: `components/pwa/OfflineBanner.tsx`, root layout'a eklendi)
+Bağlantı koptuğunda sayfanın üstünde kırmızı banner görünür:
 ```
-"You're offline — showing cached content"
+"You are offline. Some features may be unavailable."
 ```
-When connection is restored: banner disappears automatically, page data refreshes silently.
+`navigator.onLine` state'i ve `online`/`offline` event listener'ları ile çalışır.
+Bağlantı geri geldiğinde banner otomatik olarak kaybolur.
 
-**Offline page** (shown for authenticated routes when offline):
-- HorusEye logo, simple message: "Dashboard requires an internet connection."
-- Button: "Try again" (triggers `window.location.reload()`)
+**Offline page** (implementasyon: `app/(protected)/offline/page.tsx`):
+- WifiOff ikonu, mesaj: "You're Offline — This page requires an internet connection."
+- Protected route grubu altında, authenticated kullanıcılar offline olduğunda bu sayfaya yönlendirilir.
+
+**Offline yönlendirme:** Service worker `fetch` event'inde: protected route'a istek gelirse ve network yoksa → `/offline` sayfasına redirect. Client-side `navigator.onLine` kontrolü ile `OfflineBanner` component gösterilir. Middleware kullanılmaz (SW handles).
 
 ---
 
@@ -144,6 +140,14 @@ Tailwind CSS default breakpoints are used **as-is**. No custom breakpoints.
 | Desktop | Split layout: left panel (doc list) fixed 280px + right panel (viewer) fills |
 | Tablet | Left panel collapsible drawer, toggle button visible |
 | Mobile | Left panel as bottom sheet drawer (drag up to open), viewer is full screen |
+
+### Login (`/login`)
+| Viewport | Behavior |
+|----------|---------|
+| Desktop (lg) | Grid `1fr / 1.2fr` — sol: login formu, sağ: Document Hub paneli |
+| 2K/4K (2xl) | Grid `1fr / 1.5fr` — Document Hub daha geniş, kart `max-w-5xl`, yükseklik `1000px` |
+| Portrait / Pivot | Grid `1fr / 1fr` (lg), `1fr / 1.3fr` (2xl) — Document Hub `calc(100svh - 3rem)` yüksekliğe genişler |
+| Tablet / Mobile | Document Hub gizli, modal ile erişilir (`LoginDocModal`) |
 
 ### Dashboard (`/dashboard/*`)
 | Viewport | Behavior |
@@ -193,6 +197,13 @@ Inactive tab: outline icon + muted color.
 //   → Tooltip shown only on iOS (detected via userAgent)
 
 // After install or dismissal: hidden permanently (localStorage flag)
+
+// iOS PWA kurulum: iOS'ta JavaScript ile install prompt tetiklenemez. Bunun yerine:
+// - İlk 3 ziyaretten sonra bottom banner gösterilir: 'Uygulamayı yüklemek için: Paylaş → Ana Ekrana Ekle'
+// - Banner localStorage ile kontrol edilir: kapatılınca 7 gün gösterilmez
+// - Banner sadece iOS Safari'de gösterilir (navigator.userAgent check)
+
+// Install prompt localStorage: Key: horuseye-pwa-install-dismissed. Değer: ISO timestamp. 30 gün sonra sıfırlanır (kullanıcı tekrar görür).
 ```
 
 ---

@@ -258,7 +258,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="h-full flex items-center justify-center p-3 md:p-6 lg:p-8">
+    <div className="h-full flex items-center justify-center p-3 md:p-6 lg:p-8 2xl:p-12">
 
       {/* ── OTP Verification Modal (feedback) ───────────────────────────── */}
       {mounted && otpStep !== 'idle' && createPortal(
@@ -448,7 +448,11 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
 
       {/* Floating card */}
       <div className={cn(
-        'w-full max-w-3xl h-[min(700px,calc(100svh-3rem))] rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-xl',
+        'w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl rounded-2xl overflow-hidden flex flex-col bg-card border border-border shadow-xl',
+        // Height: fill available space, scale up for larger / portrait screens
+        'h-[min(700px,calc(100svh-3rem))] xl:h-[min(820px,calc(100svh-3rem))] 2xl:h-[min(1000px,calc(100svh-4rem))]',
+        // Portrait monitors: maximize vertical space
+        'portrait:h-[calc(100svh-3rem)]',
         anyModalOpen && 'blur-[2px] pointer-events-none select-none'
       )}>
 
@@ -465,7 +469,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
 
           {/* Left — file list */}
-          <div className="w-full md:w-56 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-border bg-muted/20 max-h-44 md:max-h-none">
+          <div className="w-full md:w-56 2xl:w-72 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-border bg-muted/20 max-h-44 md:max-h-none">
             <div className="p-2.5 border-b border-border">
               <div className="relative">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -634,7 +638,10 @@ function DocViewer({
   const { file_type, public_url, display_name } = file;
 
   if (file_type === 'pdf') {
-    return <PdfViewer key={public_url} url={public_url} blurredPage={file.blurred_page} />;
+    // PdfViewer manages its own loading state internally
+    // Call onLoad immediately so the parent loading overlay clears
+    if (onLoad) setTimeout(onLoad, 0);
+    return <PdfViewer key={public_url} url={public_url} blurredPages={file.blurred_pages} />;
   }
 
   if (file_type === 'pptx') {

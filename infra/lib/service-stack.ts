@@ -8,6 +8,9 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 export interface ServiceStackProps extends cdk.StackProps {
@@ -63,6 +66,7 @@ export class ServiceStack extends cdk.Stack {
 
     const smtpEncryptionKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SMTP_ENCRYPTION_KEY`);
     const appUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_APP_URL`);
+    const cronSecret = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/CRON_SECRET`);
 
     const environment: Record<string, string> = {
       NEXT_PUBLIC_ENV: envName,
@@ -73,6 +77,7 @@ export class ServiceStack extends cdk.Stack {
       SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey,
       SMTP_ENCRYPTION_KEY: smtpEncryptionKey,
       NEXT_PUBLIC_APP_URL: appUrl,
+      CRON_SECRET: cronSecret,
     };
 
     if (envName === 'production') {
@@ -143,6 +148,78 @@ export class ServiceStack extends cdk.Stack {
       target: route53.RecordTarget.fromAlias(
         new route53Targets.LoadBalancerTarget(alb),
       ),
+    });
+
+    // ── Scheduled cron jobs (EventBridge → Lambda → ALB) ─────────
+    const cronInvoker = new lambda.Function(this, 'CronInvoker', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        APP_URL: `https://${fqdn}`,
+        CRON_SECRET: cronSecret,
+      },
+      code: lambda.Code.fromInline(`
+const https = require('https');
+
+exports.handler = async (event) => {
+  const endpoints = event.endpoints || ['/api/reports/remind', '/api/files/purge'];
+  const results = [];
+
+  for (const path of endpoints) {
+    const url = process.env.APP_URL + path;
+    const result = await new Promise((resolve) => {
+      const req = https.request(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cron-secret': process.env.CRON_SECRET,
+        },
+      }, (res) => {
+        let body = '';
+        res.on('data', (chunk) => body += chunk);
+        res.on('end', () => resolve({ path, status: res.statusCode, body }));
+      });
+      req.on('error', (err) => resolve({ path, error: err.message }));
+      req.end();
+    });
+    results.push(result);
+  }
+
+  console.log(JSON.stringify(results));
+  return results;
+};
+      `),
+    });
+
+    // Daily at 08:00 UTC (11:00 Turkey time) — deadline reminders
+    new events.Rule(this, 'DailyReminderRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '8' }),
+      targets: [new targets.LambdaFunction(cronInvoker, {
+        event: events.RuleTargetInput.fromObject({
+          endpoints: ['/api/reports/remind'],
+        }),
+      })],
+    });
+
+    // Every 5 minutes — calendar event reminders
+    new events.Rule(this, 'CalendarReminderRule', {
+      schedule: events.Schedule.rate(cdk.Duration.minutes(5)),
+      targets: [new targets.LambdaFunction(cronInvoker, {
+        event: events.RuleTargetInput.fromObject({
+          endpoints: ['/api/calendar/remind'],
+        }),
+      })],
+    });
+
+    // Daily at 03:00 UTC — file purge (soft-deleted > 30 days)
+    new events.Rule(this, 'DailyPurgeRule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '3' }),
+      targets: [new targets.LambdaFunction(cronInvoker, {
+        event: events.RuleTargetInput.fromObject({
+          endpoints: ['/api/files/purge'],
+        }),
+      })],
     });
 
     // ── Outputs ──────────────────────────────────────────────────

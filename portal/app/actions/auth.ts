@@ -77,15 +77,17 @@ export async function loginAction(_prev: AuthState, formData: FormData): Promise
 export async function logoutAction(): Promise<void> {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await log({
-      event_type: 'auth.logout',
-      severity:   'info',
-      user_id:    user.id,
-      action:     'User logged out',
-    });
-  }
+  // Fire-and-forget log — don't block the signout flow
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (user) {
+      log({
+        event_type: 'auth.logout',
+        severity:   'info',
+        user_id:    user.id,
+        action:     'User logged out',
+      });
+    }
+  });
 
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
@@ -101,7 +103,7 @@ export async function getCurrentUser() {
 
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('id, email, full_name, role, avatar_url, is_active, force_password_change, color_theme')
+    .select('id, email, full_name, role, dev_role, avatar_url, is_active, force_password_change, color_theme')
     .eq('id', user.id)
     .single();
 

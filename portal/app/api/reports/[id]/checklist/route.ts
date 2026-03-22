@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { log } from '@/lib/logger';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -45,11 +46,23 @@ export async function POST(request: NextRequest, { params }: Params) {
     .insert({
       deliverable_id: id,
       label: body.label.trim(),
+      ...(body.description?.trim() ? { description: body.description.trim() } : {}),
       sort_order: nextOrder,
     })
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  log({
+    event_type: 'checklist.create',
+    severity: 'info',
+    user_id: user.id,
+    resource_type: 'checklist_item',
+    resource_id: data.id,
+    action: `Added checklist item: ${body.label.trim()}`,
+    metadata: { deliverable_id: id },
+  });
+
   return NextResponse.json({ item: data }, { status: 201 });
 }

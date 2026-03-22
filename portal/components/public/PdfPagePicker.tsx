@@ -9,14 +9,15 @@ import { EyeOff } from 'lucide-react';
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PdfPagePickerProps {
-  file:         File;
-  selected:     number | null; // 1-indexed selected page to blur, null = none
-  onSelect:     (page: number | null) => void;
+  file?:        File;
+  url?:         string;           // Alternative: pass a URL instead of a File
+  selected:     number[];         // 1-indexed selected pages to blur
+  onSelect:     (pages: number[]) => void;
 }
 
-export function PdfPagePicker({ file, selected, onSelect }: PdfPagePickerProps) {
+export function PdfPagePicker({ file, url: urlProp, selected, onSelect }: PdfPagePickerProps) {
   const [numPages, setNumPages] = useState<number>(0);
-  const [url] = useState(() => URL.createObjectURL(file));
+  const [url] = useState(() => file ? URL.createObjectURL(file) : (urlProp ?? ''));
 
   const onLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
@@ -27,19 +28,25 @@ export function PdfPagePicker({ file, selected, onSelect }: PdfPagePickerProps) 
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Select a page to blur (hides sensitive content from viewers). Click again to deselect.
+        Select pages to blur (hides sensitive content from viewers). Click again to deselect.
       </p>
       <div className="flex gap-2 overflow-x-auto pb-2">
         <Document file={url} onLoadSuccess={onLoadSuccess} loading={
           <p className="text-xs text-muted-foreground py-4">Loading pages...</p>
         }>
           {pages.map(pageNum => {
-            const isSelected = selected === pageNum;
+            const isSelected = selected.includes(pageNum);
             return (
               <button
                 key={pageNum}
                 type="button"
-                onClick={() => onSelect(isSelected ? null : pageNum)}
+                onClick={() => {
+                  if (isSelected) {
+                    onSelect(selected.filter(p => p !== pageNum));
+                  } else {
+                    onSelect([...selected, pageNum].sort((a, b) => a - b));
+                  }
+                }}
                 className={`relative shrink-0 rounded border-2 overflow-hidden transition-all ${
                   isSelected ? 'border-primary' : 'border-border hover:border-primary/50'
                 }`}
@@ -65,8 +72,8 @@ export function PdfPagePicker({ file, selected, onSelect }: PdfPagePickerProps) 
           })}
         </Document>
       </div>
-      {selected && (
-        <p className="text-xs text-primary">Page {selected} will be blurred for viewers.</p>
+      {selected.length > 0 && (
+        <p className="text-xs text-primary">Pages {selected.join(', ')} will be blurred for viewers.</p>
       )}
     </div>
   );

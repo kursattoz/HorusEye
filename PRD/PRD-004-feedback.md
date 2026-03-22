@@ -7,9 +7,9 @@
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
-HorusFile: @1.0
-Feedback: @1.0
+AuthUser: @1.1
+HorusFile: @1.4
+Feedback: @1.1
 -->
 
 ## ⚠️ LLM TALİMATI
@@ -43,22 +43,57 @@ Tüm yorumlar audit trail ile korunur — hiçbir yorum fiziksel olarak silinmez
 
 ### 2.2 Genel Yorum
 - Dosya görüntüleyicinin altında yorum kutusu
-- Markdown destekli (bold, italic, link, code)
+- Markdown destekli: bold, italic, link, inline code, code block (liste, blockquote, tablo desteklenmez — karmaşıklık engellemek için)
+- Rendering: `marked` kütüphanesi ile HTML'e dönüştür → `DOMPurify.sanitize()` ile XSS temizliği → render
+
+**DOMPurify konfigürasyonu:**
+```typescript
+DOMPurify.sanitize(html, {
+  ALLOWED_TAGS: ['strong', 'em', 'a', 'code', 'pre', 'p', 'br'],
+  ALLOWED_ATTR: ['href', 'target', 'rel'],
+  ADD_ATTR: ['target'],  // tüm link'ler target='_blank'
+});
+```
+`<img>`, `<script>`, `<style>` ve diğer tüm tag'ler strip edilir.
 - Max 2000 karakter
 - Submit sonrası liste anında güncellenir (optimistic update)
+- Optimistic update başarısız olursa: UI geri alınır + toast: "Yorum kaydedilemedi. Tekrar deneyin."
 - Yorum listesi: avatar + isim + tarih + içerik + resolved rozeti
 
 ### 2.3 Inline Yorum (Annotation)
 - PDF ve DOCX görüntüleyicide satır/paragraf seçilebilir
 - Seçim sonrası tooltip: "Yorum ekle" butonu
-- `line_ref`: seçilen satır numarası (sayfa:satır formatı, örn: "2:15")
-- Inline yorumlar sağ kenarda sidebar'da listelenir
-- Tıklanınca ilgili satıra scroll edilir
+- `line_ref`: seçilen konum referansı (format: `"sayfa:satır"`, örn: `"2:15"`)
+
+**line_ref validasyon:** Server-side regex: `/^\d+:\d+$/`. Geçersiz format → 400 `VALIDATION_ERROR`. Client-side: hook otomatik üretir, manuel giriş yok.
+
+  - PDF: `react-pdf` text layer üzerinde native `Selection API` ile seçim yapılır
+  - DOCX: Mammoth.js HTML çıktısında `<p>` elementlerine `data-line` attribute'u eklenir, tıklama/seçim bu element'ler üzerinden yapılır
+  - PPTX/Image: Inline annotation desteklenmez (sadece genel yorum)
+- Inline yorumlar sağ kenarda sidebar'da listelenir (desktop: `w-80` sabit sidebar, mobil: bottom sheet)
+- Tıklanınca ilgili satıra scroll edilir (`scrollIntoView({ behavior: 'smooth', block: 'center' })`)
+- Sidebar-doküman scroll sync: aktif viewport'taki inline yorumlar vurgulanır
+
+**Annotation kütüphanesi:** Üçüncü parti kütüphane kullanılmaz. Native `Selection API` + custom React hook (`useTextSelection`) ile implementasyon yapılır. Bu yaklaşım bundle boyutunu küçük tutar ve react-pdf/mammoth çıktılarıyla doğal uyumludur.
+
+**`useTextSelection` hook imzası:**
+```typescript
+function useTextSelection(): {
+  selectedText: string;
+  range: Range | null;        // DOM Selection range
+  pageNumber: number | null;  // PDF sayfa numarası (react-pdf'den)
+  lineRef: string | null;     // 'sayfa:satır' formatı, örn: '2:15'
+  clearSelection: () => void;
+}
+```
+Hook, `document.getSelection()` dinler. PDF'de react-pdf text layer üzerinde çalışır. DOCX'te Mammoth HTML çıktısındaki `<p>` elementlerinde çalışır. Seçim yapıldığında tooltip pozisyonu `range.getBoundingClientRect()` ile hesaplanır.
 
 ### 2.4 Resolved Sistemi
 - Admin yorumu "Çözüldü" olarak işaretleyebilir
 - Çözülen yorumlar default gizlenir, "Çözülenleri göster" toggle ile açılır
 - Resolved yorumda kim/ne zaman çözdüğü gösterilir
+
+**Resolved görünürlük:** Tüm roller resolved yorumları görebilir (toggle açıkken). Resolved işaretleme yetkisi sadece Admin'dedir. Supervisor resolved görebilir ama işaretleyemez.
 
 ---
 
@@ -72,7 +107,7 @@ CREATE TABLE public.feedbacks (
   feedback_type VARCHAR(10) NOT NULL
     CHECK (feedback_type IN ('general', 'inline')),
   content TEXT NOT NULL CHECK (char_length(content) <= 2000),
-  line_ref VARCHAR(20),        -- "page:line" format, nullable
+  line_ref VARCHAR(20),        -- "sayfa:satır" formatı, örn: "2:15" — nullable (Feedback interface @1.1: string | null)
   resolved BOOLEAN DEFAULT false,
   resolved_by UUID REFERENCES public.user_profiles(id),
   resolved_at TIMESTAMPTZ,
@@ -81,6 +116,9 @@ CREATE TABLE public.feedbacks (
   -- NOT: fiziksel DELETE yok. Soft delete de yok.
   -- Admin "siler" ama kayıt kalır, is_hidden=true olur.
 );
+
+-- Silme audit: Admin 'sil' dediğinde is_hidden=true olur. audit_logs'a feedback.delete event'i yazılır.
+-- Audit log'da feedback content'in tamamı metadata alanında saklanır (geri dönüş için).
 
 ALTER TABLE public.feedbacks ADD COLUMN is_hidden BOOLEAN DEFAULT false;
 
@@ -119,6 +157,10 @@ PUT    /api/feedback/[id]             → Yorum güncelle (kendi yorumu)
 POST   /api/feedback/[id]/resolve     → Resolved işaretle (admin)
 DELETE /api/feedback/[id]             → Soft hide (admin)
 ```
+
+**Bildirim:** Feedback yazıldığında dosya sahibine bildirim gönderilir (self hariç): `createNotification({ user_id: file.uploaded_by, category: 'feedback', ... })` (PRD-016 §6.1).
+
+**Kullanılan ApiErrorCode'lar:** `FEEDBACK_TOO_LONG`, `FEEDBACK_NOT_FOUND`, `FEEDBACK_UNAUTHORIZED`, `AUTH_FORBIDDEN`
 
 ---
 

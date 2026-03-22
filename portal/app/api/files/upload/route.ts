@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
+import { notifyAdmins } from '@/lib/notifications';
 
 const MAX_SIZE = 50 * 1024 * 1024;
 const ACCEPTED_TYPES: Record<string, string> = {
@@ -33,8 +34,11 @@ export async function POST(request: NextRequest) {
   const displayName = (formData.get('display_name') as string) || file?.name || 'Untitled';
   const category    = (formData.get('category') as string) || 'other';
   const isPublic    = formData.get('is_public') === 'true';
-  const blurredPageRaw = formData.get('blurred_page');
-  const blurredPage = blurredPageRaw ? parseInt(blurredPageRaw as string, 10) : null;
+  const blurredPagesRaw = formData.get('blurred_pages');
+  const blurredPages = blurredPagesRaw ? JSON.parse(blurredPagesRaw as string) as number[] : null;
+
+  const documentDateRaw = formData.get('document_date');
+  const documentDate = documentDateRaw ? (documentDateRaw as string) : null;
 
   if (!file) return NextResponse.json({ error: 'File not found.' }, { status: 400 });
   if (file.size > MAX_SIZE) return NextResponse.json({ error: 'Maximum file size is 50MB.' }, { status: 400 });
@@ -69,12 +73,17 @@ export async function POST(request: NextRequest) {
     is_public:       isPublic,
     uploaded_by:     user.id,
     metadata:        { category, slug: slugify(displayName) },
-    blurred_page:    blurredPage ?? null,
+    blurred_pages:   blurredPages,
     sort_order:      null,
+    document_date:   documentDate,
   }).select().single();
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
 
   await log({ event_type: 'file.upload', severity: 'info', user_id: user.id, action: `Uploaded: ${displayName}`, metadata: { category, is_public: isPublic } });
+
+  // Notify admins about new file upload
+  notifyAdmins('files', `New file uploaded: ${displayName}`, `${displayName} was uploaded by a team member.`, '/files');
+
   return NextResponse.json({ file: fileRow }, { status: 201 });
 }

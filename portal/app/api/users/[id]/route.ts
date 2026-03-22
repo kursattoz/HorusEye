@@ -4,6 +4,28 @@ import { log } from '@/lib/logger';
 
 interface Params { params: Promise<{ id: string }> }
 
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Users can view own profile; admins can view anyone
+  const { data: profile } = await supabase.from('user_profiles').select('role').eq('id', user.id).single();
+  const isAdmin = profile?.role === 'admin';
+  if (!isAdmin && user.id !== id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('id, email, full_name, role, is_active, avatar_url, team_id, created_at')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+  return NextResponse.json({ user: data });
+}
+
 export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const supabase = await createClient();

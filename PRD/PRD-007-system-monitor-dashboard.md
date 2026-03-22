@@ -1,15 +1,15 @@
 # PRD-007 — System Monitor Dashboard
-**Version:** 1.0
+**Versiyon:** 1.0
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000, PRD-001, PRD-006
-**Blocks:** —
-**Status:** ACTIVE
+**Bağımlılıklar:** PRD-000, PRD-001, PRD-006
+**Bloke ettiği:** —
+**Durum:** ACTIVE
 
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
-LogEvent: @1.0
+AuthUser: @1.1
+LogEvent: @1.2
 HealthStatus: @1.0
 -->
 
@@ -62,7 +62,7 @@ Access: Admin only (RBAC middleware guard — PRD-001)
 ### 2.2 Environment Info Banner
 
 ```
-Environment: STAGING  |  App: v0.3.1 (abc1234)  |  Node: 20.x  |  Next.js: 14.x
+Environment: STAGING  |  App: v0.3.1 (abc1234)  |  Node: 20.x  |  Next.js: 15.x
 Supabase Project: horuseye-staging  |  Deployed: 2025-03-17 14:32 UTC
 ```
 
@@ -79,6 +79,10 @@ All values come from `process.env` and `/api/health/detailed`. No hardcoding.
 - Click row → modal: full stack trace + metadata JSON + Sentry link (if `sentry_event_id` present)
 - Empty state: "No errors in selected time range" (this is a good sign)
 
+**Sentry link:** `sentry_event_id` mevcutsa: `https://{SENTRY_ORG}.sentry.io/issues/?query={sentry_event_id}` formatında link gösterilir. `sentry_event_id` null ise link gösterilmez.
+
+**Boş durum:** Yeni instance'da hiç log yoksa: 'Seçilen zaman aralığında hata bulunamadı — bu iyi bir işaret!' mesajı gösterilir. Activity feed boşsa: 'Henüz aktivite yok'.
+
 ---
 
 ### 2.4 Live Activity Feed (from `audit_logs`)
@@ -88,6 +92,8 @@ All values come from `process.env` and `/api/health/detailed`. No hardcoding.
 - Filters: user search, event_type multi-select
 - Same user's consecutive events are color-grouped (visual grouping, not collapsing)
 - Click row → inline expansion: full metadata JSON
+
+**Renk gruplandırma:** Aynı `user_id`'ye ait ardışık event'ler aynı arka plan rengiyle gösterilir. Renk paleti: alternating `bg-muted/50` ve `bg-transparent`. Maksimum grup boyutu: 10 event (sonraki yeni grup başlatır). Farklı kullanıcı araya girerse grup biter.
 
 ---
 
@@ -127,24 +133,51 @@ Fetched from `/api/health/detailed` (admin-only endpoint).
 GET /api/health
 // Response: { status: 'ok' | 'degraded', timestamp: string }
 
-// app/api/health/detailed/route.ts — ADMIN ONLY
+// app/api/health/detailed/route.ts — ADMIN ONLY (implementasyon mevcut)
 GET /api/health/detailed
 // Response: {
-//   services: HealthStatus[],   // PRD-000 Section 3.5
-//   db_counts: Record<string, number>,
-//   environment: { name, version, commit, node, nextjs, deployed_at }
+//   status: 'healthy' | 'degraded',
+//   services: HealthStatus[],        // 5 servis: supabase_db, storage, auth, app, sentry
+//   db_counts: Record<string, number>, // 7 tablo: user_profiles, files, feedbacks, audit_logs, error_logs, report_deliverables, checklist_items
+//   environment: { env, node_version, app_url, server_time },
+//   stats_24h: { total_events, unique_users, error_count },
+//   checked_at: string
 // }
 ```
 
-**Health check implementations:**
-| Service | Check Method | Healthy Threshold |
-|---------|-------------|-------------------|
-| Supabase DB | `SELECT 1` query | < 100ms |
-| Supabase Storage | Read a known small test object | < 500ms |
-| Supabase Auth | Ping auth endpoint | < 300ms |
-| Vercel / App | Self-ping `/api/health` | < 200ms |
-| Sentry | SDK `isInitialized()` check | initialized = healthy |
-| Camera Module | `NEXT_PUBLIC_CAMERA_MODULE_ENABLED` env | disabled = 'unknown' |
+**Health check implementations (gerçek):**
+| Service | Check Method | Status Kuralı |
+|---------|-------------|---------------|
+| `supabase_db` | `user_profiles` tablosunda `SELECT count` | Response varsa healthy, yoksa down |
+| `supabase_storage` | `listBuckets()` çağrısı | Response varsa healthy, yoksa down |
+| `supabase_auth` | `auth.admin.listUsers({ perPage: 1 })` | Response varsa healthy, yoksa down |
+| `app` | Her zaman healthy, Node version raporlar | Daima healthy |
+| `sentry` | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` env var kontrolü | Configured = healthy, yoksa unknown |
+| Camera Module | `CAMERA_MODULE_ENABLED=true` ise `AI_SERVICE_URL/health` endpoint'ini çağır (GET, 5s timeout) | Response 200 + `status: healthy` = healthy. `status: degraded` = degraded. Timeout veya connection error = down. `CAMERA_MODULE_ENABLED=false` ise kart "Henüz aktif değil" placeholder gösterir |
+
+**Camera Module aktifken ek bilgiler:**
+AI servis health response'undan (PRD-013 §18.7.5) şu veriler Camera Module kartında gösterilir:
+- Aktif kamera sayısı (healthy/degraded/offline)
+- Pipeline FPS (actual vs target)
+- Buffer queue depth
+- Memory kullanımı (%)
+
+**Latency Threshold Değerleri:**
+
+| Servis | Healthy (yeşil) | Degraded (sarı) | Down (kırmızı) |
+|--------|-----------------|------------------|-----------------|
+| `supabase_db` | < 100ms | 100-500ms | > 500ms veya timeout |
+| `supabase_storage` | < 200ms | 200-1000ms | > 1000ms veya timeout |
+| `supabase_auth` | < 200ms | 200-1000ms | > 1000ms veya timeout |
+| `ai_service` | < 2s | 2-5s | > 5s veya timeout |
+
+**Status hesaplama:** Yanıt süresi threshold'u aşarsa degraded, timeout (10s) veya connection error ise down. Sentry ve Camera Module için latency ölçülmez (sadece bağlantı durumu).
+
+**Latency ölçüm metodolojisi:** Her servis check'i `Date.now()` ile başlar, response alındığında bitiş zamanı kaydedilir. Ölçülen süre: request gönderimi + ağ latency + servis işleme + response parse. Network overhead dahildir (gerçek kullanıcı deneyimini yansıtır).
+
+**Realtime güncelleme:** Tüm health check'ler 30s interval ile poll edilir (`setInterval` + React Query invalidation). Supabase Realtime kullanılmaz (health check'ler server-side endpoint'tir). Manuel refresh butonu anında çağırır.
+
+**Manuel refresh:** Sağ üst köşedeki 'Yenile' butonu tıklandığında tüm health check'ler + loglar + stats anında yeniden çekilir (React Query `invalidateQueries`).
 
 ---
 
@@ -186,3 +219,5 @@ MCP project name: **`horuseye-staging`**
 - [ ] DB health card shows latency in ms
 - [ ] Error row clicked → modal opens with full stack trace
 - [ ] Activity feed filters by event_type → only matching rows shown
+
+**Kullanılan ApiErrorCode'lar:** `AUTH_FORBIDDEN` (non-admin erişim), `INTERNAL_ERROR` (health check hatası)

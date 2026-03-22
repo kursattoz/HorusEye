@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Bell, FileText, Users, MessageSquare, Activity, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,35 +13,82 @@ import { cn } from '@/lib/utils';
 import { routes } from '@/constants/routes';
 
 interface Notification {
-  id:      number;
-  icon:    React.ElementType;
-  title:   string;
-  desc:    string;
-  time:    string;
-  unread:  boolean;
+  id: string;
+  category: 'files' | 'feedback' | 'team' | 'system';
+  title: string;
+  description: string | null;
+  is_read: boolean;
+  link: string | null;
+  created_at: string;
 }
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 1,  icon: FileText,      title: 'New file uploaded',         desc: 'Exam_2025_Final.pdf was added.',              time: '2 min',  unread: true  },
-  { id: 2,  icon: MessageSquare, title: 'New feedback',              desc: 'Student #4821 left feedback.',                time: '8 min',  unread: true  },
-  { id: 3,  icon: Users,         title: 'New user added',            desc: 'ayse.kaya@tedu.edu.tr joined the system.',    time: '15 min', unread: true  },
-  { id: 4,  icon: Activity,      title: 'System health warning',     desc: 'CPU usage exceeded 85% threshold.',           time: '32 min', unread: true  },
-  { id: 5,  icon: FileText,      title: 'File updated',              desc: 'Guidelines_2025.pdf was revised.',            time: '1 hr',   unread: true  },
-  { id: 6,  icon: MessageSquare, title: 'Feedback resolved',         desc: 'Student #3310\'s issue was closed.',          time: '2 hr',   unread: false },
-  { id: 7,  icon: Users,         title: 'Role changed',              desc: 'mehmet.demir\'s role changed to supervisor.', time: '3 hr',   unread: false },
-  { id: 8,  icon: FileText,      title: 'File deleted',              desc: 'Old_Exam_2024.pdf was removed.',              time: '5 hr',   unread: false },
-  { id: 9,  icon: Activity,      title: 'Monitor session started',   desc: 'Supervision session #7 became active.',       time: '1 day',  unread: false },
-  { id: 10, icon: MessageSquare, title: '5 new feedbacks pending',   desc: 'There are unreviewed feedback submissions.',  time: '1 day',  unread: false },
-];
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  files: FileText,
+  feedback: MessageSquare,
+  team: Users,
+  system: Activity,
+};
+
+function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const d = new Date(dateStr).getTime();
+  const diffMin = Math.floor((now - d) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+}
 
 export function NotificationBell() {
-  const [open, setOpen]           = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const fetchNotifications = useCallback(async () => {
+    const res = await fetch('/api/notifications');
+    if (res.ok) {
+      const data = await res.json();
+      setNotifications(data.notifications ?? []);
+    }
+  }, []);
 
-  function markAllRead() {
-    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  const fetchUnreadCount = useCallback(async () => {
+    const res = await fetch('/api/notifications/count');
+    if (res.ok) {
+      const data = await res.json();
+      setUnreadCount(data.unread ?? 0);
+    }
+  }, []);
+
+  // Fetch on mount + poll every 30s
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Fetch full list when popover opens
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (open) fetchNotifications();
+  }, [open, fetchNotifications]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  async function markAllRead() {
+    const res = await fetch('/api/notifications/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    });
+    if (res.ok) {
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    }
   }
 
   return (
@@ -50,7 +97,7 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
           )}
         </Button>
       </PopoverTrigger>
@@ -72,39 +119,60 @@ export function NotificationBell() {
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <CheckCheck size={12} />
-              Mark all as read
+              Mark all read
             </button>
           )}
         </div>
 
         {/* List */}
         <div className="max-h-80 overflow-y-auto">
-          {notifications.map(n => {
-            const Icon = n.icon;
-            return (
-              <div
-                key={n.id}
-                className={cn(
-                  'flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors hover:bg-muted/50',
-                  n.unread && 'bg-primary/5'
-                )}
-              >
-                <div className={cn(
-                  'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                  n.unread ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                )}>
-                  <Icon size={13} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn('text-xs leading-snug', n.unread ? 'font-medium text-foreground' : 'text-foreground/80')}>
-                    {n.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{n.desc}</p>
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{n.time}</span>
-              </div>
-            );
-          })}
+          {notifications.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">No notifications</div>
+          ) : (
+            notifications.slice(0, 10).map(n => {
+              const Icon = CATEGORY_ICONS[n.category] ?? Activity;
+              return (
+                <Link
+                  key={n.id}
+                  href={n.link ?? routes.notifications}
+                  onClick={() => {
+                    if (!n.is_read) {
+                      fetch('/api/notifications/read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: [n.id] }),
+                      });
+                      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+                      setUnreadCount(prev => Math.max(0, prev - 1));
+                    }
+                    setOpen(false);
+                  }}
+                  className={cn(
+                    'flex items-start gap-3 px-4 py-3 border-b last:border-0 transition-colors hover:bg-muted/50',
+                    !n.is_read && 'bg-primary/5'
+                  )}
+                >
+                  <div className={cn(
+                    'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                    !n.is_read ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                  )}>
+                    <Icon size={13} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn('text-xs leading-snug', !n.is_read ? 'font-medium text-foreground' : 'text-foreground/80')}>
+                      {n.title}
+                    </p>
+                    {n.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{n.description}</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                    {formatRelativeTime(n.created_at)}
+                  </span>
+                </Link>
+              );
+            })
+          )}
         </div>
 
         {/* Footer */}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -10,11 +10,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.vers
 
 interface PdfViewerProps {
   url:         string;
-  blurredPage?: number | null; // 1-indexed page to blur
+  blurredPages?: number[] | null; // 1-indexed pages to blur
   className?:  string;
 }
 
-export function PdfViewer({ url, blurredPage, className }: PdfViewerProps) {
+export function PdfViewer({ url, blurredPages, className }: PdfViewerProps) {
   const [numPages,    setNumPages]    = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading,     setLoading]     = useState(true);
@@ -27,7 +27,22 @@ export function PdfViewer({ url, blurredPage, className }: PdfViewerProps) {
 
   const width = containerRef?.clientWidth ?? 600;
 
-  const isBlurred = blurredPage != null && currentPage === blurredPage;
+  const isBlurred = blurredPages != null && blurredPages.includes(currentPage);
+
+  // Keyboard navigation: arrow left/right
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCurrentPage(p => Math.max(1, p - 1));
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCurrentPage(p => Math.min(numPages || p, p + 1));
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [numPages]);
 
   return (
     <div ref={setContainerRef} className={`flex flex-col h-full bg-zinc-950 ${className ?? ''}`}>
@@ -52,7 +67,7 @@ export function PdfViewer({ url, blurredPage, className }: PdfViewerProps) {
               renderAnnotationLayer={true}
             />
             {isBlurred && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded"
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded pointer-events-none"
                 style={{ backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.6)' }}>
                 <EyeOff className="h-8 w-8 text-zinc-300" />
                 <p className="text-sm font-medium text-zinc-200 text-center px-6 max-w-sm">

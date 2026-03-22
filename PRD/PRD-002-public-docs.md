@@ -7,9 +7,9 @@
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
-HorusFile: @1.0
-Feedback: @1.0
+AuthUser: @1.1
+HorusFile: @1.4
+Feedback: @1.1
 -->
 
 ## ⚠️ LLM TALİMATI
@@ -74,13 +74,27 @@ Sayfa ilk açıldığında: karşılama mesajı + proje açıklaması
 
 Dosya seçildiğinde türe göre görüntüleme:
 
-**PDF:** `<iframe>` ile native browser PDF viewer.
+**PDF:** `react-pdf` tabanlı sayfa sayfa görüntüleme (PdfViewer bileşeni).
+- Sayfa navigasyonu: önceki/sonraki butonları + klavye ok tuşları (ArrowLeft/Right/Up/Down)
+
+**PDF render hatası:** react-pdf yükleme/render başarısız olursa:
+- Hata mesajı: 'PDF görüntülenemiyor'
+- Direkt download linki gösterilir (`/d/[id]` proxy route)
+- Retry butonu: sayfayı yeniden yükler
+- `error_logs`'a kaydedilir (severity: warn)
+
+- Blur desteği: `blurred_pages` array'indeki sayfalar `backdrop-filter: blur(12px)` overlay ile gizlenir (pointer-events-none)
+- Sayfa sayacı: "Page X of Y"
 Fallback: "PDF görüntülenemiyor" + direkt download linki.
+
+**Blur overlay davranışı:** `blurred_pages` dizisindeki sayfa numaraları kontrol edilir. Kullanıcı o sayfaya navigate ettiğinde `backdrop-filter: blur(12px)` overlay tam sayfa kaplar + `pointer-events: none`. Sayfa geçişlerinde overlay anında uygulanır/kaldırılır (no flash).
 
 **PPTX:** `react-pptx` veya Google Docs Viewer embed.
 `https://docs.google.com/viewer?url={file_url}&embedded=true`
 
 **DOCX:** Mammoth.js ile HTML'e çevir, render et.
+
+**DOCX render sınırlaması:** Mammoth.js CSS stillerinin çoğunu strip eder. Başlık hiyerarşisi (h1-h6) korunur, bold/italic korunur, tablolar basitleştirilir. Karmaşık layout'lu DOCX'ler bozuk görünebilir — bu kabul edilir. Alternatif: Google Docs Viewer iframe (online gerektirir).
 
 **Image:** `<img>` tag, lightbox ile büyüt.
 
@@ -91,15 +105,33 @@ Her dokümanın kalıcı URL'si vardır: `/docs/[file-slug]`
 Bu URL paylaşılabilir. Sayfaya direkt girildiğinde o dosya seçili açılır.
 Slug: dosya adından türetilir, Türkçe karakter normalize edilir.
 
+**Slug oluşturma:** `display_name` → slug dönüşümü:
+- Kütüphane: `slugify` (`npm install slugify`) + `locale: 'tr'`
+- Türkçe karakter: ç→c, ğ→g, ı→i, ö→o, ş→s, ü→u
+- Boşluk → `-`, özel karakterler kaldırılır, lowercase
+- Çakışma: aynı slug varsa → `slug-2`, `slug-3` (suffix eklenir)
+- Slug `files.name` alanında saklanır
+
 ### 3.4 Feedback Bölümü (PRD-004 bileşeni)
 Doküman görüntüleyicinin altında feedback alanı bulunur.
 - **Guest:** Yorumları okuyabilir, yazamaz. "Yorum yazmak için giriş yapın" linki gösterilir.
 - **Supervisor/Admin:** Yorum yazabilir, inline annotation ekleyebilir.
 - **Assistant:** Yorumları okuyabilir, yazamaz.
 
+**Feedback kaynakları:** Public dokümantasyon sayfasında iki tür feedback görüntülenir:
+- **Authenticated feedback** (`feedbacks` tablosu, PRD-004): Supervisor/Admin yorumları
+- **Public feedback** (`public_feedback` tablosu, PRD-014): OTP ile doğrulanmış misafir yorumları
+Her iki tablo birleştirilerek zaman sırasına göre gösterilir. Public feedback'ler 'Misafir' etiketi ile ayırt edilir.
+
 ### 3.5 Download
 Her dosyanın yanında download ikonu. Herkese açık (auth gerekmez).
 Download eventi loglanır (PRD-006: file.download, user_id null ise guest).
+
+**Guest download takibi:** Guest kullanıcının kimliği bilinmez. `audit_logs`'a yazılırken:
+- `user_id`: null
+- `session_id`: `crypto.randomUUID()` (tarayıcı session'ı, sessionStorage'da tutulur)
+- `ip_address`: request header'dan
+- `user_agent`: request header'dan
 
 ---
 
@@ -124,14 +156,15 @@ Bu PRD kendi tablosu oluşturmaz.
 CREATE VIEW public.public_files AS
   SELECT
     id, display_name, file_type, public_url,
-    storage_path, created_at, updated_at,
+    storage_path, sort_order, created_at, updated_at,
     metadata->>'category' AS category,
     metadata->>'description' AS description,
     metadata->>'slug' AS slug
   FROM public.files
   WHERE is_public = true
     AND deleted_at IS NULL
-  ORDER BY created_at DESC;
+  ORDER BY sort_order ASC NULLS LAST, created_at ASC;
+  -- sort_order: admin'in belirlediği sıralamaya uy; set edilmemişse tarihe göre
 
 -- RLS: Herkes okuyabilir
 ALTER VIEW public.public_files OWNER TO authenticated;

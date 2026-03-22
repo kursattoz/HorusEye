@@ -18,6 +18,8 @@ import {
   ClipboardList,
   GraduationCap,
   Laptop,
+  Kanban,
+  CalendarDays,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
 import { switchTheme } from '@/lib/utils/switchTheme';
@@ -42,13 +44,33 @@ interface ComingSoonItem {
   icon:  React.ElementType;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: routes.dashboard, icon: LayoutDashboard, roles: ['admin','supervisor','assistant'] },
-  { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
-  { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
-  { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
-  { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
-  { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
+interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    items: [
+      { label: 'Dashboard', href: routes.dashboard, icon: LayoutDashboard, roles: ['admin','supervisor','assistant'] },
+    ],
+  },
+  {
+    label: 'Project Management',
+    items: [
+      { label: 'Sprints',   href: routes.sprints,   icon: Kanban,          roles: ['admin','supervisor','assistant'] },
+      { label: 'Calendar',  href: routes.calendar,  icon: CalendarDays,    roles: ['admin','supervisor','assistant'] },
+      { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
+      { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
+      { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
+    ],
+  },
+  {
+    items: [
+      { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
+    ],
+  },
 ];
 
 const COMING_SOON: ComingSoonItem[] = [
@@ -70,7 +92,10 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard: must detect client mount
   useEffect(() => { setMounted(true); }, []);
 
-  const visible = NAV_ITEMS.filter(item => item.roles.includes(role));
+  const visibleGroups = NAV_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(item => item.roles.includes(role)),
+  })).filter(group => group.items.length > 0);
 
   function NavLink({ item }: { item: NavItem }) {
     const Icon   = item.icon;
@@ -162,18 +187,31 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
         )}
       >
         {/* Main nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {visible.map(item => <NavLink key={item.href} item={item} />)}
+        <nav className="flex-1 px-2 py-3 overflow-y-auto">
+          {visibleGroups.map((group, gi) => (
+            <div key={gi} className="space-y-0.5">
+              {group.label && !collapsed && (
+                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                  {group.label}
+                </p>
+              )}
+              {group.label && collapsed && gi > 0 && (
+                <div className="my-2 border-t border-border/40" />
+              )}
+              {group.items.map(item => <NavLink key={item.href} item={item} />)}
+            </div>
+          ))}
 
-          {/* Divider */}
+          {/* Coming Soon */}
           {!collapsed && (
             <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
               Coming Soon
             </p>
           )}
           {collapsed && <div className="my-2 border-t border-border/40" />}
-
-          {COMING_SOON.map(item => <ComingSoonLink key={item.label} item={item} />)}
+          <div className="space-y-0.5">
+            {COMING_SOON.map(item => <ComingSoonLink key={item.label} item={item} />)}
+          </div>
         </nav>
 
         {/* Bottom section */}

@@ -8,7 +8,7 @@
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
+AuthUser: @1.1
 -->
 
 ## ⚠️ LLM TALİMATI
@@ -59,18 +59,55 @@ Admin, dashboard'dan yeni Supervisor/Assistant hesabı oluşturur. Sistem otomat
 - "Şifremi unuttum" linki
 - Kayıt ol seçeneği YOK (guest bunu görse bile hesap açamaz)
 - Login başarısız olursa: spesifik hata mesajı (yanlış şifre vs hesap yok ayrımı yapma — güvenlik)
-- 5 başarısız denemede 15 dakika kilitleme (rate limiting)
+- 5 başarısız denemede 15 dakika kilitleme (rate limiting — IP-based, in-memory Map ile implementasyon mevcut)
+
+**Rate limit implementasyonu:**
+- Yapı: in-memory `Map<string, { count: number, resetAt: number }>` (key: IP adresi)
+- Pencere: 15 dakika sliding window
+- Limit: 5 başarısız deneme / IP
+- Sıfırlama: başarılı login → o IP'nin sayacı sıfırlanır
+- Server restart: Map temizlenir (kabul edilebilir — kısa süreli)
+- **Üretim iyileştirmesi (opsiyonel):** Redis counter (ECS multi-task'ta paylaşımlı)
 - Başarılı login sonrası: role göre yönlendirme
   - admin → `/dashboard`
-  - supervisor → `/dashboard/feedback`
-  - assistant → `/dashboard/feedback`
+  - supervisor → `/feedback`
+  - assistant → `/feedback`
+
+**Post-login yönlendirme:**
+| Rol | Hedef | Neden |
+|-----|-------|-------|
+| admin | `/dashboard` | Tam erişim, ana hub |
+| supervisor | `/dashboard` | Dosya + feedback erişimi (eski: `/feedback`, güncellendi) |
+| assistant | `/dashboard` | Sadece okuma erişimi |
+
+Tüm roller `/dashboard`'a yönlendirilir. Sidebar menüsü role göre filtrelenir (PRD-009).
+- `force_password_change = true` olan kullanıcı → `/change-password` sayfasına yönlendirilir (başka sayfaya gidemez)
+
+**Durum makinesi:**
+```
+login → force_password_change=true → /change-password (kilitli)
+  → şifre değiştirildi → force_password_change=false → /dashboard
+  → logout → /login (force flag kalır, tekrar login'de yine /change-password)
+```
+Kullanıcı /change-password dışında hiçbir sayfaya gidemez. Logout yapabilir ama flag kalıcıdır.
 
 ### 3.2 Session Yönetimi
 - Supabase Auth JWT kullan
 - Token refresh: otomatik, kullanıcı fark etmez
 - Session süresi: 7 gün (remember me default açık)
-- Farklı cihazlarda oturum: izin verilir, max 5 aktif oturum
+- Farklı cihazlarda oturum: izin verilir, sınır yok
+  > **Not:** Supabase Auth per-user session listeleme/limitleme API'si sunmamaktadır.
+  > Custom session tracking tablosu gerektirir ve auth akışını karmaşıklaştırır.
+  > Mevcut kullanıcı ölçeğinde risk düşük olduğundan ertelenmiştir.
+  > Supabase bu özelliği native desteklerse veya gerçek ihtiyaç doğarsa implemente edilecektir.
 - Logout: tüm cihazlardan çıkış seçeneği sunulur
+
+> **⚠️ Kısıtlama:** Supabase Auth bireysel session listeleme API'si sunmaz. Bu nedenle aktif oturum listesi gösterilemez. Sadece şu işlemler desteklenir:
+> - Mevcut session bilgisi (token'dan parse)
+> - 'Tüm diğer oturumları kapat' (`auth.signOut({ scope: 'others' })`)
+> - Tek session sonlandırma **desteklenmez** — toplu çıkış kullanılır
+>
+> Detaylı session takibi (tarayıcı, OS, konum) için custom `user_sessions` tablosu gerekir — Phase 2'de değerlendirilecektir.
 
 ### 3.3 Rol Tabanlı Erişim (RBAC)
 
@@ -78,16 +115,28 @@ Admin, dashboard'dan yeni Supervisor/Assistant hesabı oluşturur. Sistem otomat
 |-------|-------|-----------|-----------|-------|
 | `/` | ✓ | ✓ | ✓ | ✓ |
 | `/docs/[slug]` | ✓ | ✓ | ✓ | ✓ |
-| `/login` | redirect dashboard | ✓ | ✓ | ✓ |
+| `/d/[id]` | ✓ | ✓ | ✓ | ✓ |
+| `/login` | redirect /dashboard | ✓ | ✓ | ✓ |
+| `/change-password` | ✓ (force) | ✓ (force) | ✓ (force) | ✗ |
 | `/dashboard` | ✓ | ✓ | ✓ | ✗ |
-| `/dashboard/files` | ✓ | ✗ | ✗ | ✗ |
-| `/dashboard/team` | ✓ | ✗ | ✗ | ✗ |
-| `/dashboard/feedback` | ✓ | ✓ | ✓ | ✗ |
+| `/files` | ✓ | ✗ | ✗ | ✗ |
+| `/team` | ✓ | ✗ | ✗ | ✗ |
+| `/feedback` | ✓ | ✓ | ✓ | ✗ |
+| `/reports` | ✓ | ✓ | ✓ | ✗ |
+| `/reports/[id]` | ✓ | ✓ | ✓ | ✗ |
+| `/notifications` | ✓ | ✓ | ✓ | ✗ |
+| `/settings` | ✓ | ✓ | ✓ | ✗ |
+| `/settings/users` | ✓ | ✗ | ✗ | ✗ |
+| `/settings/integrations` | ✓ | ✗ | ✗ | ✗ |
 | `/dev/monitor` | ✓ | ✗ | ✗ | ✗ |
 
 ### 3.4 Kullanıcı Yönetimi (Admin Paneli)
 - Kullanıcı listesi: tablo görünümü, rol filtresi, arama
 - Yeni kullanıcı oluştur: email, rol seç (supervisor/assistant), welcome email gönder
+
+**Welcome email şablonu:** PRD-014'teki `reportAssignedTemplate` ile aynı layout kullanılır. İçerik: 'HorusEye'a davet edildiniz. Giriş bilgileriniz: [email] / [geçici şifre]. İlk girişte şifre değiştirmeniz gerekecektir.'
+
+**Bildirim:** Kullanıcı oluşturulduğunda `notifyAdmins('team', 'Yeni kullanıcı eklendi', ...)` çağrılır (PRD-016). Email: PRD-014 welcome template.
 - Kullanıcı düzenle: rol değiştir, aktif/pasif et
 - Kullanıcı sil: soft delete (audit log için kayıt kalır)
 - Şifre sıfırlama emaili gönder
@@ -126,6 +175,14 @@ CREATE TABLE public.user_profiles (
   is_active BOOLEAN DEFAULT true,
   avatar_url TEXT,
   last_login TIMESTAMPTZ,
+  force_password_change BOOLEAN DEFAULT false,
+    -- Admin tarafından oluşturulan hesaplarda true set edilir.
+    -- Kullanıcı login olduğunda /change-password'a yönlendirilir,
+    -- şifresini değiştirince false olur.
+  color_theme VARCHAR(20) DEFAULT 'red'
+    CHECK (color_theme IN ('red', 'pink', 'orange', 'blue')),
+    -- Kullanıcının seçtiği renk teması (accent color, PRD-009/PRD-010).
+    -- Varsayılan: 'red'. Dark/light/system modu ayrı olarak next-themes ile yönetilir (localStorage).
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   deleted_at TIMESTAMPTZ DEFAULT NULL  -- Soft delete
@@ -178,6 +235,14 @@ DELETE /api/users/[id]        → Soft delete (admin only)
 POST   /api/users/[id]/reset  → Şifre reset emaili gönder (admin only)
 ```
 
+**Kullanılan ApiErrorCode'lar (PRD-000 §4.13):**
+- `AUTH_INVALID_CREDENTIALS` — yanlış email/şifre (401)
+- `AUTH_RATE_LIMITED` — çok fazla deneme (429)
+- `AUTH_SESSION_EXPIRED` — token geçersiz/expired (401)
+- `AUTH_FORBIDDEN` — yetkisiz rol (403)
+- `AUTH_USER_NOT_FOUND` — kullanıcı bulunamadı (404)
+- `AUTH_PASSWORD_CHANGE_REQUIRED` — şifre değişikliği zorunlu (403)
+
 ---
 
 ## 7. Hata Yönetimi (PRD-006 ile entegre)
@@ -198,6 +263,11 @@ Her auth işleminde aşağıdakiler loglanır (PRD-000 LogEventType):
 - Session süresi dolarsa: modal "Oturumunuz sona erdi, tekrar giriş yapın"
 - Rate limit: "Çok fazla deneme. 15 dakika sonra tekrar deneyin."
 - Sunucu hatası: "Bir sorun oluştu. Lütfen daha sonra tekrar deneyin." + Sentry'e rapor
+
+**Edge case'ler:**
+- `auth.users`'da var ama `user_profiles`'da yok → login başarısız, 500 error + Sentry alert
+- Eski JWT token (password reset sonrası) → Supabase otomatik reject eder (token invalidation built-in)
+- Supervisor `/files` erişimi → sidebar'da görünür, erişebilir (sadece okuma)
 
 ---
 
@@ -240,11 +310,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin-only routes
-  const adminRoutes = ['/dashboard/files', '/dashboard/team', '/dev'];
+  const adminRoutes = ['/files', '/team', '/dev', '/settings/users', '/settings/integrations'];
   if (adminRoutes.some(r => pathname.startsWith(r))) {
     if (session.user.role !== 'admin') {
       return NextResponse.redirect('/dashboard');
     }
+  }
+
+  // force_password_change kontrolü
+  if (session.user.force_password_change && pathname !== '/change-password') {
+    return NextResponse.redirect('/change-password');
   }
 
   // Her protected route erişimini logla (PRD-006)
@@ -261,6 +336,11 @@ export async function middleware(request: NextRequest) {
 | Tarih | Değişiklik | Etkilenen PRD |
 |-------|-----------|---------------|
 | v1.0 | İlk versiyon | — |
+| v1.1 | `user_profiles`'a `force_password_change` ve `color_theme` kolonları eklendi | PRD-009, PRD-010 |
+| v1.1 | Route tablosu güncellendi: `/dashboard/files` → `/files`, `/dashboard/team` → `/team` | PRD-000 |
+| v1.1 | Login sonrası supervisor/assistant → `/feedback` (eskiden `/dashboard/feedback`) | — |
+| v1.1 | Admin-only routes listesi genişletildi: `/settings/users`, `/settings/integrations` | PRD-010 |
+| v1.1 | `force_password_change` middleware kontrolü eklendi → `/change-password` yönlendirme | PRD-000 |
 
 ---
 

@@ -1,6 +1,7 @@
 import { redirect }  from 'next/navigation';
 import { getCurrentUser } from '@/app/actions/auth';
 import { AppShell }  from '@/components/layout/AppShell';
+import { SessionExpiredModal } from '@/components/auth/SessionExpiredModal';
 import { routes }    from '@/constants/routes';
 import type { UserRole } from '@/types';
 
@@ -27,6 +28,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       colorTheme={(user as { color_theme?: string }).color_theme ?? 'red'}
     >
       {children}
+      <SessionExpiredModal />
     </AppShell>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient }                   from '@/lib/supabase/server';
+import { log }                            from '@/lib/logger';
 
 const SIGNED_URL_EXPIRY = 300; // 5 minutes
 
@@ -39,6 +40,19 @@ export async function GET(
   const fileUrl = signed.signedUrl;
 
   const forceDownload = request.nextUrl.searchParams.get('dl') === '1';
+
+  // Log file download/view event (fire-and-forget)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  log({
+    event_type: forceDownload ? 'file.download' : 'file.view',
+    severity: 'info',
+    user_id: user?.id,
+    resource_type: 'file',
+    resource_id: id,
+    action: `${forceDownload ? 'Download' : 'View'}: ${file.display_name}`,
+    metadata: { is_public: file.is_public, display_name: file.display_name },
+  });
 
   if (!forceDownload) {
     return NextResponse.redirect(fileUrl, { status: 302 });

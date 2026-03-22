@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
 import { sendMail } from '@/lib/mailer';
 import { fileFeedbackTemplate } from '@/lib/mailer/templates';
+import { createNotification } from '@/lib/notifications';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -10,15 +11,21 @@ export async function GET(request: NextRequest) {
   if (!fileId) return NextResponse.json({ error: 'file_id is required.' }, { status: 400 });
 
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from('feedbacks')
     .select(`
       id, content, feedback_type, resolved, is_hidden, created_at, line_ref,
       author:author_id ( full_name, email )
     `)
     .eq('file_id', fileId)
-    .eq('is_hidden', false)
-    .order('created_at', { ascending: false });
+    .eq('is_hidden', false);
+
+  // Optional resolved filter: ?resolved=true or ?resolved=false
+  const resolvedParam = searchParams.get('resolved');
+  if (resolvedParam === 'true') query = query.eq('resolved', true);
+  else if (resolvedParam === 'false') query = query.eq('resolved', false);
+
+  const { data } = await query.order('created_at', { ascending: false });
 
   return NextResponse.json({ feedbacks: data ?? [] });
 }
@@ -76,6 +83,17 @@ export async function POST(request: NextRequest) {
       });
       sendMail({ to: uploader.email, subject, html });
     }
+  }
+
+  // Notify file uploader about new feedback (if different from author)
+  if (fileRow?.uploaded_by && fileRow.uploaded_by !== user.id) {
+    createNotification({
+      user_id: fileRow.uploaded_by,
+      category: 'feedback',
+      title: 'New feedback on your file',
+      description: `Feedback was added to ${fileRow.display_name}.`,
+      link: `/feedback?file_id=${file_id}`,
+    });
   }
 
   return NextResponse.json({ feedback }, { status: 201 });

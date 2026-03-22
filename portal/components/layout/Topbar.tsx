@@ -1,6 +1,8 @@
 'use client';
 
-import { ChevronLeft, LogOut, Settings } from 'lucide-react';
+import { useTransition } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { ChevronLeft, ArrowLeft, LogOut, Settings, Loader2 } from 'lucide-react';
 import { HorusEyeIcon } from './HorusEyeIcon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -35,17 +37,31 @@ function getInitials(name: string | null, email: string): string {
 
 export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps) {
   const initials = getInitials(user.full_name, user.email);
+  const [signingOut, startSignOut] = useTransition();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Show back button on deep pages (e.g. /sprints/123, /reports/456)
+  const pathSegments = pathname.split('/').filter(Boolean);
+  const isDeepPage = pathSegments.length > 1;
 
   return (
     <header className="h-14 border-b bg-background flex items-center justify-between pr-4 shrink-0">
-      {/* Mobile: static logo, no sidebar toggle */}
-      <div className="flex md:hidden items-center gap-2 pl-4">
-        <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-          <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
+      {/* Mobile: back button (deep pages) + logo */}
+      <div className="flex md:hidden items-center gap-1 pl-2">
+        {isDeepPage && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => router.back()}>
+            <ArrowLeft size={16} />
+          </Button>
+        )}
+        <div className="flex items-center gap-2 pl-1">
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
+          </div>
+          <span className="text-sm leading-none select-none">
+            <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
+          </span>
         </div>
-        <span className="text-sm leading-none select-none">
-          <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
-        </span>
       </div>
 
       {/* Desktop: animated sidebar toggle area */}
@@ -117,13 +133,14 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <form action={logoutAction} className="w-full">
-                <button type="submit" className="flex w-full items-center text-sm">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </button>
-              </form>
+            <DropdownMenuItem
+              disabled={signingOut}
+              onSelect={() => startSignOut(() => logoutAction())}
+            >
+              {signingOut
+                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                : <LogOut className="mr-2 h-4 w-4" />}
+              {signingOut ? 'Signing out...' : 'Sign Out'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

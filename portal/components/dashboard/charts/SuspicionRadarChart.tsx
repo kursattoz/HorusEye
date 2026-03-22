@@ -12,11 +12,11 @@ import {
 // Mock data: average suspicious event count per behavior category
 // Comparing high-risk vs low-risk student cohorts during the exam
 const chartData = [
-  { behavior: 'Head Turn',     highRisk: 18, lowRisk:  3 },
-  { behavior: 'Gaze Deviation',highRisk: 22, lowRisk:  5 },
-  { behavior: 'Face Lost',     highRisk: 12, lowRisk:  1 },
-  { behavior: 'Lip Movement',  highRisk: 16, lowRisk:  4 },
-  { behavior: 'Phone Detected',highRisk:  9, lowRisk:  0 },
+  { behavior: 'Head Turn',      highRisk: 18, lowRisk:  3 },
+  { behavior: 'Gaze Deviation', highRisk: 22, lowRisk:  5 },
+  { behavior: 'Face Lost',      highRisk: 12, lowRisk:  1 },
+  { behavior: 'Lip Movement',   highRisk: 16, lowRisk:  4 },
+  { behavior: 'Phone Detected', highRisk:  9, lowRisk:  0 },
   { behavior: 'Posture Change', highRisk: 14, lowRisk:  6 },
 ];
 
@@ -31,6 +31,29 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+/* Wrap long axis labels into multiple lines */
+function renderAxisTick({
+  x, y, payload, textAnchor,
+}: {
+  x: number; y: number;
+  payload: { value: string };
+  textAnchor: string;
+}) {
+  const words = payload.value.split(' ');
+  // Always split into 2 lines if more than 1 word
+  const lines = words.length > 1
+    ? [words.slice(0, Math.ceil(words.length / 2)).join(' '), words.slice(Math.ceil(words.length / 2)).join(' ')]
+    : [payload.value];
+
+  return (
+    <text x={x} y={y} textAnchor={textAnchor as 'start' | 'middle' | 'end'} fontSize={11} fill="currentColor" className="text-muted-foreground">
+      {lines.map((line, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? 0 : 14}>{line}</tspan>
+      ))}
+    </text>
+  );
+}
+
 export function SuspicionRadarChart() {
   return (
     <Card className="h-full flex flex-col">
@@ -40,13 +63,13 @@ export function SuspicionRadarChart() {
           AI anomaly scores by category — Exam Session #4
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-0">
-        <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
-          <RadarChart data={chartData} outerRadius="62%">
+      <CardContent className="flex-1 pb-0">
+        <ChartContainer config={chartConfig} className="mx-auto aspect-square w-full">
+          <RadarChart data={chartData} outerRadius="55%">
             <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
             <PolarAngleAxis
               dataKey="behavior"
-              tick={{ fontSize: 11 }}
+              tick={renderAxisTick}
               tickLine={false}
             />
             <PolarGrid />

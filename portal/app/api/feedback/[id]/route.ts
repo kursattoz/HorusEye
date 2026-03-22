@@ -4,6 +4,24 @@ import { log } from '@/lib/logger';
 
 interface Params { params: Promise<{ id: string }> }
 
+export async function GET(_req: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('feedbacks')
+    .select(`
+      id, content, feedback_type, resolved, is_hidden, created_at, line_ref,
+      author:author_id ( full_name, email )
+    `)
+    .eq('id', id)
+    .eq('is_hidden', false)
+    .single();
+
+  if (error || !data) return NextResponse.json({ error: 'Feedback not found.' }, { status: 404 });
+  return NextResponse.json({ feedback: data });
+}
+
 export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const supabase = await createClient();

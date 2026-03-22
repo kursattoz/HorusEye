@@ -1,15 +1,15 @@
 # PRD-006 — Error Management & Application Logging
-**Version:** 1.0
+**Versiyon:** 1.0
 **Owner:** HorusEye Team
-**Dependencies:** PRD-000, PRD-001
-**Blocks:** PRD-007
-**Status:** ACTIVE
+**Bağımlılıklar:** PRD-000, PRD-001
+**Bloke ettiği:** PRD-007
+**Durum:** ACTIVE
 
 ---
 
 <!-- INTERFACE_DEPS
-AuthUser: @1.0
-LogEvent: @1.0
+AuthUser: @1.1
+LogEvent: @1.2
 -->
 
 ## ⚠️ LLM INSTRUCTION
@@ -151,6 +151,10 @@ export async function log(payload: LogPayload): Promise<void> {
       extra:   payload.metadata,
       user:    payload.user_id ? { id: payload.user_id } : undefined,
     });
+
+    // Sentry user context: Login başarılı olduğunda:
+    // Sentry.setUser({ id: user.id, email: user.email, username: user.full_name });
+    // Logout'ta: Sentry.setUser(null);
   }
 
   // All events → Supabase (fire and forget — never block the application)
@@ -164,6 +168,22 @@ export async function log(payload: LogPayload): Promise<void> {
       console.error('[Logger] DB insert failed:', error.message);
     }
   });
+```
+
+**Fallback mekanizmasi:** Log insert Supabase'e yazilamazsa:
+1. Console.error ile logla (CloudWatch'a duser)
+2. Sentry'ye `log_insert_failed` event'i gonder (ayri try/catch)
+3. Asla sessizce yutma — en az bir cikis noktasi olmali
+
+Production'da `console.error` CloudWatch Logs'a gider → 0 gorunurluk riski ortadan kalkar.
+
+**Tip guvenligi:** `log()` fonksiyonu `event_type` parametresini `LogEventType` union type olarak alir (string degil). TypeScript compile-time'da gecersiz event type'i yakalar:
+```typescript
+import { LogEventType } from '@/types';
+export async function log(event_type: LogEventType, ...) { ... }
+```
+
+**Yuksek hacim koruma:** `page.visit` event'leri yuksek hacim uretebilir. Batching yapilmaz (her event ayri INSERT) cunku Supabase connection pooling (PgBouncer port 6543) bunu handle eder. Sorun olursa: client-side debounce (ayni sayfa 5s icinde tekrar loglanmaz).
 }
 
 // Convenience wrappers
@@ -228,6 +248,10 @@ For public pages, a client-side hook handles it:
 // Fires on every route change
 // With user session → logs with user_id
 // Without session   → logs with anonymous session_id (stored in sessionStorage)
+
+// session_id üretimi: crypto.randomUUID() ile üretilir.
+// sessionStorage'da saklanır (tab başına unique). Tab kapatılınca kaybolur.
+// Yeni tab = yeni session_id.
 ```
 
 ---
