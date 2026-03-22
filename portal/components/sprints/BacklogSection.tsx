@@ -52,6 +52,7 @@ type BacklogItemWithAssignee = BacklogItem & {
 export function BacklogSection({ onUpdate, sprints }: BacklogSectionProps) {
   const [items, setItems] = useState<BacklogItemWithAssignee[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'unassigned'>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
@@ -60,7 +61,7 @@ export function BacklogSection({ onUpdate, sprints }: BacklogSectionProps) {
   });
 
   async function fetchItems() {
-    const res = await fetch('/api/backlog?unassigned=true');
+    const res = await fetch('/api/backlog');
     if (res.ok) {
       const data = await res.json();
       setItems(data.items ?? []);
@@ -100,17 +101,53 @@ export function BacklogSection({ onUpdate, sprints }: BacklogSectionProps) {
     onUpdate();
   }
 
+  const unassignedCount = items.filter(i => !i.sprint_id).length;
+  const filteredItems = filter === 'unassigned' ? items.filter(i => !i.sprint_id) : items;
+
+  // Group by sprint
+  const grouped = new Map<string, { name: string; items: BacklogItemWithAssignee[] }>();
+  grouped.set('_unassigned', { name: 'No Sprint', items: [] });
+  for (const s of sprints) {
+    grouped.set(s.id, { name: s.name.split('—')[0]?.trim() ?? s.name, items: [] });
+  }
+  for (const item of filteredItems) {
+    const key = item.sprint_id ?? '_unassigned';
+    if (!grouped.has(key)) grouped.set(key, { name: 'Unknown Sprint', items: [] });
+    grouped.get(key)!.items.push(item);
+  }
+
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <button type="button" className="flex items-center gap-2" onClick={() => setCollapsed(c => !c)}>
-          <ChevronRight
-            size={14}
-            className={cn('text-muted-foreground transition-transform', !collapsed && 'rotate-90')}
-          />
-          <h2 className="text-sm font-semibold text-muted-foreground">Backlog</h2>
-          <Badge variant="secondary" className="text-[10px]">{items.length}</Badge>
-        </button>
+        <div className="flex items-center gap-3">
+          <button type="button" className="flex items-center gap-2" onClick={() => setCollapsed(c => !c)}>
+            <ChevronRight
+              size={14}
+              className={cn('text-muted-foreground transition-transform', !collapsed && 'rotate-90')}
+            />
+            <h2 className="text-sm font-semibold text-muted-foreground">All Backlog Items</h2>
+            <Badge variant="secondary" className="text-[10px]">{filteredItems.length}</Badge>
+          </button>
+          {/* Filter toggle */}
+          <div className="flex items-center gap-1 border rounded-md p-0.5">
+            <Button
+              variant={filter === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={() => setFilter('all')}
+            >
+              All ({items.length})
+            </Button>
+            <Button
+              variant={filter === 'unassigned' ? 'default' : 'ghost'}
+              size="sm"
+              className="h-6 text-[10px] px-2"
+              onClick={() => setFilter('unassigned')}
+            >
+              No Sprint ({unassignedCount})
+            </Button>
+          </div>
+        </div>
         <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
           <Plus size={14} className="mr-1" />
           Add Item
@@ -118,18 +155,38 @@ export function BacklogSection({ onUpdate, sprints }: BacklogSectionProps) {
       </div>
 
       {!collapsed && (
-        <div className="space-y-2">
-          {items.length === 0 ? (
+        <div className="space-y-4">
+          {filteredItems.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">No backlog items. Create one to get started.</p>
           ) : (
-            items.map(item => (
-              <BacklogItemCard
-                key={item.id}
-                item={item}
-                sprints={sprints}
-                onUpdate={handleItemUpdate}
-              />
-            ))
+            Array.from(grouped.entries())
+              .filter(([, g]) => g.items.length > 0)
+              .map(([key, group]) => (
+                <div key={key}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={cn(
+                      'text-xs font-medium',
+                      key === '_unassigned' ? 'text-amber-600' : 'text-muted-foreground',
+                    )}>
+                      {group.name}
+                    </span>
+                    <Badge variant="secondary" className="text-[9px]">{group.items.length}</Badge>
+                    {key === '_unassigned' && (
+                      <Badge variant="outline" className="text-[8px] border-amber-500/30 text-amber-600">needs sprint</Badge>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {group.items.map(item => (
+                      <BacklogItemCard
+                        key={item.id}
+                        item={item}
+                        sprints={sprints}
+                        onUpdate={handleItemUpdate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
           )}
         </div>
       )}
