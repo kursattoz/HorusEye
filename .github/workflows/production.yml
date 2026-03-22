@@ -76,7 +76,7 @@ jobs:
 
       - name: CDK deploy production stack
         working-directory: infra
-        run: npx cdk deploy HorusEye-Production --require-approval never
+        run: npx cdk deploy HorusEye-Production --require-approval never --exclusively
         env:
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
