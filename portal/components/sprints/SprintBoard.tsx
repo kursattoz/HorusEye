@@ -11,7 +11,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, Target, ChevronRight, BarChart3 } from 'lucide-react';
+import { Plus, Calendar, Target, ChevronRight, BarChart3, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { routes } from '@/constants/routes';
@@ -27,6 +27,7 @@ interface SprintRow {
   status: SprintStatus;
   item_count: number;
   done_count: number;
+  estimated_hours: number;
 }
 
 const STATUS_COLORS: Record<SprintStatus, string> = {
@@ -198,66 +199,139 @@ function SprintGroup({
       </button>
 
       {!collapsed && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
-          {sprints.map(s => {
-            const progress = s.item_count > 0
-              ? Math.round((s.done_count / s.item_count) * 100)
-              : 0;
-            const now = new Date();
-            const end = new Date(s.end_date);
-            const isOverdue = end < now && s.status !== 'completed';
-
-            return (
-              <button
-                key={s.id}
-                onClick={() => router.push(routes.sprintDetail(s.id))}
-                className="text-left border rounded-lg p-4 space-y-3 transition-all hover:bg-muted/50 hover:shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-medium">{s.name}</h3>
-                    {s.goal && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{s.goal}</p>
-                    )}
-                  </div>
-                  <Badge className={cn('shrink-0 text-[10px]', STATUS_COLORS[s.status])}>
-                    {s.status}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar size={12} />
-                    {new Date(s.start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                    {' — '}
-                    {new Date(s.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                  </span>
-                  {isOverdue && <span className="text-destructive font-medium">Overdue</span>}
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Target size={11} />
-                      Items
-                    </span>
-                    <span>{s.done_count}/{s.item_count} ({progress}%)</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full rounded-full transition-all duration-300',
-                        s.status === 'completed' ? 'bg-green-500' : 'bg-primary',
-                      )}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-4">
+          {sprints.map(s => (
+            <SprintCard key={s.id} sprint={s} router={router} />
+          ))}
         </div>
       )}
     </section>
+  );
+}
+
+/* ── Sprint card with expandable item list ─────────────── */
+
+const ITEM_STATUS_DOT: Record<string, string> = {
+  backlog: 'bg-muted-foreground/50',
+  todo: 'bg-amber-500',
+  in_progress: 'bg-blue-500',
+  review: 'bg-purple-500',
+  done: 'bg-green-500',
+};
+
+interface SprintItem {
+  id: string;
+  seq_id: number;
+  title: string;
+  status: string;
+  priority: string;
+  prd_id: string | null;
+  assignee?: { full_name: string } | null;
+}
+
+function SprintCard({ sprint: s, router }: { sprint: SprintRow; router: ReturnType<typeof useRouter> }) {
+  const [expanded, setExpanded] = useState(false);
+  const [items, setItems] = useState<SprintItem[]>([]);
+  const [fetched, setFetched] = useState(false);
+
+  const progress = s.item_count > 0 ? Math.round((s.done_count / s.item_count) * 100) : 0;
+  const now = new Date();
+  const end = new Date(s.end_date);
+  const isOverdue = end < now && s.status !== 'completed';
+
+  async function toggleExpand() {
+    if (!expanded && !fetched) {
+      const res = await fetch(`/api/sprints/${s.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setItems(data.items ?? []);
+        setFetched(true);
+      }
+    }
+    setExpanded(prev => !prev);
+  }
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      {/* Sprint header */}
+      <div className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2 min-w-0">
+            <button type="button" onClick={toggleExpand} className="mt-0.5 shrink-0">
+              <ChevronRight size={14} className={cn('text-muted-foreground transition-transform', expanded && 'rotate-90')} />
+            </button>
+            <div className="min-w-0">
+              <h3 className="text-sm font-medium">{s.name}</h3>
+              {s.goal && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{s.goal}</p>}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge className={cn('text-[10px]', STATUS_COLORS[s.status])}>{s.status}</Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => router.push(routes.sprintDetail(s.id))}
+            >
+              <ExternalLink size={13} />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Calendar size={12} />
+            {new Date(s.start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+            {' — '}
+            {new Date(s.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+          </span>
+          <span className="flex items-center gap-1">
+            <Target size={11} />
+            {s.done_count}/{s.item_count} ({progress}%)
+          </span>
+          {s.estimated_hours > 0 && (
+            <span>{s.estimated_hours}h</span>
+          )}
+          {isOverdue && <span className="text-destructive font-medium">Overdue</span>}
+        </div>
+
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn('h-full rounded-full transition-all duration-300', s.status === 'completed' ? 'bg-green-500' : 'bg-primary')}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Expanded item list */}
+      {expanded && (
+        <div className="border-t bg-muted/20">
+          {items.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No items in this sprint.</p>
+          ) : (
+            <div className="divide-y">
+              {items.map(item => (
+                <div key={item.id} className="flex items-center gap-3 px-4 py-2 text-xs hover:bg-muted/30">
+                  <span className={cn('size-2 rounded-full shrink-0', ITEM_STATUS_DOT[item.status] ?? 'bg-muted-foreground')} />
+                  <span className="font-mono text-muted-foreground/60 shrink-0">BL-{item.seq_id}</span>
+                  <span className={cn('flex-1 truncate', item.status === 'done' && 'line-through text-muted-foreground')}>
+                    {item.title}
+                  </span>
+                  {item.prd_id && (
+                    <span className="text-[9px] text-muted-foreground/50 shrink-0">{item.prd_id}</span>
+                  )}
+                  {item.assignee && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">{(item.assignee as { full_name: string }).full_name.split(' ')[0]}</span>
+                  )}
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 shrink-0">
+                    {item.status.replace('_', ' ')}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -65,6 +65,22 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPO:latest
 
+      # ── CDK infra deploy (Lambda, EventBridge, env vars) ──────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: CDK deploy production stack
+        working-directory: infra
+        run: npx cdk deploy HorusEye-Production --require-approval never
+        env:
+          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+
       # ── ECS deploy ─────────────────────────────────────────────
       - name: Resolve ECS names from CDK stack outputs
         id: ecs
