@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "validate:prd": "node ../scripts/validate-prd-interfaces.js",
-    "validate": "npm run validate:prd && npm run type-check && npm run lint && npm run test:coverage"
+    "validate": "npm run validate:prd && npm run type-check && npm run lint && npm run test:coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.0.2",

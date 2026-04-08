@@ -191,3 +191,15 @@ export interface BacklogActivity {
   hours_logged: number | null;
   created_at: string;
 }
+
+// @interface BacklogReview @version 1.0
+export interface BacklogReview {
+  id: string;
+  backlog_item_id: string;
+  reviewer_id: string;
+  status: 'pending' | 'approved' | 'changes_requested';
+  comment: string | null;
+  has_screenshot: boolean;
+  created_at: string;
+  updated_at: string;
+}
