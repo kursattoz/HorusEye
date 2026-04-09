@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
     createNotification({
       user_id: fileRow.uploaded_by,
       category: 'feedback',
-      title: 'New feedback on your file',
-      description: `Feedback was added to ${fileRow.display_name}.`,
+      title: `New feedback on ${fileRow.display_name}`,
+      description: `"${content}" was submitted for ${fileRow.display_name}.`,
       link: `/feedback?file_id=${file_id}`,
     });
   }
