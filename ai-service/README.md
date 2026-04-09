@@ -1,48 +1,65 @@
 # HorusEye AI Service
 
-**Status: RESERVED — Phase 4 (Graduation Project)**
+Python **FastAPI** service for camera AI analysis (PRD-013). **BL-24 (Phase A)** delivers a runnable scaffold: Docker, `/health`, RTSP ingestion skeleton, WebSocket routes.
 
-This directory will contain the Python-based AI analysis service for multi-camera exam proctoring.
-See `PRD/PRD-013-camera-ai-analysis.md` for full specification.
-
-## Planned Architecture
+## Layout (PRD-013 §12.1)
 
 ```
 ai-service/
+├── Dockerfile
+├── docker-compose.yml
+├── config.yaml
+├── requirements.txt
 ├── src/
-│   ├── detection/      # YOLOv8 person/object detection
-│   ├── analysis/       # Behavior analysis, violation scoring
-│   └── api/            # FastAPI endpoints consumed by portal
-├── tests/              # pytest test suite
-├── models/             # Pre-trained model weights (gitignored)
-├── requirements.txt    # Python dependencies
-└── Dockerfile
+│   ├── main.py
+│   ├── ingestion/
+│   │   └── frame_reader.py   # RTSP → frames (OpenCV skeleton)
+│   └── api/
+│       └── ws_handler.py      # WebSocket handlers
+└── tests/
 ```
 
-## Planned Tech Stack
+## API (Phase A)
 
-- **Python 3.12+**
-- **FastAPI** — REST API consumed by Next.js portal
-- **YOLOv8 (Ultralytics)** — person and object detection
-- **OpenCV** — video frame processing
-- **TensorFlow / PyTorch** — custom behavior classifiers
-- **WebSocket** — real-time violation alerts to portal
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Liveness JSON (`status`, `service`) |
+| WS | `/ws/sessions/{session_id}/detections` | Detection / status channel (stub) |
+| WS | `/ws/sessions/{session_id}/video` | Video channel (stub) |
 
-## Integration with Portal
-
-The portal communicates with this service via:
-- `POST /analyze/frame` — single frame analysis
-- `WS  /stream/{session_id}` — real-time stream analysis
-- `GET  /health` — service health check (shown on /dev/monitor)
-
-Feature flag in portal: `NEXT_PUBLIC_CAMERA_MODULE_ENABLED=false` until this service is ready.
-
-## Development Setup (future)
+## Local development
 
 ```bash
 cd ai-service
 python -m venv .venv
-source .venv/bin/activate
+.venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-uvicorn src.api.main:app --reload --port 8000
+uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+## Tests
+
+```bash
+cd ai-service
+pip install -r requirements.txt
+pytest
+```
+
+## On-prem Docker
+
+```bash
+cd ai-service
+docker compose up --build
+```
+
+Health check: `GET http://localhost:8000/health`
+
+Environment:
+
+- `CORS_ORIGINS` — comma-separated origins, or `*` (default) for permissive CORS on REST (WebSocket clients use their own origin rules).
+
+## Integration with portal
+
+Portal env: `AI_SERVICE_URL=http://localhost:8000` (see PRD-013). Feature flag `NEXT_PUBLIC_CAMERA_MODULE_ENABLED` remains off until integration work is done.
+
+Later phases add YOLO/MediaPipe, Supabase evidence upload, and ECS deployment (see PRD).

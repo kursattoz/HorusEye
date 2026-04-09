@@ -1,0 +1,9 @@
+# On-prem / local — BL-24 Phase A
+services:
+  ai-service:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: info
+      CORS_ORIGINS: "*"
