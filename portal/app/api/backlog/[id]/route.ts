@@ -123,6 +123,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
+  // Notify file uploader if item has a file_id
+  if (data.file_id) {
+    const { data: file } = await supabase
+      .from('files')
+      .select('display_name, uploaded_by')
+      .eq('id', data.file_id)
+      .maybeSingle();
+
+    if (file?.uploaded_by) {
+      createNotification({
+        user_id: file.uploaded_by,
+        category: 'files',
+        title: `File updated: ${file.display_name}`,
+        description: `Backlog item "${data.title}" has been updated.`,
+        link: '/files',
+      });
+    }
+  }
+
   // Notify reviewer when item moves to 'review'
   if (body.status === 'review' && prev?.status !== 'review') {
     const { data: fullItem } = await supabase
