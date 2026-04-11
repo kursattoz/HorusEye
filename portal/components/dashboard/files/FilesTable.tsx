@@ -63,18 +63,31 @@ function formatDate(iso: string): string {
 }
 
 /* ── Inline editable name cell ── */
-function EditableName({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+function EditableName({ value, onSave }: { value: string; onSave: (v: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState(value);
+  const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
 
-  function commit() {
+  async function commit() {
     const trimmed = draft.trim();
-    if (trimmed && trimmed !== value) onSave(trimmed);
-    else setDraft(value);
-    setEditing(false);
+    if (!trimmed || trimmed === value) {
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const ok = await onSave(trimmed);
+    setSaving(false);
+    if (ok) {
+      setEditing(false);
+    } else {
+      setDraft(value);
+      setEditing(false);
+    }
   }
 
   if (editing) {
@@ -85,7 +98,8 @@ function EditableName({ value, onSave }: { value: string; onSave: (v: string) =>
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
-        className="w-full h-7 text-sm border rounded px-2 bg-background font-medium"
+        disabled={saving}
+        className="w-full h-7 text-sm border rounded px-2 bg-background font-medium disabled:opacity-50"
       />
     );
   }
@@ -214,7 +228,7 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     }
   }
 
-  async function updateDisplayName(id: string, newName: string) {
+  async function updateDisplayName(id: string, newName: string): Promise<boolean> {
     const res = await fetch(`/api/files/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -223,9 +237,10 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     if (res.ok) {
       setFiles(prev => prev.map(f => f.id === id ? { ...f, display_name: newName } : f));
       toast.success('Name updated.');
-    } else {
-      toast.error('Rename failed.');
+      return true;
     }
+    toast.error('Rename failed.');
+    return false;
   }
 
   return (
