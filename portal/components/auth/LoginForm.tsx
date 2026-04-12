@@ -8,6 +8,7 @@ import { Label }    from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_EMAIL_LEN    = 254; // RFC 5321
@@ -23,9 +24,14 @@ const initialState: AuthState = {};
 
 export function LoginForm() {
   const [state, action, pending] = useActionState(loginAction, initialState);
-  const [showPassword, setShowPassword] = useState(false);
-  const [fieldErrors,  setFieldErrors]  = useState<FieldErrors>({});
+  const [showPassword,   setShowPassword]   = useState(false);
+  const [fieldErrors,    setFieldErrors]    = useState<FieldErrors>({});
+  const [showForgot,     setShowForgot]     = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  if (showForgot) {
+    return <ForgotPasswordForm onBack={() => setShowForgot(false)} />;
+  }
 
   function validate(email: string, password: string): FieldErrors {
     const errors: FieldErrors = {};
@@ -100,7 +106,16 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <button
+            type="button"
+            onClick={() => setShowForgot(true)}
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+          >
+            Forgot password?
+          </button>
+        </div>
         <div className="relative">
           <Input
             id="password"
