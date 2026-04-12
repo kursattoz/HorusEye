@@ -118,7 +118,7 @@ export interface ReportAssignedData {
 }
 
 export function reportAssignedTemplate(data: ReportAssignedData): { subject: string; html: string } {
-  const subject = `[HorusEye] You&apos;ve been assigned to "${data.deliverableTitle}"`;
+  const subject = `[HorusEye] You've been assigned to "${data.deliverableTitle}"`;
   const html = layout(subject, `
     ${heading('Report Deliverable Assigned')}
     ${paragraph(`Hi ${escapeHtml(data.assigneeName)}, a report deliverable has been assigned to you.`)}

@@ -83,11 +83,8 @@ export async function POST(request: NextRequest) {
       });
       sendMail({ to: uploader.email, subject, html });
     }
-  }
 
-  // Notify file uploader about new feedback (if different from author)
-  if (fileRow?.uploaded_by && fileRow.uploaded_by !== user.id) {
-    createNotification({
+    await createNotification({
       user_id: fileRow.uploaded_by,
       category: 'feedback',
       title: `New feedback on ${fileRow.display_name}`,

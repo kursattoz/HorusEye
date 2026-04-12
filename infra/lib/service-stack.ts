@@ -212,12 +212,12 @@ exports.handler = async (event) => {
       })],
     });
 
-    // Daily at 03:00 UTC — file purge (soft-deleted > 30 days)
+    // Daily at 03:00 UTC — file purge (soft-deleted > 30 days) + notification purge (> 90 days)
     new events.Rule(this, 'DailyPurgeRule', {
       schedule: events.Schedule.cron({ minute: '0', hour: '3' }),
       targets: [new targets.LambdaFunction(cronInvoker, {
         event: events.RuleTargetInput.fromObject({
-          endpoints: ['/api/files/purge'],
+          endpoints: ['/api/files/purge', '/api/notifications/purge'],
         }),
       })],
     });
