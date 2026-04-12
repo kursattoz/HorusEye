@@ -3,7 +3,7 @@
 import { useTransition } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ChevronLeft, ArrowLeft, LogOut, Settings, Loader2 } from 'lucide-react';
-import Image from 'next/image';
+import { HorusEyeIcon } from './HorusEyeIcon';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -55,8 +55,12 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
           </Button>
         )}
         <div className="flex items-center gap-2 pl-1">
-          <Image src="/images/cover-icon.png" alt="HorusEye" width={28} height={28} className="shrink-0 dark:invert" />
-          <Image src="/images/cover-wordmark.png" alt="horuseye" width={80} height={16} className="h-4 w-auto dark:invert" />
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+            <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
+          </div>
+          <span className="text-sm leading-none select-none">
+            <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
+          </span>
         </div>
       </div>
 
@@ -71,17 +75,21 @@ export function Topbar({ user, sidebarCollapsed, onToggleSidebar }: TopbarProps)
             <button
               onClick={onToggleSidebar}
               aria-label="Expand sidebar"
-              className="h-7 w-7 flex items-center justify-center shrink-0 hover:opacity-70 transition-opacity"
+              className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity"
             >
-              <Image src="/images/cover-icon.png" alt="HorusEye" width={28} height={28} className="dark:invert" />
+              <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
             </button>
           </div>
         ) : (
           /* Expanded: px-2 outer + px-3 inner matches sidebar nav indent */
           <div className="flex items-center justify-between w-full px-2">
             <div className="flex items-center gap-2 px-1">
-              <Image src="/images/cover-icon.png" alt="HorusEye" width={28} height={28} className="shrink-0 dark:invert" />
-              <Image src="/images/cover-wordmark.png" alt="horuseye" width={80} height={16} className="h-4 w-auto dark:invert" />
+              <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
+                <HorusEyeIcon className="w-4 h-[14px] text-primary-foreground" />
+              </div>
+              <span className="text-sm leading-none select-none whitespace-nowrap">
+                <span className="font-extrabold tracking-tight">horus</span><span className="font-light text-muted-foreground">eye</span>
+              </span>
             </div>
             <Button
               variant="ghost"
