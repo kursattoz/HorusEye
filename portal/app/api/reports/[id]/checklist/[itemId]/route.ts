@@ -33,7 +33,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   // If an item was just checked, see if all items on the deliverable are now complete
   if (body.is_checked === true) {
-    const { data: allItems } = await supabase
+    const adminClient = await createClient({ serviceRole: true });
+
+    // Use service role to bypass RLS and see all items on this deliverable
+    const { data: allItems } = await adminClient
       .from('checklist_items')
       .select('is_checked')
       .eq('deliverable_id', id);
@@ -41,20 +44,31 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const allDone = allItems && allItems.length > 0 && allItems.every(i => i.is_checked);
 
     if (allDone) {
-      const { data: deliverable } = await supabase
+      const { data: deliverable } = await adminClient
         .from('report_deliverables')
         .select('assigned_to, title')
         .eq('id', id)
         .maybeSingle();
 
       if (deliverable?.assigned_to) {
-        await createNotification({
-          user_id: deliverable.assigned_to,
-          category: 'system',
-          title: 'Checklist completed',
-          description: `All checklist items for "${deliverable.title ?? 'a deliverable'}" have been checked off.`,
-          link: `/reports/${id}`,
-        });
+        // Guard: only notify if we haven't already sent a completion notification for this deliverable
+        const { count } = await adminClient
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', deliverable.assigned_to)
+          .eq('category', 'system')
+          .eq('link', `/reports/${id}`)
+          .eq('title', 'Checklist completed');
+
+        if (!count || count === 0) {
+          await createNotification({
+            user_id: deliverable.assigned_to,
+            category: 'system',
+            title: 'Checklist completed',
+            description: `All checklist items for "${deliverable.title ?? 'a deliverable'}" have been checked off.`,
+            link: `/reports/${id}`,
+          });
+        }
       }
     }
   }
