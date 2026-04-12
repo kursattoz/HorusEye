@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
+import { createNotification, notifyAdmins } from '@/lib/notifications';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -66,6 +67,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   await log({ event_type: 'file.update', severity: 'info', user_id: user.id, action: `Updated file ${id}`, metadata: allowed });
+
+  // Notify the file's uploader (skip if the uploader is the one making the change)
+  if (data.uploaded_by && data.uploaded_by !== user.id) {
+    await createNotification({
+      user_id: data.uploaded_by,
+      category: 'files',
+      title: 'Your file was updated',
+      description: data.display_name ?? undefined,
+      link: `/files/${id}`,
+    });
+  }
+
   return NextResponse.json({ file: data });
 }
 
@@ -75,7 +88,21 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { user, isAdmin } = await requireAdmin(supabase);
   if (!user || !isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  await supabase.from('files').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  const { data: deleted } = await supabase
+    .from('files')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('display_name')
+    .single();
+
   await log({ event_type: 'file.delete', severity: 'warn', user_id: user.id, action: `Soft-deleted file ${id}` });
+
+  await notifyAdmins(
+    'files',
+    'A file was deleted',
+    deleted?.display_name ?? undefined,
+    `/files`,
+  );
+
   return NextResponse.json({ ok: true });
 }
