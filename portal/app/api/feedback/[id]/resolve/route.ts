@@ -29,7 +29,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   // Notify feedback author
   if (data.author_id) {
-    createNotification({
+    await createNotification({
       user_id: data.author_id,
       category: 'feedback',
       title: `Your feedback on ${data.file?.display_name ?? 'a file'} has been resolved`,
