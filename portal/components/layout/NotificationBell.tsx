@@ -163,7 +163,7 @@ export function NotificationBell() {
                       {n.title}
                     </p>
                     {n.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{n.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.description}</p>
                     )}
                   </div>
                   <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
