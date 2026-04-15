@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast }      from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
-import { CheckCircle2, Loader2, Globe } from 'lucide-react';
+import { CheckCircle2, Loader2, Globe, EyeOff, RotateCcw } from 'lucide-react';
 
 interface FeedbackItem {
   id:            string;
@@ -92,11 +92,24 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
     setSubmitting(false);
   }
 
-  async function resolveComment(id: string) {
+  async function toggleResolve(id: string, currentlyResolved: boolean) {
     const res = await fetch(`/api/feedback/${id}/resolve`, { method: 'POST' });
     if (res.ok) {
-      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, resolved: true } : f));
-      toast.success('Comment marked as resolved.');
+      const data = await res.json();
+      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, resolved: data.resolved } : f));
+      toast.success(data.resolved ? 'Comment marked as resolved.' : 'Comment reopened.');
+    } else {
+      toast.error('Failed to update comment.');
+    }
+  }
+
+  async function hideComment(id: string) {
+    const res = await fetch(`/api/feedback/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      setFeedbacks(prev => prev.filter(f => f.id !== id));
+      toast.success('Comment hidden.');
+    } else {
+      toast.error('Failed to hide comment.');
     }
   }
 
@@ -125,12 +138,19 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
             <div className="px-4 pt-3 border-b shrink-0 space-y-2">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-sm truncate">{selectedFile.display_name}</p>
-                <button
-                  onClick={() => setShowResolved(v => !v)}
-                  className="text-xs text-muted-foreground hover:text-foreground shrink-0 ml-2"
-                >
-                  {showResolved ? 'Hide Resolved' : 'Show Resolved'}
-                </button>
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                  {isAdmin && (
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                      Admin
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setShowResolved(v => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {showResolved ? 'Hide Resolved' : 'Show Resolved'}
+                  </button>
+                </div>
               </div>
               <TabsList className="h-8">
                 <TabsTrigger value="internal" className="text-xs gap-1.5">
@@ -160,30 +180,62 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
                 {!loading && visible.length === 0 && (
                   <p className="text-center text-muted-foreground text-sm py-8">No comments yet.</p>
                 )}
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {visible.map(fb => (
-                    <div key={fb.id} className="flex gap-3">
-                      <Avatar className="h-7 w-7 shrink-0">
+                    <div
+                      key={fb.id}
+                      className={`flex gap-3 rounded-lg p-3 transition-colors ${
+                        fb.resolved
+                          ? 'bg-muted/40 border border-border/50'
+                          : 'bg-background'
+                      }`}
+                    >
+                      <Avatar className={`h-7 w-7 shrink-0 ${fb.resolved ? 'opacity-60' : ''}`}>
                         <AvatarFallback className="text-xs">
                           {(fb.author?.full_name ?? fb.author?.email ?? 'U')[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{fb.author?.full_name ?? fb.author?.email ?? 'User'}</span>
+                      <div className="flex-1 space-y-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-xs font-medium ${fb.resolved ? 'text-muted-foreground' : ''}`}>
+                            {fb.author?.full_name ?? fb.author?.email ?? 'User'}
+                          </span>
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true, locale: enUS })}
                           </span>
-                          {fb.resolved && <Badge variant="secondary" className="text-[10px] px-1 py-0">Resolved</Badge>}
+                          {fb.resolved && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 items-center">
+                              <CheckCircle2 size={9} />
+                              Resolved
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-sm whitespace-pre-wrap">{fb.content}</p>
-                        {isAdmin && !fb.resolved && (
-                          <button
-                            onClick={() => resolveComment(fb.id)}
-                            className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                          >
-                            <CheckCircle2 size={12} /> Mark as resolved
-                          </button>
+                        <p className={`text-sm whitespace-pre-wrap ${fb.resolved ? 'text-muted-foreground line-through decoration-muted-foreground/40' : ''}`}>
+                          {fb.content}
+                        </p>
+                        {isAdmin && (
+                          <div className="flex items-center gap-3 pt-1">
+                            <button
+                              onClick={() => toggleResolve(fb.id, fb.resolved)}
+                              className={`text-xs flex items-center gap-1 transition-colors ${
+                                fb.resolved
+                                  ? 'text-muted-foreground hover:text-amber-600'
+                                  : 'text-muted-foreground hover:text-green-600'
+                              }`}
+                            >
+                              {fb.resolved ? (
+                                <><RotateCcw size={11} /> Reopen</>
+                              ) : (
+                                <><CheckCircle2 size={11} /> Mark as resolved</>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => hideComment(fb.id)}
+                              className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                            >
+                              <EyeOff size={11} /> Hide
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

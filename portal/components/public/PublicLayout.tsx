@@ -28,7 +28,7 @@ export function PublicLayout({ files, initialFile }: PublicLayoutProps) {
     <div className="flex h-full overflow-hidden">
       {/* Left panel */}
       <div className="w-64 border-r flex flex-col shrink-0 overflow-hidden">
-        <FileTree files={files} selectedId={selected?.id ?? null} onSelect={handleSelect} />
+        <FileTree files={files} selectedId={selected?.id ?? null} onSelect={handleSelect} showTypeFilter />
       </div>
 
       {/* Right panel */}
