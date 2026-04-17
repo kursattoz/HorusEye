@@ -24,10 +24,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(routes.login, request.url));
   }
 
-  // Protect authenticated routes
+  // Protect authenticated routes — redirect unauthenticated users to login
   const isProtected = PROTECTED_ROUTES.some(r => pathname.startsWith(r));
   if (isProtected && !user) {
     return withAuthCookies(NextResponse.redirect(new URL(routes.login, request.url)));
+  }
+
+  // Fire-and-forget page visit log for protected routes (BL-89)
+  if (isProtected && user) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+    if (appUrl) {
+      fetch(`${appUrl}/api/log/page`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          pathname,
+          userId:    user.id,
+          userAgent: request.headers.get('user-agent') ?? undefined,
+        }),
+      }).catch(() => { /* non-critical */ });
+    }
   }
 
   return supabaseResponse;
@@ -35,6 +51,16 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)',
+    // Only run on routes that need auth handling or visit logging.
+    // Public routes (/, /login, /p/*, /api/*, static assets) are excluded.
+    '/',
+    '/login',
+    '/dashboard/:path*',
+    '/files/:path*',
+    '/sprints/:path*',
+    '/users/:path*',
+    '/settings/:path*',
+    '/feedback/:path*',
+    '/change-password',
   ],
 };

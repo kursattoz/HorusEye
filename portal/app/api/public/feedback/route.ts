@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 import { sendMail, getSmtpSettings } from '@/lib/mailer';
 import { publicFeedbackTemplate } from '@/lib/mailer/templates';
+import { log } from '@/lib/logger';
 
 // ─── Security constants ────────────────────────────────────────────────────
 const MAX_NAME    = 100;
@@ -40,7 +41,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
-  const { file_id, author_name, content, otp_id } = body as Record<string, unknown>;
+  const { file_id, author_name, content, otp_id, session_id } = body as Record<string, unknown>;
+  const sessionId = typeof session_id === 'string' ? session_id : undefined;
 
   // ── Validate ──────────────────────────────────────────────────────────────
   if (typeof file_id !== 'string' || !/^[0-9a-f-]{36}$/.test(file_id)) {
@@ -144,6 +146,17 @@ export async function POST(request: NextRequest) {
     });
     sendMail({ to: smtpSettings.admin_email, subject, html });
   }
+
+  // Log to audit_logs with guest session_id (BL-90)
+  log({
+    event_type:    'feedback.create',
+    severity:      'info',
+    session_id:    sessionId,
+    resource_type: 'file',
+    resource_id:   file_id as string,
+    action:        `Guest submitted public feedback on file: ${fileInfo?.display_name ?? file_id}`,
+    metadata:      { file_id, author_name: name },
+  }).catch(() => {});
 
   return NextResponse.json({ feedback: data }, { status: 201 });
 }

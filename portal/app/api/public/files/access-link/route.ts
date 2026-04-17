@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient }                   from '@/lib/supabase/server';
 import { sendMail }                       from '@/lib/mailer';
 import { fileAccessLinkTemplate }         from '@/lib/mailer/templates';
+import { log }                            from '@/lib/logger';
 
 const TEDU_DOMAIN = '@tedu.edu.tr';
 const RATE_LIMIT  = 3; // max requests per email per hour
@@ -13,7 +14,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
   }
 
-  const { email, file_id, action } = body as Record<string, unknown>;
+  const { email, file_id, action, session_id } = body as Record<string, unknown>;
+  const sessionId = typeof session_id === 'string' ? session_id : undefined;
   const isDownload = action === 'download';
 
   // Validate email domain
@@ -75,6 +77,17 @@ export async function POST(request: NextRequest) {
   });
 
   sendMail({ to: normalizedEmail, subject, html });
+
+  // Log to audit_logs with guest session_id (BL-90)
+  log({
+    event_type:    'file.download',
+    severity:      'info',
+    session_id:    sessionId,
+    resource_type: 'file',
+    resource_id:   fileRow.id,
+    action:        `Guest requested ${isDownload ? 'download' : 'access'} link for: ${fileRow.display_name}`,
+    metadata:      { file_id: fileRow.id, email: normalizedEmail, action: isDownload ? 'download' : 'open' },
+  }).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

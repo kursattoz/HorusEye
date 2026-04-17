@@ -2,19 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-
-function getAnonymousSessionId(): string {
-  const key = 'horuseye-anon-session';
-  try {
-    const stored = sessionStorage.getItem(key);
-    if (stored) return stored;
-    const id = crypto.randomUUID();
-    sessionStorage.setItem(key, id);
-    return id;
-  } catch {
-    return 'unknown';
-  }
-}
+import { getGuestSessionId } from '@/lib/utils/guestSession';
 
 /**
  * Auto-logs every route change as a page.visit event (PRD-006).
@@ -28,12 +16,14 @@ export function usePageTracking(userId?: string) {
     if (pathname === prevPath.current) return;
     prevPath.current = pathname;
 
-    const sessionId = getAnonymousSessionId();
+    const sessionId = getGuestSessionId();
+
+    const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : undefined;
 
     fetch('/api/log/page', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ pathname, userId, sessionId }),
+      body:    JSON.stringify({ pathname, userId, sessionId, userAgent }),
     }).catch(() => { /* page tracking failures are non-critical */ });
   }, [pathname, userId]);
 }

@@ -56,8 +56,10 @@ export async function log(payload: LogPayload): Promise<void> {
   ).catch(() => { /* silently fail in environments without DB access */ });
 }
 
-export const logDebug    = (p: Omit<LogPayload, 'severity'>) => log({ ...p, severity: 'debug' });
-export const logInfo     = (p: Omit<LogPayload, 'severity'>) => log({ ...p, severity: 'info' });
-export const logWarn     = (p: Omit<LogPayload, 'severity'>) => log({ ...p, severity: 'warn' });
-export const logError    = (p: Omit<LogPayload, 'severity'>) => log({ ...p, severity: 'error' });
-export const logCritical = (p: Omit<LogPayload, 'severity'>) => log({ ...p, severity: 'critical' });
+// Helpers go through the module's live export so vi.spyOn(module, 'log') intercepts them in tests.
+// The dynamic import resolves to the already-cached module instance at call time (no extra I/O).
+export const logDebug    = (p: Omit<LogPayload, 'severity'>): Promise<void> => import('@/lib/logger').then(m => m.log({ ...p, severity: 'debug' }));
+export const logInfo     = (p: Omit<LogPayload, 'severity'>): Promise<void> => import('@/lib/logger').then(m => m.log({ ...p, severity: 'info' }));
+export const logWarn     = (p: Omit<LogPayload, 'severity'>): Promise<void> => import('@/lib/logger').then(m => m.log({ ...p, severity: 'warn' }));
+export const logError    = (p: Omit<LogPayload, 'severity'>): Promise<void> => import('@/lib/logger').then(m => m.log({ ...p, severity: 'error' }));
+export const logCritical = (p: Omit<LogPayload, 'severity'>): Promise<void> => import('@/lib/logger').then(m => m.log({ ...p, severity: 'critical' }));

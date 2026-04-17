@@ -26,6 +26,9 @@ function getClientIp(request: NextRequest): string {
 }
 
 function getRateLimitStatus(ip: string): { blocked: boolean; record: AttemptRecord | undefined } {
+  // Never rate-limit in local/test environments — avoids locking out the shared 'unknown' IP
+  if (process.env.NEXT_PUBLIC_ENV === 'local') return { blocked: false, record: undefined };
+
   const record = attempts.get(ip);
   if (!record) return { blocked: false, record: undefined };
 
@@ -52,6 +55,7 @@ function getRateLimitStatus(ip: string): { blocked: boolean; record: AttemptReco
 }
 
 function recordFailedAttempt(ip: string): void {
+  if (process.env.NEXT_PUBLIC_ENV === 'local') return;
   const now = Date.now();
   const existing = attempts.get(ip);
 
