@@ -1,14 +1,46 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button }  from '@/components/ui/button';
-import { Input }   from '@/components/ui/input';
-import { Label }   from '@/components/ui/label';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button }    from '@/components/ui/button';
+import { Input }     from '@/components/ui/input';
+import { Label }     from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { Check, X, Eye, EyeOff } from 'lucide-react';
+import { Check, X, Eye, EyeOff, Monitor, Smartphone, Globe, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// ── User-agent parser ──────────────────────────────────────────────
+function parseUA(ua: string): { browser: string; os: string } {
+  const browser =
+    ua.includes('Edg/')      ? 'Edge' :
+    ua.includes('OPR/')      ? 'Opera' :
+    ua.includes('Chrome/')   ? 'Chrome' :
+    ua.includes('Firefox/')  ? 'Firefox' :
+    ua.includes('Safari/')   ? 'Safari' : 'Unknown browser';
+
+  const os =
+    ua.includes('Windows')                          ? 'Windows' :
+    ua.includes('Mac OS X')                         ? 'macOS' :
+    ua.includes('iPhone') || ua.includes('iPad')    ? 'iOS' :
+    ua.includes('Android')                          ? 'Android' :
+    ua.includes('Linux')                            ? 'Linux' : 'Unknown OS';
+
+  return { browser, os };
+}
+
+function formatTs(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(iso));
+}
+
+function isMobile(ua: string) {
+  return /iPhone|iPad|Android|Mobile/i.test(ua);
+}
 
 interface StrengthCheck {
   label: string;
@@ -37,6 +69,13 @@ function getStrength(pw: string) {
   return { score, ...STRENGTH_LEVELS[score] };
 }
 
+interface SessionInfo {
+  browser:       string;
+  os:            string;
+  mobile:        boolean;
+  lastSignIn:    string | null;
+}
+
 export function AccountTab() {
   const [newPw,   setNewPw]   = useState('');
   const [confPw,  setConfPw]  = useState('');
@@ -44,9 +83,37 @@ export function AccountTab() {
   const [showPw,  setShowPw]  = useState(false);
   const [showCfm, setShowCfm] = useState(false);
 
+  // Session state
+  const [session,         setSession]         = useState<SessionInfo | null>(null);
+  const [signingOutOthers, setSigningOutOthers] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return;
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+      const { browser, os } = parseUA(ua);
+      setSession({
+        browser,
+        os,
+        mobile:      isMobile(ua),
+        lastSignIn:  data.user.last_sign_in_at ?? null,
+      });
+    });
+  }, []);
+
   const strength = useMemo(() => getStrength(newPw), [newPw]);
   const mismatch = confPw.length > 0 && newPw !== confPw;
   const canSubmit = !saving && strength.score >= 3 && confPw.length > 0 && !mismatch;
+
+  async function handleSignOutOthers() {
+    setSigningOutOthers(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signOut({ scope: 'others' });
+    if (error) toast.error(error.message);
+    else toast.success('All other sessions have been signed out.');
+    setSigningOutOthers(false);
+  }
 
   async function handleChangePassword() {
     if (newPw !== confPw) { toast.error('Passwords do not match.'); return; }
@@ -63,6 +130,62 @@ export function AccountTab() {
 
   return (
     <div className="space-y-4">
+
+      {/* ── Active Session ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Active Session</CardTitle>
+          <CardDescription>Your current browser session.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {session ? (
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-muted shrink-0">
+                  {session.mobile
+                    ? <Smartphone size={18} className="text-muted-foreground" />
+                    : <Monitor    size={18} className="text-muted-foreground" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-1.5">
+                    <Globe size={13} className="text-muted-foreground" />
+                    {session.browser} on {session.os}
+                    <span className="inline-flex items-center rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                      Current
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Last sign-in: {formatTs(session.lastSignIn)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-10 animate-pulse rounded bg-muted w-64" />
+          )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Sign out other sessions</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Logs out all other devices where you&apos;re signed in.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOutOthers}
+              disabled={signingOutOthers}
+            >
+              <LogOut size={14} className="mr-1.5" />
+              {signingOutOthers ? 'Signing out...' : 'Sign out others'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Change Password</CardTitle>

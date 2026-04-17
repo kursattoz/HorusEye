@@ -671,7 +671,7 @@ function DocViewer({
     // PdfViewer manages its own loading state internally
     // Call onLoad immediately so the parent loading overlay clears
     if (onLoad) setTimeout(onLoad, 0);
-    return <PdfViewer key={public_url} url={public_url} blurredPages={file.blurred_pages} />;
+    return <PdfViewer key={public_url} url={public_url} fileName={display_name} blurredPages={file.blurred_pages} />;
   }
 
   if (file_type === 'pptx') {

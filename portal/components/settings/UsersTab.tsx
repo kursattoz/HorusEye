@@ -372,7 +372,7 @@ export function UsersTab() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
                             onClick={() => {
-                              setNewRole((u.role as AssignableRole) in ASSIGNABLE_ROLES ? u.role as AssignableRole : 'supervisor');
+                              setNewRole(ASSIGNABLE_ROLES.includes(u.role as AssignableRole) ? u.role as AssignableRole : 'supervisor');
                               setRoleTarget(u);
                             }}
                           >

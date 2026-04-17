@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { FileTree, type PublicFile } from '@/components/public/FileTree';
 import { Textarea }   from '@/components/ui/textarea';
 import { Button }     from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { Badge }      from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator }  from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast }      from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS } from 'date-fns/locale';
@@ -30,6 +29,10 @@ interface PublicFeedbackItem {
   content:     string;
   created_at:  string;
 }
+
+type MergedItem =
+  | ({ source: 'internal' } & FeedbackItem)
+  | ({ source: 'public'   } & PublicFeedbackItem);
 
 interface FeedbackViewProps {
   files:    PublicFile[];
@@ -113,7 +116,16 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
     }
   }
 
-  const visible = feedbacks.filter(f => showResolved ? true : !f.resolved);
+  // Merge both sources into one date-sorted list
+  const merged = useMemo<MergedItem[]>(() => {
+    const internal = feedbacks
+      .filter(f => showResolved || !f.resolved)
+      .map(f => ({ source: 'internal' as const, ...f }));
+    const pub = pubFeedbacks.map(f => ({ source: 'public' as const, ...f }));
+    return [...internal, ...pub].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+  }, [feedbacks, pubFeedbacks, showResolved]);
 
   return (
     <div className="flex gap-6 h-[calc(100svh-12rem)]">
@@ -133,104 +145,111 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
             Select a file from the left panel.
           </div>
         ) : (
-          <Tabs defaultValue="internal" className="flex flex-col flex-1 overflow-hidden">
-            {/* Tab bar + file name */}
-            <div className="px-4 pt-3 border-b shrink-0 space-y-2">
-              <div className="flex items-center justify-between">
+          <div className="flex flex-col flex-1 overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b shrink-0 flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
                 <p className="font-medium text-sm truncate">{selectedFile.display_name}</p>
-                <div className="flex items-center gap-2 shrink-0 ml-2">
-                  {isAdmin && (
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
-                      Admin
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setShowResolved(v => !v)}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {showResolved ? 'Hide Resolved' : 'Show Resolved'}
-                  </button>
-                </div>
+                {merged.length > 0 && (
+                  <Badge variant="secondary" className="px-1.5 py-0 text-[10px] shrink-0">{merged.length}</Badge>
+                )}
               </div>
-              <TabsList className="h-8">
-                <TabsTrigger value="internal" className="text-xs gap-1.5">
-                  Internal
-                  {feedbacks.length > 0 && (
-                    <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{feedbacks.length}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="public" className="text-xs gap-1.5">
-                  <Globe size={11} />
-                  Public
-                  {pubFeedbacks.length > 0 && (
-                    <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">{pubFeedbacks.length}</Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
+              <div className="flex items-center gap-2 shrink-0 ml-2">
+                {isAdmin && (
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                    Admin
+                  </span>
+                )}
+                <button
+                  onClick={() => setShowResolved(v => !v)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  {showResolved ? 'Hide Resolved' : 'Show Resolved'}
+                </button>
+              </div>
             </div>
 
-            {/* Internal tab */}
-            <TabsContent value="internal" className="flex flex-col flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
-              <ScrollArea className="flex-1 p-4">
-                {loading && (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                {!loading && visible.length === 0 && (
-                  <p className="text-center text-muted-foreground text-sm py-8">No comments yet.</p>
-                )}
-                <div className="space-y-3">
-                  {visible.map(fb => (
+            {/* Merged feed */}
+            <ScrollArea className="flex-1 p-4">
+              {(loading || pubLoading) && (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!loading && !pubLoading && merged.length === 0 && (
+                <p className="text-center text-muted-foreground text-sm py-8">No comments yet.</p>
+              )}
+              <div className="space-y-3">
+                {merged.map(item => {
+                  if (item.source === 'public') {
+                    return (
+                      <div key={`pub-${item.id}`} className="flex gap-3 rounded-lg p-3 bg-background">
+                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <Globe size={12} className="text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium">{item.author_name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: enUS })}
+                            </span>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400/50 text-amber-600 dark:text-amber-400">
+                              Misafir
+                            </Badge>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{item.content}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Internal feedback
+                  return (
                     <div
-                      key={fb.id}
+                      key={`int-${item.id}`}
                       className={`flex gap-3 rounded-lg p-3 transition-colors ${
-                        fb.resolved
-                          ? 'bg-muted/40 border border-border/50'
-                          : 'bg-background'
+                        item.resolved ? 'bg-muted/40 border border-border/50' : 'bg-background'
                       }`}
                     >
-                      <Avatar className={`h-7 w-7 shrink-0 ${fb.resolved ? 'opacity-60' : ''}`}>
+                      <Avatar className={`h-7 w-7 shrink-0 ${item.resolved ? 'opacity-60' : ''}`}>
                         <AvatarFallback className="text-xs">
-                          {(fb.author?.full_name ?? fb.author?.email ?? 'U')[0]?.toUpperCase()}
+                          {(item.author?.full_name ?? item.author?.email ?? 'U')[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-xs font-medium ${fb.resolved ? 'text-muted-foreground' : ''}`}>
-                            {fb.author?.full_name ?? fb.author?.email ?? 'User'}
+                          <span className={`text-xs font-medium ${item.resolved ? 'text-muted-foreground' : ''}`}>
+                            {item.author?.full_name ?? item.author?.email ?? 'User'}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true, locale: enUS })}
+                            {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: enUS })}
                           </span>
-                          {fb.resolved && (
+                          {item.resolved && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 gap-1 items-center">
                               <CheckCircle2 size={9} />
                               Resolved
                             </Badge>
                           )}
                         </div>
-                        <p className={`text-sm whitespace-pre-wrap ${fb.resolved ? 'text-muted-foreground line-through decoration-muted-foreground/40' : ''}`}>
-                          {fb.content}
+                        <p className={`text-sm whitespace-pre-wrap ${item.resolved ? 'text-muted-foreground line-through decoration-muted-foreground/40' : ''}`}>
+                          {item.content}
                         </p>
                         {isAdmin && (
                           <div className="flex items-center gap-3 pt-1">
                             <button
-                              onClick={() => toggleResolve(fb.id, fb.resolved)}
+                              onClick={() => toggleResolve(item.id, item.resolved)}
                               className={`text-xs flex items-center gap-1 transition-colors ${
-                                fb.resolved
+                                item.resolved
                                   ? 'text-muted-foreground hover:text-amber-600'
                                   : 'text-muted-foreground hover:text-green-600'
                               }`}
                             >
-                              {fb.resolved ? (
-                                <><RotateCcw size={11} /> Reopen</>
-                              ) : (
-                                <><CheckCircle2 size={11} /> Mark as resolved</>
-                              )}
+                              {item.resolved
+                                ? <><RotateCcw size={11} /> Reopen</>
+                                : <><CheckCircle2 size={11} /> Mark as resolved</>}
                             </button>
                             <button
-                              onClick={() => hideComment(fb.id)}
+                              onClick={() => hideComment(item.id)}
                               className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
                             >
                               <EyeOff size={11} /> Hide
@@ -239,76 +258,37 @@ export function FeedbackView({ files, userRole, userId: _userId }: FeedbackViewP
                         )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-
-              <Separator />
-              <div className="p-4 space-y-2">
-                {canWrite ? (
-                  <>
-                    <Textarea
-                      placeholder="Write a comment… (max 2000 characters)"
-                      value={content}
-                      onChange={e => setContent(e.target.value.slice(0, 2000))}
-                      rows={3}
-                      className="resize-none text-sm"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{content.length}/2000</span>
-                      <Button size="sm" onClick={submitFeedback} disabled={!content.trim() || submitting}>
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Submit
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Supervisor or admin permission is required to write comments.
-                  </p>
-                )}
+                  );
+                })}
               </div>
-            </TabsContent>
+            </ScrollArea>
 
-            {/* Public feedback tab */}
-            <TabsContent value="public" className="flex flex-col flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden">
-              <ScrollArea className="flex-1 p-4">
-                {pubLoading && (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            <Separator />
+            <div className="p-4 space-y-2">
+              {canWrite ? (
+                <>
+                  <Textarea
+                    placeholder="Write a comment… (max 2000 characters)"
+                    value={content}
+                    onChange={e => setContent(e.target.value.slice(0, 2000))}
+                    rows={3}
+                    className="resize-none text-sm"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{content.length}/2000</span>
+                    <Button size="sm" onClick={submitFeedback} disabled={!content.trim() || submitting}>
+                      {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Submit
+                    </Button>
                   </div>
-                )}
-                {!pubLoading && pubFeedbacks.length === 0 && (
-                  <p className="text-center text-muted-foreground text-sm py-8">No public feedback yet.</p>
-                )}
-                <div className="space-y-4">
-                  {pubFeedbacks.map(fb => (
-                    <div key={fb.id} className="flex gap-3">
-                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                        <Globe size={12} className="text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium">{fb.author_name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(fb.created_at), { addSuffix: true, locale: enUS })}
-                          </span>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">Public</Badge>
-                        </div>
-                        <p className="text-sm whitespace-pre-wrap">{fb.content}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              <Separator />
-              <div className="px-4 py-3">
-                <p className="text-xs text-muted-foreground">
-                  Public feedback is submitted from the login page by visitors. It is isolated from the internal feedback system.
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center">
+                  Supervisor or admin permission is required to write comments.
                 </p>
-              </div>
-            </TabsContent>
-          </Tabs>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
