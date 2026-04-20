@@ -6,6 +6,15 @@ import { Input }  from '@/components/ui/input';
 import { Badge }  from '@/components/ui/badge';
 import { cn }     from '@/lib/utils';
 
+type FileTypeFilter = 'all' | 'pdf' | 'pptx' | 'other';
+
+const TYPE_TABS: { key: FileTypeFilter; label: string }[] = [
+  { key: 'all',   label: 'All'   },
+  { key: 'pdf',   label: 'PDF'   },
+  { key: 'pptx',  label: 'PPTX'  },
+  { key: 'other', label: 'Other' },
+];
+
 export interface PublicFile {
   id:          string;
   display_name: string;
@@ -50,15 +59,23 @@ interface FileTreeProps {
   files:           PublicFile[];
   selectedId:      string | null;
   onSelect:        (file: PublicFile) => void;
+  showTypeFilter?: boolean;
 }
 
-export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
-  const [search, setSearch] = useState('');
+export function FileTree({ files, selectedId, onSelect, showTypeFilter = false }: FileTreeProps) {
+  const [search, setSearch]         = useState('');
+  const [typeFilter, setTypeFilter] = useState<FileTypeFilter>('all');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return q ? files.filter(f => f.display_name.toLowerCase().includes(q)) : files;
-  }, [files, search]);
+    return files.filter(f => {
+      if (q && !f.display_name.toLowerCase().includes(q)) return false;
+      if (typeFilter === 'pdf')   return f.file_type === 'pdf';
+      if (typeFilter === 'pptx')  return f.file_type === 'pptx';
+      if (typeFilter === 'other') return f.file_type !== 'pdf' && f.file_type !== 'pptx';
+      return true;
+    });
+  }, [files, search, typeFilter]);
 
   const grouped = useMemo(() => {
     const map: Record<string, PublicFile[]> = {};
@@ -71,7 +88,7 @@ export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b">
+      <div className="p-3 border-b space-y-2">
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -81,6 +98,25 @@ export function FileTree({ files, selectedId, onSelect }: FileTreeProps) {
             className="pl-8 h-8 text-sm"
           />
         </div>
+
+        {showTypeFilter && (
+          <div className="flex gap-1">
+            {TYPE_TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setTypeFilter(tab.key)}
+                className={cn(
+                  'flex-1 text-[11px] font-medium py-1 rounded-md transition-colors',
+                  typeFilter === tab.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2 space-y-3">

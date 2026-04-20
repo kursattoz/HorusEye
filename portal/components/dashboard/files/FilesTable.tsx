@@ -2,6 +2,15 @@
 
 import { useState, useTransition, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Badge }  from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -16,7 +25,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Trash2, Globe, Lock, Upload, ArrowUp, ArrowDown, EyeOff, Eye, Download, ExternalLink, Pencil } from 'lucide-react';
+import { MoreHorizontal, Trash2, Globe, Lock, Upload, GripVertical, EyeOff, Eye, Download, ExternalLink, Pencil } from 'lucide-react';
 import { toast }      from 'sonner';
 import { cn }         from '@/lib/utils';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -31,6 +40,17 @@ const DocxViewer = dynamic(
   () => import('./DocxViewerInline').then(m => ({ default: m.DocxViewerInline })),
   { ssr: false },
 );
+
+const CATEGORIES = [
+  { value: 'general',      label: 'General' },
+  { value: 'announcement', label: 'Announcement' },
+  { value: 'report',       label: 'Report' },
+  { value: 'form',         label: 'Form' },
+  { value: 'presentation', label: 'Presentation' },
+  { value: 'guideline',    label: 'Guideline' },
+  { value: 'other',        label: 'Other' },
+] as const;
+
 
 interface FileRow {
   id:              string;
@@ -47,6 +67,8 @@ interface FileRow {
   document_date:   string | null;
   blurred_pages:   number[] | null;
   sort_order:      number | null;
+  category:        string | null;
+  description:     string | null;
 }
 
 interface FilesTableProps {
@@ -63,18 +85,32 @@ function formatDate(iso: string): string {
 }
 
 /* ── Inline editable name cell ── */
-function EditableName({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+function EditableName({ value, onSave }: { value: string; onSave: (v: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState(value);
+  const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
 
-  function commit() {
+  async function commit() {
     const trimmed = draft.trim();
-    if (trimmed && trimmed !== value) onSave(trimmed);
-    else setDraft(value);
-    setEditing(false);
+    if (!trimmed || trimmed === value) {
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    const ok = await onSave(trimmed);
+    setSaving(false);
+    if (ok) {
+      setEditing(false);
+    } else {
+      setDraft(value);
+      setEditing(false);
+    }
   }
 
   if (editing) {
@@ -85,7 +121,8 @@ function EditableName({ value, onSave }: { value: string; onSave: (v: string) =>
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
-        className="w-full h-7 text-sm border rounded px-2 bg-background font-medium"
+        disabled={saving}
+        className="w-full h-7 text-sm border rounded px-2 bg-background font-medium disabled:opacity-50"
       />
     );
   }
@@ -102,6 +139,195 @@ function EditableName({ value, onSave }: { value: string; onSave: (v: string) =>
   );
 }
 
+/* ── Inline editable description ── */
+function EditableDescription({ value, onSave }: { value: string; onSave: (v: string) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState(value);
+  const [saving,  setSaving]  = useState(false);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
+  async function commit() {
+    if (draft === value) { setEditing(false); return; }
+    setSaving(true);
+    const ok = await onSave(draft);
+    setSaving(false);
+    if (ok) setEditing(false);
+    else { setDraft(value); setEditing(false); }
+  }
+
+  if (editing) {
+    return (
+      <div className="mt-1 space-y-1">
+        <textarea
+          ref={ref}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          disabled={saving}
+          rows={3}
+          className="w-full text-xs border rounded-md px-2 py-1.5 bg-background resize-none outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+          placeholder="Add a description…"
+        />
+        <div className="flex gap-2">
+          <button
+            onClick={commit}
+            disabled={saving}
+            className="text-xs text-primary hover:underline disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            onClick={() => { setDraft(value); setEditing(false); }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group flex items-start gap-1 mt-1 text-left w-full"
+      title="Click to edit description"
+    >
+      {value ? (
+        <span className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{value}</span>
+      ) : (
+        <span className="text-xs text-muted-foreground/50 italic">Add a description…</span>
+      )}
+      <Pencil size={10} className="mt-0.5 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />
+    </button>
+  );
+}
+
+/* ── Sortable table row ── */
+interface SortableRowProps {
+  file:           FileRow;
+  isPreview:      boolean;
+  onOpenPreview:  (f: FileRow) => void;
+  onTogglePublic: (id: string, current: boolean) => void;
+  onUpdateName:   (id: string, v: string) => Promise<boolean>;
+  onUpdateDate:   (id: string, d: string | null) => void;
+  onDelete:       (id: string) => void;
+}
+
+function SortableRow({
+  file, isPreview, onOpenPreview, onTogglePublic, onUpdateName, onUpdateDate, onDelete,
+}: SortableRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: file.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.45 : 1,
+    position: 'relative',
+    zIndex:   isDragging ? 10 : undefined,
+  };
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      className={cn('cursor-pointer', isPreview && 'bg-muted/50', isDragging && 'bg-muted shadow-md')}
+      onClick={() => onOpenPreview(file)}
+    >
+      {/* Drag handle */}
+      <TableCell className="w-8 px-2" onClick={e => e.stopPropagation()}>
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          aria-label="Drag to reorder"
+        >
+          <GripVertical size={14} />
+        </button>
+      </TableCell>
+
+      {/* Name */}
+      <TableCell onClick={e => e.stopPropagation()}>
+        <EditableName value={file.display_name} onSave={v => onUpdateName(file.id, v)} />
+      </TableCell>
+
+      {/* Type + Category */}
+      <TableCell>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge variant="secondary">{file.file_type.toUpperCase()}</Badge>
+          {file.category && file.category !== 'general' && (
+            <Badge variant="outline" className="text-[10px] px-1.5 capitalize">{file.category}</Badge>
+          )}
+        </div>
+      </TableCell>
+
+      {/* Size */}
+      <TableCell className="text-muted-foreground text-sm">{formatSize(file.file_size_bytes)}</TableCell>
+
+      {/* Date */}
+      <TableCell onClick={e => e.stopPropagation()}>
+        <DatePicker
+          value={file.document_date ?? undefined}
+          onChange={d => onUpdateDate(file.id, d ?? null)}
+          placeholder={formatDate(file.created_at)}
+          className="h-7 text-xs w-32 border-0 shadow-none hover:bg-muted/50"
+        />
+      </TableCell>
+
+      {/* Public toggle */}
+      <TableCell onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={file.is_public}
+            onCheckedChange={() => onTogglePublic(file.id, file.is_public)}
+            aria-label="Public toggle"
+          />
+          {file.is_public
+            ? <Globe size={13} className="text-green-600" />
+            : <Lock  size={13} className="text-muted-foreground" />}
+        </div>
+      </TableCell>
+
+      {/* Blur pages badge */}
+      <TableCell onClick={e => e.stopPropagation()}>
+        {file.file_type === 'pdf' && file.blurred_pages && file.blurred_pages.length > 0 ? (
+          <Badge variant="secondary" className="text-[10px]">
+            <EyeOff size={10} className="mr-1" />
+            {file.blurred_pages.length} page{file.blurred_pages.length > 1 ? 's' : ''}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-xs">–</span>
+        )}
+      </TableCell>
+
+      {/* Actions */}
+      <TableCell onClick={e => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreHorizontal size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onOpenPreview(file)}>
+              <Eye size={13} className="mr-2" /> Preview
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDelete(file.id)}
+            >
+              <Trash2 size={13} className="mr-2" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function FilesTable({ files: initial }: FilesTableProps) {
   const [files, setFiles]           = useState<FileRow[]>(initial);
   const [deleting, setDeleting]     = useState<string | null>(null);
@@ -109,6 +335,32 @@ export function FilesTable({ files: initial }: FilesTableProps) {
   const [preview, setPreview]       = useState<FileRow | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [, startTransition]         = useTransition();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIdx = files.findIndex(f => f.id === active.id);
+    const newIdx = files.findIndex(f => f.id === over.id);
+    const reordered = arrayMove(files, oldIdx, newIdx).map((f, i) => ({ ...f, sort_order: (i + 1) * 10 }));
+    setFiles(reordered);
+
+    // Persist only the changed items
+    reordered.forEach((f, i) => {
+      if (files[i]?.id !== f.id) {
+        fetch(`/api/files/${f.id}`, {
+          method:  'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ sort_order: f.sort_order }),
+        });
+      }
+    });
+  }
 
   /* ── Preview ── */
   async function openPreview(file: FileRow) {
@@ -156,36 +408,6 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     toast.success(`"${file.display_name}" uploaded.`);
   }
 
-  async function moveFile(id: string, direction: 'up' | 'down') {
-    const idx = files.findIndex(f => f.id === id);
-    if (direction === 'up' && idx === 0) return;
-    if (direction === 'down' && idx === files.length - 1) return;
-
-    const newFiles = [...files];
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    const tmp = newFiles[idx]!;
-    newFiles[idx] = newFiles[swapIdx]!;
-    newFiles[swapIdx] = tmp;
-
-    const idAtIdx   = newFiles[idx]!.id;
-    const idAtSwap  = newFiles[swapIdx]!.id;
-
-    setFiles(newFiles.map((f, i) => ({ ...f, sort_order: (i + 1) * 10 })));
-
-    await Promise.all([
-      fetch(`/api/files/${idAtIdx}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sort_order: (idx + 1) * 10 }),
-      }),
-      fetch(`/api/files/${idAtSwap}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sort_order: (swapIdx + 1) * 10 }),
-      }),
-    ]);
-  }
-
   async function updateBlurPages(id: string, pages: number[] | null) {
     const res = await fetch(`/api/files/${id}`, {
       method: 'PUT',
@@ -214,7 +436,38 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     }
   }
 
-  async function updateDisplayName(id: string, newName: string) {
+  async function updateCategory(id: string, category: string) {
+    const res = await fetch(`/api/files/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category }),
+    });
+    if (res.ok) {
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, category } : f));
+      setPreview(prev => prev?.id === id ? { ...prev, category } : prev);
+      toast.success('Category updated.');
+    } else {
+      toast.error('Update failed.');
+    }
+  }
+
+  async function updateDescription(id: string, description: string): Promise<boolean> {
+    const res = await fetch(`/api/files/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: description || null }),
+    });
+    if (res.ok) {
+      setFiles(prev => prev.map(f => f.id === id ? { ...f, description: description || null } : f));
+      setPreview(prev => prev?.id === id ? { ...prev, description: description || null } : prev);
+      toast.success('Description updated.');
+      return true;
+    }
+    toast.error('Update failed.');
+    return false;
+  }
+
+  async function updateDisplayName(id: string, newName: string): Promise<boolean> {
     const res = await fetch(`/api/files/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -223,9 +476,10 @@ export function FilesTable({ files: initial }: FilesTableProps) {
     if (res.ok) {
       setFiles(prev => prev.map(f => f.id === id ? { ...f, display_name: newName } : f));
       toast.success('Name updated.');
-    } else {
-      toast.error('Rename failed.');
+      return true;
     }
+    toast.error('Rename failed.');
+    return false;
   }
 
   return (
@@ -240,119 +494,41 @@ export function FilesTable({ files: initial }: FilesTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8" />
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Size</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-20">Order</TableHead>
               <TableHead className="w-24">Blur Pages</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {files.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                  No files uploaded yet.
-                </TableCell>
-              </TableRow>
-            )}
-            {files.map((file, idx) => (
-              <TableRow
-                key={file.id}
-                className={cn('cursor-pointer', preview?.id === file.id && 'bg-muted/50')}
-                onClick={() => openPreview(file)}
-              >
-                <TableCell onClick={e => e.stopPropagation()}>
-                  <EditableName
-                    value={file.display_name}
-                    onSave={v => updateDisplayName(file.id, v)}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={files.map(f => f.id)} strategy={verticalListSortingStrategy}>
+              <TableBody>
+                {files.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      No files uploaded yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+                {files.map(file => (
+                  <SortableRow
+                    key={file.id}
+                    file={file}
+                    isPreview={preview?.id === file.id}
+                    onOpenPreview={openPreview}
+                    onTogglePublic={togglePublic}
+                    onUpdateName={updateDisplayName}
+                    onUpdateDate={updateDocumentDate}
+                    onDelete={id => setDeleting(id)}
                   />
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{file.file_type.toUpperCase()}</Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">{formatSize(file.file_size_bytes)}</TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
-                  <DatePicker
-                    value={file.document_date ?? undefined}
-                    onChange={(d) => updateDocumentDate(file.id, d ?? null)}
-                    placeholder={formatDate(file.created_at)}
-                    className="h-7 text-xs w-32 border-0 shadow-none hover:bg-muted/50"
-                  />
-                </TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={file.is_public}
-                      onCheckedChange={() => togglePublic(file.id, file.is_public)}
-                      aria-label="Public toggle"
-                    />
-                    {file.is_public
-                      ? <Globe size={13} className="text-green-600" />
-                      : <Lock size={13} className="text-muted-foreground" />}
-                  </div>
-                </TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center gap-0.5">
-                    <button
-                      onClick={() => moveFile(file.id, 'up')}
-                      disabled={idx === 0}
-                      className="p-1 rounded hover:bg-accent disabled:opacity-30 transition-colors"
-                      aria-label="Move up"
-                    >
-                      <ArrowUp size={13} />
-                    </button>
-                    <button
-                      onClick={() => moveFile(file.id, 'down')}
-                      disabled={idx === files.length - 1}
-                      className="p-1 rounded hover:bg-accent disabled:opacity-30 transition-colors"
-                      aria-label="Move down"
-                    >
-                      <ArrowDown size={13} />
-                    </button>
-                  </div>
-                </TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
-                  {file.file_type === 'pdf' ? (
-                    <div className="flex items-center gap-1.5">
-                      {file.blurred_pages && file.blurred_pages.length > 0 ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          <EyeOff size={10} className="mr-1" />
-                          {file.blurred_pages.length} page{file.blurred_pages.length > 1 ? 's' : ''}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">–</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">–</span>
-                  )}
-                </TableCell>
-                <TableCell onClick={e => e.stopPropagation()}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <MoreHorizontal size={14} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openPreview(file)}>
-                        <Eye size={13} className="mr-2" /> Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleting(file.id)}
-                      >
-                        <Trash2 size={13} className="mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+                ))}
+              </TableBody>
+            </SortableContext>
+          </DndContext>
         </Table>
       </div>
 
@@ -392,6 +568,29 @@ export function FilesTable({ files: initial }: FilesTableProps) {
                     }}
                     placeholder="Set date"
                     className="h-7 text-xs"
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground shrink-0">Category:</span>
+                  <select
+                    value={preview.category ?? 'general'}
+                    onChange={e => updateCategory(preview.id, e.target.value)}
+                    className="h-7 text-xs rounded-md border border-input bg-background px-2 pr-6 text-foreground outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    {CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Description */}
+                <div className="mt-2">
+                  <span className="text-xs text-muted-foreground">Description:</span>
+                  <EditableDescription
+                    value={preview.description ?? ''}
+                    onSave={v => updateDescription(preview.id, v)}
                   />
                 </div>
               </SheetHeader>

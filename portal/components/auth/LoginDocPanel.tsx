@@ -92,10 +92,20 @@ function SpamWarning() {
   );
 }
 
+type FileTypeFilter = 'all' | 'pdf' | 'pptx' | 'other';
+
+const TYPE_TABS: { key: FileTypeFilter; label: string }[] = [
+  { key: 'all',   label: 'All'   },
+  { key: 'pdf',   label: 'PDF'   },
+  { key: 'pptx',  label: 'PPTX'  },
+  { key: 'other', label: 'Other' },
+];
+
 export function LoginDocPanel({ files }: LoginDocPanelProps) {
-  const [selected,  setSelected]  = useState<PublicFile | null>(files[0] ?? null);
-  const [search,    setSearch]    = useState('');
-  const [loading,   setLoading]   = useState(false);
+  const [selected,    setSelected]    = useState<PublicFile | null>(files[0] ?? null);
+  const [search,      setSearch]      = useState('');
+  const [typeFilter,  setTypeFilter]  = useState<FileTypeFilter>('all');
+  const [loading,     setLoading]     = useState(false);
   const [fbName,    setFbName]    = useState('');
   const [fbContent, setFbContent] = useState('');
   const [fbSuccess, setFbSuccess] = useState(false);
@@ -117,9 +127,13 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
   const [accessError,    setAccessError]    = useState('');
   const [accessSentTo,   setAccessSentTo]   = useState('');
 
-  const filtered = search
-    ? files.filter(f => f.display_name.toLowerCase().includes(search.toLowerCase()))
-    : files;
+  const filtered = files.filter(f => {
+    if (search && !f.display_name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (typeFilter === 'pdf')   return f.file_type === 'pdf';
+    if (typeFilter === 'pptx')  return f.file_type === 'pptx';
+    if (typeFilter === 'other') return f.file_type !== 'pdf' && f.file_type !== 'pptx';
+    return true;
+  });
 
   function handleSelect(file: PublicFile) {
     if (file.id === selected?.id) return;
@@ -470,7 +484,7 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
 
           {/* Left — file list */}
           <div className="w-full md:w-56 2xl:w-72 shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-border bg-muted/20 max-h-44 md:max-h-none">
-            <div className="p-2.5 border-b border-border">
+            <div className="p-2.5 border-b border-border space-y-2">
               <div className="relative">
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
@@ -480,6 +494,22 @@ export function LoginDocPanel({ files }: LoginDocPanelProps) {
                   onChange={e => setSearch(e.target.value)}
                   className="w-full rounded-md bg-background border border-input pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
                 />
+              </div>
+              <div className="flex gap-1">
+                {TYPE_TABS.map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setTypeFilter(tab.key)}
+                    className={cn(
+                      'flex-1 text-[10px] font-medium py-1 rounded transition-colors',
+                      typeFilter === tab.key
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -641,7 +671,7 @@ function DocViewer({
     // PdfViewer manages its own loading state internally
     // Call onLoad immediately so the parent loading overlay clears
     if (onLoad) setTimeout(onLoad, 0);
-    return <PdfViewer key={public_url} url={public_url} blurredPages={file.blurred_pages} />;
+    return <PdfViewer key={public_url} url={public_url} fileName={display_name} blurredPages={file.blurred_pages} />;
   }
 
   if (file_type === 'pptx') {

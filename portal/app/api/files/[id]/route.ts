@@ -37,11 +37,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   const body    = await request.json();
   const allowed: Record<string, unknown> = {};
-  if (body.display_name !== undefined) allowed.display_name = body.display_name;
-  if (body.metadata     !== undefined) allowed.metadata     = body.metadata;
+  if (body.display_name  !== undefined) allowed.display_name  = body.display_name;
+  if (body.metadata      !== undefined) allowed.metadata      = body.metadata;
   if (body.blurred_pages !== undefined) allowed.blurred_pages = body.blurred_pages;
-  if (body.sort_order   !== undefined) allowed.sort_order   = body.sort_order;
+  if (body.sort_order    !== undefined) allowed.sort_order    = body.sort_order;
   if (body.document_date !== undefined) allowed.document_date = body.document_date;
+  if (body.category      !== undefined) allowed.category      = body.category;
+  if (body.description   !== undefined) allowed.description   = body.description;
 
   // When toggling is_public, update public_url accordingly
   if (body.is_public !== undefined) {
