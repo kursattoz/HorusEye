@@ -44,7 +44,7 @@ export type LogEventType =
   | 'feedback.create' | 'feedback.update' | 'feedback.delete'
   | 'user.create' | 'user.update' | 'user.delete'
   | 'checklist.create' | 'checklist.update' | 'checklist.check' | 'checklist.uncheck' | 'checklist.delete'
-  | 'system.error' | 'system.warning' | 'page.visit';
+  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit';
 
 export type LogSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 

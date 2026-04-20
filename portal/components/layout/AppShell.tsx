@@ -24,10 +24,11 @@ interface AppShellProps {
 export function AppShell({ user, role, colorTheme, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
 
-  // Restore persisted sidebar state on mount
+  // Restore persisted sidebar state on mount — localStorage unavailable on server, so useEffect is correct here
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (stored !== null) setCollapsed(stored === 'true');
     } catch { /* noop */ }
   }, []);

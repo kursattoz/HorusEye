@@ -32,9 +32,8 @@ export async function POST(request: NextRequest) {
 
   const { count, error } = await supabase
     .from('notifications')
-    .delete()
-    .lt('created_at', ninetyDaysAgo.toISOString())
-    .select('*', { count: 'exact', head: true });
+    .delete({ count: 'exact' })
+    .lt('created_at', ninetyDaysAgo.toISOString());
 
   if (error) {
     await log({

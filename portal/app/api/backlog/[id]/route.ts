@@ -347,11 +347,11 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   });
 
   if (fileDisplayName) {
-    notifyAdmins({
-      category: 'files',
-      title: `Backlog item deleted with associated file: ${fileDisplayName}`,
-      description: `The backlog item "${item?.title ?? id}" was deleted, which was associated with the file "${fileDisplayName}".`,
-    });
+    notifyAdmins(
+      'files',
+      `Backlog item deleted with associated file: ${fileDisplayName}`,
+      `The backlog item "${item?.title ?? id}" was deleted, which was associated with the file "${fileDisplayName}".`,
+    );
   }
 
   return NextResponse.json({ ok: true });
