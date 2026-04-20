@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
+import { createNotification } from '@/lib/notifications';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -16,9 +17,26 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const { data, error } = await supabase.from('feedbacks')
     .update({ resolved: true, resolved_by: user.id, resolved_at: new Date().toISOString() })
     .eq('id', id)
-    .select().single();
+    .select(`
+      *,
+      author:author_id (full_name),
+      file:files (display_name)
+    `)
+    .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await log({ event_type: 'feedback.update', severity: 'info', user_id: user.id, action: `Resolved feedback ${id}` });
+
+  // Notify feedback author
+  if (data.author_id) {
+    await createNotification({
+      user_id: data.author_id,
+      category: 'feedback',
+      title: `Your feedback on ${data.file?.display_name ?? 'a file'} has been resolved`,
+      description: `Your feedback "${data.content ?? '...' }" for ${data.file?.display_name ?? 'the file'} was marked resolved.`,
+      link: `/feedback?file_id=${data.file_id}`,
+    });
+  }
+
   return NextResponse.json({ feedback: data });
 }

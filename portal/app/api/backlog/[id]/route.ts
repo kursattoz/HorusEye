@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { log } from '@/lib/logger';
-import { createNotification } from '@/lib/notifications';
+import { createNotification, notifyAdmins } from '@/lib/notifications';
 import { sendMail } from '@/lib/mailer';
 import { reviewRequestTemplate } from '@/lib/mailer/templates';
 
@@ -122,6 +122,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  // Notify file uploader if item has a file_id
+  if (data.file_id) {
+    const { data: file } = await supabase
+      .from('files')
+      .select('display_name, uploaded_by')
+      .eq('id', data.file_id)
+      .maybeSingle();
+
+    if (file?.uploaded_by) {
+      createNotification({
+        user_id: file.uploaded_by,
+        category: 'files',
+        title: `File updated: ${file.display_name}`,
+        description: `Backlog item "${data.title}" has been updated.`,
+        link: '/files',
+      });
+    }
+  }
 
   // Notify reviewer when item moves to 'review'
   if (body.status === 'review' && prev?.status !== 'review') {
@@ -301,9 +320,19 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   const { data: item } = await supabase
     .from('backlog_items')
-    .select('title')
+    .select('title, file_id')
     .eq('id', id)
     .maybeSingle();
+
+  let fileDisplayName: string | null = null;
+  if (item?.file_id) {
+    const { data: file } = await supabase
+      .from('files')
+      .select('display_name')
+      .eq('id', item.file_id)
+      .maybeSingle();
+    fileDisplayName = file?.display_name ?? null;
+  }
 
   const { error } = await supabase.from('backlog_items').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -316,6 +345,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     resource_id: id,
     action: `Removed backlog item: ${item?.title ?? id}`,
   });
+
+  if (fileDisplayName) {
+    notifyAdmins({
+      category: 'files',
+      title: `Backlog item deleted with associated file: ${fileDisplayName}`,
+      description: `The backlog item "${item?.title ?? id}" was deleted, which was associated with the file "${fileDisplayName}".`,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
