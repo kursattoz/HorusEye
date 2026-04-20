@@ -5,12 +5,14 @@ import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { ColorThemeInitializer } from './ColorThemeInitializer';
+import { usePageTracking } from '@/hooks/usePageTracking';
 import type { UserRole } from '@/types';
 
 const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed';
 
 interface AppShellProps {
   user: {
+    id:         string;
     full_name:  string | null;
     email:      string;
     avatar_url: string | null;
@@ -23,6 +25,7 @@ interface AppShellProps {
 
 export function AppShell({ user, role, colorTheme, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  usePageTracking(user.id);
 
   // Restore persisted sidebar state on mount — localStorage unavailable on server, so useEffect is correct here
   useEffect(() => {

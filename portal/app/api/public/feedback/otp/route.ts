@@ -107,5 +107,15 @@ export async function POST(request: NextRequest) {
   });
   sendMail({ to: normalizedEmail, subject, html });
 
+  // In local dev, log the code to the server console so you can test without SMTP
+  if (process.env.NEXT_PUBLIC_ENV === 'local') {
+    console.log(`\n[OTP DEV] ─────────────────────────────`);
+    console.log(`[OTP DEV]  To:      ${normalizedEmail}`);
+    console.log(`[OTP DEV]  Code:    ${code}`);
+    console.log(`[OTP DEV]  OTP ID:  ${otpRow.id}`);
+    console.log(`[OTP DEV]  Expires: ${expiresAt}`);
+    console.log(`[OTP DEV] ─────────────────────────────\n`);
+  }
+
   return NextResponse.json({ otp_id: otpRow.id });
 }

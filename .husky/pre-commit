@@ -1,6 +1,7 @@
 #!/bin/sh
 
-# Run PRD interface validator
+# PRD interface version check — fails commit if any PRD references a stale interface version
+# See: PRD-000 Section 9, scripts/validate-prd-interfaces.js
 echo "Validating PRD interface versions..."
 cd portal && npm run validate:prd
 if [ $? -ne 0 ]; then
