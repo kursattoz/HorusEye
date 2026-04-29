@@ -1,0 +1,10 @@
+# Phase A defaults — extend in later phases (PRD-013 §12.1)
+service:
+  name: horus-eye-ai
+
+ingestion:
+  rtsp_buffer_frames: 2
+  target_fps: 5
+
+websocket:
+  heartbeat_interval_sec: 30

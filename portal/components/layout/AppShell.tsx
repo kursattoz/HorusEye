@@ -1,14 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { ColorThemeInitializer } from './ColorThemeInitializer';
+import { usePageTracking } from '@/hooks/usePageTracking';
 import type { UserRole } from '@/types';
+
+const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed';
 
 interface AppShellProps {
   user: {
+    id:         string;
     full_name:  string | null;
     email:      string;
     avatar_url: string | null;
@@ -21,6 +25,24 @@ interface AppShellProps {
 
 export function AppShell({ user, role, colorTheme, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  usePageTracking(user.id);
+
+  // Restore persisted sidebar state on mount — localStorage unavailable on server, so useEffect is correct here
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (stored !== null) setCollapsed(stored === 'true');
+    } catch { /* noop */ }
+  }, []);
+
+  function toggleSidebar() {
+    setCollapsed(c => {
+      const next = !c;
+      try { localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next)); } catch { /* noop */ }
+      return next;
+    });
+  }
 
   return (
     <>
@@ -29,7 +51,7 @@ export function AppShell({ user, role, colorTheme, children }: AppShellProps) {
         <Topbar
           user={user}
           sidebarCollapsed={collapsed}
-          onToggleSidebar={() => setCollapsed(c => !c)}
+          onToggleSidebar={toggleSidebar}
         />
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar — hidden on mobile, visible md+ */}

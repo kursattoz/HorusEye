@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Badge }    from '@/components/ui/badge';
 import { Button }   from '@/components/ui/button';
 import { Input }    from '@/components/ui/input';
@@ -57,10 +58,16 @@ export function TeamTable({ users: initial }: TeamTableProps) {
   const [newRole,  setNewRole]  = useState('supervisor');
   const [adding,   setAdding]   = useState(false);
 
-  const filtered = users.filter(u =>
-    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.toLowerCase().trim();
+    if (!q) return users;
+    return users.filter(u =>
+      (u.full_name?.toLowerCase().includes(q)) ||
+      u.email.toLowerCase().includes(q)
+    );
+  }, [users, debouncedSearch]);
 
   async function toggleActive(id: string, current: boolean) {
     const res = await fetch(`/api/users/${id}`, {
@@ -130,6 +137,13 @@ export function TeamTable({ users: initial }: TeamTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  {debouncedSearch ? 'No users match your search.' : 'No users found.'}
+                </TableCell>
+              </TableRow>
+            )}
             {filtered.map(u => (
               <TableRow key={u.id}>
                 <TableCell>

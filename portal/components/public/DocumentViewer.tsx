@@ -1,16 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Download, ExternalLink } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
-import { cn }             from '@/lib/utils';
-import type { PublicFile } from './FileTree';
+import { Download, ExternalLink, MessageSquarePlus } from 'lucide-react';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn }                    from '@/lib/utils';
+import { getGuestSessionId }     from '@/lib/utils/guestSession';
+import type { PublicFile }       from './FileTree';
+import { PublicFeedbackModal }   from './PublicFeedbackModal';
+import { AccessLinkModal }       from './AccessLinkModal';
 
 interface DocumentViewerProps {
   file: PublicFile | null;
 }
 
 export function DocumentViewer({ file }: DocumentViewerProps) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [accessAction, setAccessAction] = useState<'open' | 'download' | null>(null);
+
+  // Log file.view for every file the guest selects (BL-90)
+  useEffect(() => {
+    if (!file) return;
+    fetch('/api/log/page', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        pathname:  `/docs/${file.slug ?? file.id}`,
+        sessionId: getGuestSessionId(),
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        metadata:  { event: 'file.view', file_id: file.id, file_name: file.display_name },
+      }),
+    }).catch(() => {});
+  }, [file?.id]);
+
   if (!file) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center px-8 space-y-4">
@@ -39,21 +60,27 @@ export function DocumentViewer({ file }: DocumentViewerProps) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href={file.public_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAccessAction('open')}
           >
             <ExternalLink size={14} className="mr-1.5" /> Open
-          </a>
-          <a
-            href={file.public_url}
-            download
-            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAccessAction('download')}
           >
             <Download size={14} className="mr-1.5" /> Download
-          </a>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFeedbackOpen(true)}
+          >
+            <MessageSquarePlus size={14} className="mr-1.5" /> Feedback
+          </Button>
         </div>
       </div>
 
@@ -61,6 +88,21 @@ export function DocumentViewer({ file }: DocumentViewerProps) {
       <div className="flex-1 overflow-hidden">
         <FileRenderer file={file} />
       </div>
+
+      <PublicFeedbackModal
+        fileId={file.id}
+        fileName={file.display_name}
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+      />
+
+      <AccessLinkModal
+        fileId={file.id}
+        fileName={file.display_name}
+        action={accessAction ?? 'open'}
+        open={accessAction !== null}
+        onOpenChange={v => { if (!v) setAccessAction(null); }}
+      />
     </div>
   );
 }

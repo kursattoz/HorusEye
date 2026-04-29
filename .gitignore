@@ -20,9 +20,20 @@ portal/build/
 *.pfx
 *.crt
 *.csr
+*.ppk
 credentials.json
 service-account*.json
 *.credentials
+*.secret
+*_secret*
+*_private*
+# SSH private keys
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+# npm auth tokens
+.npmrc
 
 # ─── AWS ────────────────────────────────────────
 .aws/
@@ -30,6 +41,7 @@ aws-exports.js
 
 # ─── CDK ────────────────────────────────────────
 infra/cdk.out/
+infra/cdk.context.json
 infra/dist/
 infra/*.js
 infra/*.d.ts
@@ -48,8 +60,8 @@ portal/next-env.d.ts
 
 # ─── AI Service ─────────────────────────────────
 ai-service/.venv/
-ai-service/__pycache__/
-ai-service/*.pyc
+ai-service/**/__pycache__/
+ai-service/**/*.pyc
 ai-service/models/*.pt
 ai-service/models/*.weights
 ai-service/models/*.onnx
@@ -78,6 +90,9 @@ Thumbs.db
 skills-lock.json
 
 # ─── Local docs & scripts (not project code) ─────
+DEVELOPER-SETUP.md
+sonprompt.rtf
+*.rtf
 LLD-MASTER-PROMPT.md
 generate_lld.py
 docs/GELISTIRICI-BASLANGIC-REHBERI.md

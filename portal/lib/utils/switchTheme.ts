@@ -3,7 +3,7 @@
  * Falls back to instant switch on unsupported browsers.
  */
 export function switchTheme(setTheme: (theme: string) => void, theme: string) {
-  if (typeof document === 'undefined' || !('startViewTransition' in document)) {
+  if (typeof document === 'undefined' || typeof (document as unknown as { startViewTransition?: unknown }).startViewTransition !== 'function') {
     setTheme(theme);
     return;
   }

@@ -44,7 +44,7 @@ export type LogEventType =
   | 'feedback.create' | 'feedback.update' | 'feedback.delete'
   | 'user.create' | 'user.update' | 'user.delete'
   | 'checklist.create' | 'checklist.update' | 'checklist.check' | 'checklist.uncheck' | 'checklist.delete'
-  | 'system.error' | 'system.warning' | 'page.visit';
+  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit';
 
 export type LogSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -190,4 +190,16 @@ export interface BacklogActivity {
   action: string;
   hours_logged: number | null;
   created_at: string;
+}
+
+// @interface BacklogReview @version 1.0
+export interface BacklogReview {
+  id: string;
+  backlog_item_id: string;
+  reviewer_id: string;
+  status: 'pending' | 'approved' | 'changes_requested';
+  comment: string | null;
+  has_screenshot: boolean;
+  created_at: string;
+  updated_at: string;
 }

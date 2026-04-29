@@ -20,6 +20,7 @@ import {
   Laptop,
   Kanban,
   CalendarDays,
+  Trash2,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
 import { switchTheme } from '@/lib/utils/switchTheme';
@@ -62,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Calendar',  href: routes.calendar,  icon: CalendarDays,    roles: ['admin','supervisor','assistant'] },
       { label: 'Reports',   href: routes.reports,   icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
       { label: 'Files',     href: routes.files,     icon: FileText,        roles: ['admin'] },
+      { label: 'Trash',     href: routes.filesTrash, icon: Trash2,         roles: ['admin'] },
       { label: 'Team',      href: routes.team,      icon: Users,           roles: ['admin'] },
       { label: 'Feedback',  href: routes.feedback,  icon: MessageSquare,   roles: ['admin','supervisor','assistant'] },
     ],

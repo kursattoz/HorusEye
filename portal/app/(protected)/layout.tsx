@@ -19,6 +19,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   return (
     <AppShell
       user={{
+        id:         user.id,
         full_name:  user.full_name,
         email:      user.email,
         avatar_url: user.avatar_url,

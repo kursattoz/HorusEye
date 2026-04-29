@@ -13,6 +13,7 @@ export const PERMISSION_MATRIX: Record<string, Record<Exclude<UserRole, 'guest'>
   manage_users:      { admin: true,  supervisor: false, assistant: false, guest: false },
   view_monitor:      { admin: true,  supervisor: false, assistant: false, guest: false },
   view_audit_logs:   { admin: true,  supervisor: false, assistant: false, guest: false },
+  view_files:        { admin: true,  supervisor: true,  assistant: true,  guest: false },
 };
 
 export const PERMISSION_LABELS: Record<string, string> = {

@@ -13,9 +13,13 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "validate:prd": "node ../scripts/validate-prd-interfaces.js",
-    "validate": "npm run validate:prd && npm run type-check && npm run lint && npm run test:coverage"
+    "validate": "npm run validate:prd && npm run type-check && npm run lint && npm run test:coverage",
+    "prepare": "husky"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@radix-ui/react-slot": "^1.0.2",
     "@sentry/nextjs": "^10.44.0",
     "@serwist/next": "^9.5.7",
@@ -60,6 +64,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.7",
+    "happy-dom": "^20.9.0",
     "husky": "^9.1.7",
     "jsdom": "^29.0.0",
     "msw": "^2.12.13",

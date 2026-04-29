@@ -6,6 +6,7 @@ export const routes = {
   changePassword:  '/change-password',
   dashboard:       '/dashboard',
   files:           '/files',
+  filesTrash:      '/files/trash',
   team:            '/team',
   feedback:        '/feedback',
   reports:         '/reports',
@@ -37,6 +38,7 @@ export const PROTECTED_ROUTES = [
 // Routes only accessible by admin
 export const ADMIN_ONLY_ROUTES = [
   '/files',
+  '/files/trash',
   '/team',
   '/dev/monitor',
 ] as const;
