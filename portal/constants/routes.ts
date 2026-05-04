@@ -4,6 +4,7 @@ export const routes = {
   docs:            (slug: string) => `/docs/${slug}`,
   login:           '/login',
   changePassword:  '/change-password',
+  resetPassword:   '/reset-password',
   dashboard:       '/dashboard',
   files:           '/files',
   filesTrash:      '/files/trash',

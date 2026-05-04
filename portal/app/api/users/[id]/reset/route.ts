@@ -16,7 +16,9 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const { data: target } = await supabase.from('user_profiles').select('email').eq('id', id).single();
   if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-  const { error } = await supabase.auth.resetPasswordForEmail(target.email);
+  const base = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '');
+  const redirectTo = `${base}/auth/callback?next=${encodeURIComponent('/reset-password')}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(target.email, { redirectTo });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   await log({ event_type: 'auth.password_reset', severity: 'info', user_id: user.id, action: `Password reset sent for ${target.email}` });

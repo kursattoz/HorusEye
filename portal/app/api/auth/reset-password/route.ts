@@ -24,7 +24,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL!}/change-password`;
+  const base = process.env.NEXT_PUBLIC_APP_URL!.replace(/\/$/, '');
+  const redirectTo = `${base}/auth/callback?next=${encodeURIComponent('/reset-password')}`;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
     redirectTo,
