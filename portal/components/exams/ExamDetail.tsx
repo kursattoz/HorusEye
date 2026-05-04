@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExamRoom, ExamSession, Student } from '@/types';
 import { SessionAssignModal } from '@/components/exams/SessionAssignModal';
+import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
 
 interface SessionExpanded extends ExamSession {
   exam_rooms?: { id: string; name: string; capacity: number | null; location: string | null };
@@ -128,14 +129,17 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
   const [cameraCount, setCameraCount] = useState<number>(0);
   const [showStudents, setShowStudents] = useState(false);
   const [showProctors, setShowProctors] = useState(false);
+  const [showCameras,  setShowCameras]  = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [reloadKey,    setReloadKey]    = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [sessionRes, camRes] = await Promise.all([
+      const [sessionRes, camRes, meRes] = await Promise.all([
         fetch(`/api/exam-sessions/${session.id}`, { cache: 'no-store' }),
-        fetch(`/api/cameras?room_id=${session.room_id}`, { cache: 'no-store' }),
+        fetch(`/api/exam-sessions/${session.id}/cameras`, { cache: 'no-store' }),
+        fetch('/api/auth/me', { cache: 'no-store' }),
       ]);
       if (cancelled) return;
       if (sessionRes.ok) {
@@ -150,7 +154,13 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
         const d = await camRes.json();
         if (cancelled) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
-        setCameraCount((d.cameras ?? []).length);
+        setCameraCount((d.session_cameras ?? []).length);
+      }
+      if (meRes.ok) {
+        const d = await meRes.json();
+        if (cancelled) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+        setCurrentUserId(d.user?.id ?? null);
       }
     })();
     return () => { cancelled = true; };
@@ -183,11 +193,14 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
           <p className="font-semibold">{students.length}</p>
           <p className="text-muted-foreground">Student{students.length !== 1 ? 's' : ''}</p>
         </button>
-        <div className="rounded-md bg-muted/40 p-2 text-center">
+        <button
+          onClick={() => setShowCameras(true)}
+          className="rounded-md bg-muted/40 hover:bg-muted/70 transition p-2 text-center"
+        >
           <CameraIcon size={14} className="mx-auto mb-1 text-muted-foreground" />
           <p className="font-semibold">{cameraCount}</p>
           <p className="text-muted-foreground">Camera{cameraCount !== 1 ? 's' : ''}</p>
-        </div>
+        </button>
       </div>
 
       <div className="flex items-center justify-between pt-1">
@@ -204,6 +217,14 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
         </Button>
       </div>
 
+      <SessionCameraAttach
+        open={showCameras}
+        onClose={() => setShowCameras(false)}
+        sessionId={session.id}
+        sessionRoomId={session.room_id}
+        currentUserId={currentUserId ?? ''}
+        onChange={refresh}
+      />
       <SessionAssignModal
         open={showStudents}
         onClose={() => setShowStudents(false)}

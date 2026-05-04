@@ -5,6 +5,8 @@
 // GET: proctors read the recent event log for a camera.
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth/api';
+import { verifyPairToken } from '@/lib/auth/pair-token';
+import { createClient } from '@/lib/supabase/server';
 import { createNotification } from '@/lib/notifications';
 import { log } from '@/lib/logger';
 
@@ -30,8 +32,28 @@ const CRITICAL_EVENTS = new Set<CameraHealthEventType>([
 
 export async function POST(request: NextRequest, { params }: Params) {
   const { id: cameraId } = await params;
-  const auth = await requireAuth();
-  if (!auth.ok) return auth.response;
+
+  // Authentication: Supabase session OR Bearer pair-token. Phones running
+  // the public /cam-pair page hold a 5-min token; logged-in proctor PCs
+  // hold a Supabase session. Either path establishes ownership.
+  const bearer = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '').trim() ?? null;
+  const tokenResult = bearer ? verifyPairToken(bearer) : null;
+  let actor: { userId: string; role: 'admin' | 'supervisor' | 'assistant' | null; supabase: Awaited<ReturnType<typeof createClient>> };
+
+  if (tokenResult?.ok) {
+    if (tokenResult.payload.camera_id !== cameraId) {
+      return NextResponse.json({ error: 'pair token camera_id mismatch' }, { status: 403 });
+    }
+    actor = {
+      userId: tokenResult.payload.owner_user_id,
+      role:   null,
+      supabase: await createClient({ serviceRole: true }),
+    };
+  } else {
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.response;
+    actor = { userId: auth.userId, role: auth.role, supabase: auth.supabase };
+  }
 
   const body = await request.json().catch(() => ({}));
   const event_type = String(body.event_type ?? '') as CameraHealthEventType;
@@ -43,7 +65,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   // Ownership check — only the camera's owner (or admin) can post events.
-  const { data: camera, error: cameraErr } = await auth.supabase
+  const { data: camera, error: cameraErr } = await actor.supabase
     .from('cameras')
     .select('id, label, owner_user_id')
     .eq('id', cameraId)
@@ -51,11 +73,11 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (cameraErr) return NextResponse.json({ error: cameraErr.message }, { status: 500 });
   if (!camera) return NextResponse.json({ error: 'camera not found' }, { status: 404 });
 
-  if (camera.owner_user_id && camera.owner_user_id !== auth.userId && auth.role !== 'admin') {
+  if (camera.owner_user_id && camera.owner_user_id !== actor.userId && actor.role !== 'admin') {
     return NextResponse.json({ error: 'Only the camera owner can post health events' }, { status: 403 });
   }
 
-  const { data: event, error: insertErr } = await auth.supabase
+  const { data: event, error: insertErr } = await actor.supabase
     .from('camera_health_events')
     .insert({ camera_id: cameraId, session_id, event_type, metadata })
     .select('id, camera_id, session_id, event_type, metadata, created_at')
@@ -65,14 +87,14 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   // Update last_seen_at on every event (any signal counts as "alive").
-  await auth.supabase
+  await actor.supabase
     .from('cameras')
     .update({ last_seen_at: new Date().toISOString() })
     .eq('id', cameraId);
 
   // Fan out notifications for alert-worthy events.
   if (ALERT_EVENTS.has(event_type) && session_id) {
-    const { data: proctors } = await auth.supabase
+    const { data: proctors } = await actor.supabase
       .from('session_proctors')
       .select('user_id, role')
       .eq('session_id', session_id);
@@ -98,7 +120,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     await log({
       event_type:    'system.warning',
       severity:      CRITICAL_EVENTS.has(event_type) ? 'critical' : 'warn',
-      user_id:       auth.userId,
+      user_id:       actor.userId,
       resource_type: 'camera',
       resource_id:   cameraId,
       action:        `Camera health alert: ${event_type} (${camera.label})`,

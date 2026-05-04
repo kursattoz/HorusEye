@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AI_PROTOCOL_VERSION } from '@/types/ai';
 import type { ServerMessage, ServerIncident, ServerStatus, ServerFrame } from '@/types/ai';
 import { LiveVideoOverlay } from '@/components/exams/LiveVideoOverlay';
+import { CameraHealthBadge } from '@/components/exams/CameraHealthBadge';
 
 type ConnectState = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
 
@@ -17,12 +18,25 @@ interface LiveMonitorProps {
   wsBase:   string;
 }
 
+interface SessionCameraRow {
+  id: string;
+  camera_id: string;
+  added_at: string;
+  camera: {
+    id: string;
+    label: string;
+    camera_type: 'ip_camera' | 'phone' | 'usb_webcam';
+    last_seen_at: string | null;
+  };
+}
+
 export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [state, setState] = useState<ConnectState>('idle');
   const [incidents, setIncidents] = useState<ServerIncident[]>([]);
   const [statusMessages, setStatusMessages] = useState<ServerStatus[]>([]);
   const [latestFrame, setLatestFrame] = useState<ServerFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessionCameras, setSessionCameras] = useState<SessionCameraRow[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
@@ -129,6 +143,23 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     };
   }, [session, wsBase]);
 
+  // Pull session_cameras (junction) for the health-badge row.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/exam-sessions/${session.id}/cameras`, { cache: 'no-store' });
+        const d = await r.json();
+        if (cancelled || !r.ok) return;
+        setSessionCameras(d.session_cameras ?? []);
+      } catch { /* ignore */ }
+    };
+    void load();
+    const t = setInterval(load, 10_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [session]);
+
   if (!session) {
     return (
       <Alert>
@@ -143,11 +174,22 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     <div className="grid lg:grid-cols-[1fr_360px] gap-4 flex-1 min-h-0">
       {/* Main: video frame + bbox overlay */}
       <div className="rounded-lg border bg-card flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
+        <header className="flex items-center justify-between gap-2 border-b px-4 py-2 flex-wrap">
           <div className="flex items-center gap-2 text-sm">
             <Video size={14} className="text-muted-foreground" />
             <span className="font-semibold">{session.exam_rooms?.name ?? 'Session'}</span>
             <span className="text-xs text-muted-foreground">· status: {session.status}</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {sessionCameras.map(sc => (
+              <CameraHealthBadge
+                key={sc.id}
+                cameraId={sc.camera_id}
+                cameraLabel={sc.camera.label}
+                cameraType={sc.camera.camera_type}
+                lastSeenAt={sc.camera.last_seen_at}
+              />
+            ))}
           </div>
           <ConnectionBadge state={state} />
         </header>
