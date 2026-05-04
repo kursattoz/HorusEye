@@ -203,3 +203,111 @@ export interface BacklogReview {
   created_at: string;
   updated_at: string;
 }
+
+// @interface Exam @version 1.0
+export type ExamStatus = 'draft' | 'scheduled' | 'active' | 'completed' | 'cancelled';
+
+export interface Exam {
+  id: string;
+  name: string;
+  course_code: string | null;
+  description: string | null;
+  scheduled_date: string;      // ISO DATE
+  scheduled_start: string;     // HH:MM
+  scheduled_end: string;       // HH:MM
+  duration_minutes: number;
+  status: ExamStatus;
+  settings: Record<string, unknown>;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// @interface ExamRoom @version 1.0
+export interface ExamRoom {
+  id: string;
+  name: string;
+  capacity: number | null;
+  location: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// @interface Camera @version 1.1
+export type CameraRole = 'front_wide' | 'front_close' | 'rear_wide' | 'side_left' | 'side_right';
+export type CameraType = 'ip_camera' | 'phone' | 'usb_webcam';
+
+export interface Camera {
+  id: string;
+  room_id: string;
+  label: string;
+  stream_url: string;
+  camera_type: CameraType;
+  role: CameraRole;
+  position_x: number | null;
+  position_y: number | null;
+  quality_score: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+// @interface ExamSession @version 1.1
+export type SessionStatus = 'scheduled' | 'active' | 'paused' | 'ended';
+
+export interface ExamSession {
+  id: string;
+  exam_id: string;
+  room_id: string;
+  started_at: string | null;
+  ended_at: string | null;
+  status: SessionStatus;
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+// @interface Student @version 1.1
+export interface Student {
+  id: string;
+  student_id: string;          // School ID (unique)
+  full_name: string;
+  email: string | null;
+  department: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// @interface Incident @version 1.1
+export type IncidentType =
+  | 'phone_detected' | 'earbuds_detected' | 'paper_detected'
+  | 'gaze_diversion' | 'head_turn' | 'empty_seat'
+  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty';
+
+export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type ProctorDecision = 'clean' | 'suspicious' | 'violation';
+
+export interface Incident {
+  id: string;
+  session_id: string;
+  student_id: string | null;
+  track_id: number | null;
+  incident_type: IncidentType;
+  severity: IncidentSeverity;
+  confidence: number;
+  risk_score: number | null;
+  triggered_rules: string[];
+  camera_ids: string[];
+  evidence_paths: string[];
+  raw_signals: Record<string, unknown> | null;
+  is_reviewed: boolean;
+  reviewed_by: string | null;
+  review_note: string | null;
+  proctor_decision: ProctorDecision | null;
+  decision_note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  occurred_at: string;
+  created_at: string;
+}
