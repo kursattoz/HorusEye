@@ -111,22 +111,170 @@ classroom validation (BL-156).
 
 ## 6. Per-member contributions (BL-68)
 
-> Each member owns their section. Aim for ≤ 1 page per member.
+> First-pass content auto-generated from the live backlog (commits +
+> `backlog_items.assigned_to`). Each member edits their own section
+> before submission; aim for ≤ 1 page per member with a personal angle
+> on what was hard, what was learned, and what they'd do differently.
 
 ### 6.1 Taha Kürşat Öztürk (product_owner / fullstack)
-TODO
+
+**Role:** Product Owner & full-stack engineer. Responsible for the
+sprint/backlog system (PRD-018), CI/CD pipeline (PRD-005), AWS infrastructure,
+the camera streaming front-end, and the live monitoring page.
+
+**Key deliveries:**
+- **Sprint & Backlog Management System (PRD-018):** designed the data
+  model (sprints, backlog_items with seq_id BL-N, attachments, activity,
+  reviews, deliverable links) and built the full Kanban + Analytics +
+  Dependency Graph UI (BL-9, BL-13-15, BL-71-72).
+- **AWS infrastructure:** ECS Fargate + ALB + Route 53 + ECR via CDK
+  (BL-16). Wired SSM-driven configuration with SecureString → String
+  migration after a CDK valueFromLookup incident; documented the rule in
+  CLAUDE.md.
+- **Forgot-password end-to-end flow (BL-33):** PKCE callback route,
+  reset-password page, `/api/auth/reset-password` integration. Originally
+  shipped without a callback handler — fixed in Sprint 3.
+- **Camera RTSP ingestion (BL-49):** OpenCV-backed reader + async
+  orchestrator with FPS throttling, drop-on-full queue, and exponential-
+  backoff reconnect.
+- **AI service WebSocket protocol (BL-120):** designed the v1.0 wire
+  format (subscribe handshake, ping/pong, status, incident, frame,
+  detection, error) and the Python ↔ TypeScript twin-file convention.
+- **Exam creation wizard (BL-144) + live monitoring page (BL-117) +
+  bbox overlay (BL-118):** the demo flow from `/exams/new` through to
+  canvas-rendered detections.
+- **Cross-cutting infra:** middleware → proxy.ts migration for Next.js 16,
+  zero-downtime ECS rolling deploys (`minHealthyPercent: 100`), env-var
+  consistency CI gate.
+
+**Most useful lesson:** every CI/CD failure traced back to either a
+missing local migration file or an SSM type drift. Adding the
+`scripts/check-env-vars.sh` gate and the migration backfill discipline
+removed an entire class of "deploy boom" incidents.
 
 ### 6.2 Tuğba Hilal Kırer (portal_frontend)
-TODO
+
+**Role:** Portal frontend — every UI surface that isn't the AI service.
+
+**Key deliveries:**
+- **Files & Trash management:** drag-reorder, inline name/category/
+  description editing, soft-delete + restore + permanent purge (BL-23,
+  BL-83-87, BL-99). Powered the "drag-and-drop on the table" UX that the
+  jury sees in the public docs section.
+- **Users tab:** search/filter debounce, role edit, activate/deactivate,
+  password reset (BL-82, BL-88).
+- **Account & session management:** active sessions list, device
+  detection, password strength indicator, account deletion, page
+  tracking consent (BL-79). All consolidated into the AccountTab
+  component during the integration merge.
+- **Students page (BL-123):** list, debounced search, inline add form,
+  CSV import with detailed import-result feedback (imported/updated/
+  skipped/errors).
+- **Sidebar architecture (BL-140):** new "Exam Module" group, role-based
+  visibility, persistence of collapsed state (BL-77).
+- **Color theming + accent variables (BL-74):** dark/light toggle with
+  cubic-bezier sliding pill animation.
+- **ErrorBoundary + 404 polish (BL-73):** wrapped every route segment.
+
+**Most useful lesson:** Tailwind v4 + shadcn/ui works beautifully if you
+treat shadcn as "starter parts" and then add motion/colour variables
+yourself. The cross-team component naming convention (TableX, FormX,
+ModalX) made review handoffs cheap.
 
 ### 6.3 Gizem Nur İpek (portal_backend)
-TODO
+
+**Role:** Portal backend — Supabase schema, RLS, API routes, CI checks.
+
+**Key deliveries:**
+- **Supabase schema baseline (PRD-001/003/004):** users, files, feedback,
+  notifications, OTP, file access requests, smtp_settings. Cleaned up
+  RLS policies sprint by sprint (BL-5, audit run before integration).
+- **Force password change middleware (BL-76):** trap users on
+  `/change-password` until they reset, plus PRD-001 password policy
+  validation server-side.
+- **Notification + email triggers:** file upload/update/delete,
+  feedback create/resolve, checklist completion (BL-25, BL-28, BL-38,
+  BL-39); welcome email on user create (BL-27); 90-day cleanup cron
+  (BL-26).
+- **Public feedback OTP flow (BL-91):** 10 min expiry, 3/hour rate
+  limit, @tedu.edu.tr only.
+- **Page visit tracking (BL-35, BL-89):** auto-logging middleware
+  feeding `audit_logs` for the Monitor screen.
+- **Exam Module data layer (BL-130, BL-122, BL-129):** exams, exam_rooms,
+  cameras, exam_sessions, session_proctors, session_students, students,
+  incidents + rescoring history. The 5 migrations under
+  `20260504*` are the Sprint 3 contribution.
+- **Exam CRUD API (BL-124) + Incident API (BL-121):** 13 endpoints, all
+  audit-logged, camera stream_url AES-256-GCM encrypted at rest.
+- **Guest session tracking (BL-90):** sessionStorage-based anonymous IDs
+  plumbing into AppShell and notifyAdmins.
+
+**Most useful lesson:** RLS is brilliant when designed up-front and
+miserable when retrofitted. The Sprint 1 RLS audit caught two policies
+that admins relied on but were missing the `is_admin()` helper —
+fixing them once meant Sprint 3's exam tables landed RLS-clean from day
+one.
 
 ### 6.4 Ali Sahil (ai_backend)
-TODO
+
+**Role:** AI service owner — RTSP → YOLO → tracker → scorer → events.
+
+**Key deliveries:**
+- **AI service scaffold (BL-24):** FastAPI + uvicorn + WebSocket
+  router, /health, Dockerfile with Phase A on-prem deployment in mind,
+  pytest baseline.
+- **YOLOv8n inference pipeline (BL-42):** ultralytics wrapper, COCO
+  class filter (person, cell phone, laptop, book, keyboard), normalized
+  bbox output, lazy weights load. Dockerfile pre-bakes the weights
+  to remove the first-request stall.
+- **Phase A.1 detection scaffolds:** rule-based scoring extension
+  (BL-41) with windowed gaze + head-lost rules, IoU tracker as a
+  BoT-SORT placeholder (BL-48), MediaPipe Face Mesh extractor with
+  graceful no-mediapipe fallback (BL-149).
+- **AI performance report CLI (BL-60):** per-session JSON summary
+  pulling severity/type/decision breakdowns directly from Supabase via
+  the service role key.
+- **YOLOv8 fine-tuning script (BL-64):** ultralytics training wrapper
+  with deterministic seed, early stopping, test-set evaluation, and a
+  data.yaml template for the post-graduation custom dataset push.
+- **WebSocket protocol implementation:** server-side handshake with
+  API-key auth (BL-120), ping/pong heartbeat, unsubscribe lifecycle.
+
+**Most useful lesson:** keeping the AI service Python-only and on-prem
+removed an entire deployment dimension (no GPU on AWS, no model files
+in the repo) and let the demo run on a laptop. The cost is a tighter
+hand-off path: the WebSocket protocol was the single contract between
+my service and the rest of the team — once it was versioned, every
+end started moving in parallel.
 
 ### 6.5 Çağla Abazaoğlu (project_coordinator)
-TODO
+
+**Role:** Project coordination — deliverables, testing, materials.
+
+**Key deliveries:**
+- **All 10 deliverables (D1-D10):** LLD v1/v2, TODO/Backlog v1-v4,
+  Test Plan, Final Report, Presentation/Demo, Return of Materials. D6/D8
+  are auto-generated from the live backlog snapshot but reviewed and
+  enriched before submission.
+- **E2E baseline (BL-12, BL-36):** Playwright suite covering the login
+  → file upload → reports flow, plus the Sprint 4 expansion to full
+  user journeys (BL-50).
+- **Test Plan Report (D5):** documented coverage targets, test types,
+  and acceptance criteria per PRD.
+- **Demo & presentation production (BL-62):** 25-minute time budget,
+  recording script, slide deck.
+- **Poster & "Genç Beyinler" event materials (BL-65).**
+- **Privacy/KVKK stance documentation (BL-133):** consent at sign-in,
+  data minimisation, no automatic decisions.
+- **Cross-team coordination:** sprint reviews, retrospectives, the
+  cross-review matrix in PRD-018 §11.
+
+**Most useful lesson:** documenting the deliverable timeline in the
+backlog (with `deliverable_id` linking) meant `/sprints/analytics`
+showed the demo timeline next to engineering progress without ever
+needing a side spreadsheet. The auto-sync from done backlog items to
+deliverable status (PRD-018 §5.5) caught at least three "we forgot to
+flip the deliverable" misses.
 
 ## 7. Limitations and future work
 
