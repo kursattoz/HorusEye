@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AI_PROTOCOL_VERSION } from '@/types/ai';
-import type { ServerMessage, ServerIncident, ServerStatus } from '@/types/ai';
+import type { ServerMessage, ServerIncident, ServerStatus, ServerFrame } from '@/types/ai';
+import { LiveVideoOverlay } from '@/components/exams/LiveVideoOverlay';
 
 type ConnectState = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
 
@@ -20,6 +21,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [state, setState] = useState<ConnectState>('idle');
   const [incidents, setIncidents] = useState<ServerIncident[]>([]);
   const [statusMessages, setStatusMessages] = useState<ServerStatus[]>([]);
+  const [latestFrame, setLatestFrame] = useState<ServerFrame | null>(null);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -33,72 +35,92 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
 
     setState('connecting');
 
-    // Note: API key auth is via the subscribe message. Browser cannot
-    // safely hold a secret, so for live deploy this would proxy through
-    // the portal server. For Phase A on-prem, the AI service is on the
-    // same LAN and trusts the network boundary.
-    const url = `${wsBase.replace(/\/$/, '')}/ws/sessions/${session.id}/detections`;
-    let ws: WebSocket;
-    try {
-      ws = new WebSocket(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setState('error');
-      return;
-    }
-    wsRef.current = ws;
+    let cancelled = false;
+    let ws: WebSocket | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        type: 'subscribe',
-        protocol_version: AI_PROTOCOL_VERSION,
-        api_key: '', // Phase A on-prem; browsers proxy through portal in prod
-        session_id: session.id,
-      }));
-    };
-
-    ws.onmessage = (evt) => {
-      try {
-        const msg = JSON.parse(evt.data) as ServerMessage;
-        switch (msg.type) {
-          case 'status':
-            setStatusMessages(prev => [...prev.slice(-19), msg]);
-            if (msg.kind === 'connected')   setState('connected');
-            if (msg.kind === 'auth_failed') { setError('AI service rejected the API key.'); setState('error'); }
-            break;
-          case 'incident':
-            setIncidents(prev => [msg, ...prev].slice(0, 50));
-            break;
-          case 'error':
-            setError(`AI service error: ${msg.message}`);
-            break;
-          case 'pong':
-          case 'detection':
-          case 'frame':
-            // detections + frames go to the future video overlay (BL-118)
-            break;
+    // BL-55 — fetch a server-issued WS config (URL + scoped api_key) so
+    // AI_SERVICE_API_KEY never lives in the browser bundle.
+    void fetch(`/api/ai/ws-config?session_id=${encodeURIComponent(session.id)}`)
+      .then(r => r.json())
+      .then(cfg => {
+        if (cancelled) return;
+        const baseUrl = (cfg.ws_url || wsBase || '').replace(/\/$/, '');
+        if (!baseUrl) {
+          setError('AI service WebSocket URL is not configured.');
+          setState('error');
+          return;
         }
-      } catch {
-        /* ignore non-JSON */
-      }
-    };
+        const url = `${baseUrl}/ws/sessions/${session.id}/detections`;
+        try {
+          ws = new WebSocket(url);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err));
+          setState('error');
+          return;
+        }
+        wsRef.current = ws;
 
-    ws.onclose = () => setState('closed');
-    ws.onerror = () => setState('error');
+        ws.onopen = () => {
+          ws?.send(JSON.stringify({
+            type: 'subscribe',
+            protocol_version: AI_PROTOCOL_VERSION,
+            api_key: cfg.api_key ?? '',
+            session_id: session.id,
+          }));
+        };
 
-    // Heartbeat ping every 25s
-    const heartbeat = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
-      }
-    }, 25_000);
+        ws.onmessage = (evt) => {
+          try {
+            const msg = JSON.parse(evt.data) as ServerMessage;
+            switch (msg.type) {
+              case 'status':
+                setStatusMessages(prev => [...prev.slice(-19), msg]);
+                if (msg.kind === 'connected')   setState('connected');
+                if (msg.kind === 'auth_failed') { setError('AI service rejected the API key.'); setState('error'); }
+                break;
+              case 'incident':
+                setIncidents(prev => [msg, ...prev].slice(0, 50));
+                break;
+              case 'frame':
+                setLatestFrame(msg);
+                break;
+              case 'error':
+                setError(`AI service error: ${msg.message}`);
+                break;
+              case 'pong':
+              case 'detection':
+                // detection events feed into frame.detections; we ignore lone events
+                break;
+            }
+          } catch {
+            /* ignore non-JSON */
+          }
+        };
+
+        ws.onclose = () => setState('closed');
+        ws.onerror = () => setState('error');
+
+        // Heartbeat ping every 25s
+        heartbeat = setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
+          }
+        }, 25_000);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'ws-config fetch failed');
+        setState('error');
+      });
 
     return () => {
-      clearInterval(heartbeat);
-      if (ws.readyState === WebSocket.OPEN) {
+      cancelled = true;
+      if (heartbeat) clearInterval(heartbeat);
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'unsubscribe', session_id: session.id }));
         ws.close();
-      } else if (ws.readyState === WebSocket.CONNECTING) {
+      } else if (ws && ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
     };
@@ -116,7 +138,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-4 flex-1 min-h-0">
-      {/* Main: video placeholder */}
+      {/* Main: video frame + bbox overlay */}
       <div className="rounded-lg border bg-card flex flex-col overflow-hidden">
         <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
           <div className="flex items-center gap-2 text-sm">
@@ -128,11 +150,13 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
         </header>
 
         <div className="flex-1 flex items-center justify-center bg-muted/30 relative">
-          {state === 'connected' ? (
+          {state === 'connected' && latestFrame ? (
+            <LiveVideoOverlay frame={latestFrame} />
+          ) : state === 'connected' ? (
             <div className="text-center text-sm text-muted-foreground">
               <RadioTower className="mx-auto h-12 w-12 text-primary/40 animate-pulse" />
               <p className="mt-4 font-medium text-foreground">Connected. Awaiting frames.</p>
-              <p className="mt-1 text-xs">Live video overlay (BL-118) renders here once the AI pipeline pushes frames.</p>
+              <p className="mt-1 text-xs">Frames render here once the AI pipeline emits them.</p>
             </div>
           ) : (
             <div className="text-center text-sm text-muted-foreground max-w-md p-6">
@@ -144,7 +168,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 {state === 'idle'       && 'AI service offline.'}
               </p>
               <p className="mt-2 text-xs">
-                The AI service is deployed on-prem in Phase A. If you're testing locally, run{' '}
+                The AI service is deployed on-prem in Phase A. If you&apos;re testing locally, run{' '}
                 <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">docker compose up</code>{' '}
                 from <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">ai-service/</code>.
               </p>
