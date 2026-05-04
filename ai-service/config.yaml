@@ -8,3 +8,19 @@ ingestion:
 
 websocket:
   heartbeat_interval_sec: 30
+
+# BL-42 — YOLOv8n COCO pre-trained inference
+detection:
+  model_path: models/yolov8n.pt    # auto-downloaded on first use if missing
+  confidence_threshold: 0.45
+  iou_threshold: 0.50
+  device: cpu                       # 'cpu' | 'cuda:0' | 'mps'
+  # COCO class IDs we care about for proctoring (Phase A subset)
+  # 0=person, 67=cell phone, 63=laptop, 73=book, 76=keyboard
+  classes_of_interest: [0, 63, 67, 73, 76]
+  # Map COCO class name → our IncidentType (when severity rule fires)
+  incident_class_map:
+    'cell phone': phone_detected
+    'laptop':     paper_detected
+    'book':       paper_detected
+    'keyboard':   paper_detected

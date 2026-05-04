@@ -13,6 +13,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# BL-42 — pre-bake YOLOv8n weights so the first request doesn't stall
+# downloading ~6 MB. Stored at /app/models/yolov8n.pt; matches config.yaml.
+RUN mkdir -p models \
+ && python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')" \
+ && (mv yolov8n.pt models/ 2>/dev/null || true) \
+ && ls -lh models/
+
 COPY config.yaml .
 COPY src/ ./src/
 
