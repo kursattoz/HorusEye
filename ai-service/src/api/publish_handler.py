@@ -18,6 +18,7 @@ Wire format (PRD-019 §4.4):
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -28,12 +29,14 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from src.api.broadcaster import broadcaster
 from src.api.protocol import (
     PROTOCOL_VERSION,
     error_message,
     is_valid_publish,
     status_message,
 )
+from src.detection.yolo_detector import YoloDetector, DetectorConfig
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +100,35 @@ class _FrameStore:
 frame_store = _FrameStore()
 
 
+# ───────────────────── shared YOLO singleton ────────────────────
+# Lazy-loaded once per process; inference runs in a threadpool so the
+# event loop stays responsive for WS reads and broadcasts.
+_yolo: YoloDetector | None = None
+_yolo_lock = Lock()
+
+
+def _get_yolo() -> YoloDetector | None:
+    """Return the process-wide YoloDetector. None if YOLO is disabled or
+    fails to load (we still want to broadcast bare frames)."""
+    global _yolo
+    if os.getenv("DISABLE_YOLO") == "1":
+        return None
+    if _yolo is not None:
+        return _yolo
+    with _yolo_lock:
+        if _yolo is not None:
+            return _yolo
+        try:
+            det = YoloDetector(DetectorConfig())
+            det.load()
+            _yolo = det
+            log.info("YOLO loaded for broadcast inference")
+        except Exception as e:  # noqa: BLE001
+            log.warning("YOLO load failed (%s) — frames will broadcast without detections", e)
+            _yolo = None
+    return _yolo
+
+
 # ───────────────────── helpers ─────────────────────
 
 
@@ -120,6 +152,28 @@ def _decode_jpeg(buf: bytes) -> tuple[Any | None, int | None, int | None]:
         return None, None, None
     h, w = bgr.shape[:2]
     return bgr, int(w), int(h)
+
+
+def _detect_sync(bgr: Any) -> list[dict[str, Any]]:
+    """Run YOLO over a BGR frame; returns ServerDetection-like dicts.
+    Synchronous — call via asyncio.to_thread."""
+    det = _get_yolo()
+    if det is None or bgr is None:
+        return []
+    try:
+        results = det.detect(bgr)
+    except Exception as e:  # noqa: BLE001
+        log.debug("YOLO inference failed: %s", e)
+        return []
+    return [
+        {
+            "track_id": None,
+            "detection_class": d.class_name,
+            "confidence": float(d.confidence),
+            "bbox": list(d.bbox),
+        }
+        for d in results
+    ]
 
 
 # ───────────────────── route ─────────────────────
@@ -201,6 +255,22 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                     )
                 )
                 frames_received += 1
+
+                # Fan out to detection subscribers — only if anyone is watching.
+                if broadcaster.subscriber_count(session_id) > 0:
+                    detections = await asyncio.to_thread(_detect_sync, bgr) if bgr is not None else []
+                    frame_msg = {
+                        "type": "frame",
+                        "protocol_version": PROTOCOL_VERSION,
+                        "session_id": session_id,
+                        "camera_id": camera_id,
+                        "width": w or 0,
+                        "height": h or 0,
+                        "jpeg_base64": base64.b64encode(buf).decode("ascii"),
+                        "timestamp": _now_iso(),
+                        "detections": detections,
+                    }
+                    broadcaster.broadcast(session_id, frame_msg)
                 continue
 
             if "text" in msg and msg["text"] is not None:

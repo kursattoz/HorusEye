@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from src.api.broadcaster import broadcaster
 from src.api.protocol import (
     PROTOCOL_VERSION,
     error_message,
@@ -81,40 +82,66 @@ async def session_detections(websocket: WebSocket, session_id: str) -> None:
         status_message(session_id, "connected", "subscribed; awaiting detections", _now_iso())
     )
 
-    # 2) Pump loop: handle ping/unsubscribe; idle heartbeat
-    try:
+    # 2) Register as a broadcaster subscriber so publish_handler frames flow
+    #    here. Concurrent tasks: control message receiver + queue drainer.
+    queue = broadcaster.subscribe(session_id, maxsize=8)
+
+    async def _recv_control() -> None:
         while True:
             try:
                 raw = await asyncio.wait_for(websocket.receive_text(), timeout=_HEARTBEAT_SECONDS)
             except asyncio.TimeoutError:
-                # idle — send a server-initiated pong so connection stays warm
                 await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
                 continue
-
             try:
                 msg: Any = json.loads(raw)
             except json.JSONDecodeError:
                 await websocket.send_json(error_message("invalid_payload", "non-JSON payload", session_id))
                 continue
-
             mtype = msg.get("type") if isinstance(msg, dict) else None
             if mtype == "ping":
                 await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
             elif mtype == "ack":
-                # client confirmed receipt — currently informational
                 continue
             elif mtype == "unsubscribe":
                 await websocket.send_json(
                     status_message(session_id, "stream_ended", "unsubscribed", _now_iso())
                 )
-                await websocket.close()
                 return
             else:
                 await websocket.send_json(
                     error_message("invalid_payload", f"unknown type: {mtype}", session_id)
                 )
-    except WebSocketDisconnect:
-        log.debug("detections WS closed: session_id=%s", session_id)
+
+    async def _drain_broadcast() -> None:
+        while True:
+            envelope = await queue.get()
+            try:
+                await websocket.send_json(envelope)
+            except Exception:  # noqa: BLE001 — connection torn down mid-flight
+                return
+
+    recv_task = asyncio.create_task(_recv_control())
+    drain_task = asyncio.create_task(_drain_broadcast())
+    try:
+        done, pending = await asyncio.wait(
+            {recv_task, drain_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for t in pending:
+            t.cancel()
+        for t in done:
+            exc = t.exception()
+            if isinstance(exc, WebSocketDisconnect):
+                log.debug("detections WS closed: session_id=%s", session_id)
+            elif exc is not None:
+                log.warning("detections WS task error: %s", exc)
+    finally:
+        broadcaster.unsubscribe(session_id, queue)
+        try:
+            await websocket.close()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 @router.websocket("/ws/sessions/{session_id}/video")
