@@ -74,7 +74,7 @@ export function CamPairCapture({ token, redeem }: Props) {
     };
   }, [facing, startCamera]);
 
-  // ───── post connected event (best-effort) ─────────────────────────
+  // ───── post health event (best-effort, Bearer pair-token auth) ────
   const postHealthEvent = useCallback(async (event_type: string, metadata?: Record<string, unknown>) => {
     try {
       await fetch(`/api/cameras/${redeem.camera_id}/health-event`, {
@@ -91,6 +91,99 @@ export function CamPairCapture({ token, redeem }: Props) {
       });
     } catch { /* best-effort */ }
   }, [redeem.camera_id, redeem.session_id, token]);
+
+  // ───── browser sağlık API'leri (PRD-019 §7) ─────────────────────
+  // Page Visibility: arkaplana atılma
+  useEffect(() => {
+    const onVis = () => {
+      void postHealthEvent(
+        document.visibilityState === 'hidden' ? 'app_backgrounded' : 'app_foregrounded',
+        { ts: Date.now() },
+      );
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [postHealthEvent]);
+
+  // Battery API (Chrome/Safari, opsiyonel — Firefox'ta yok)
+  useEffect(() => {
+    interface BatteryManager extends EventTarget {
+      level: number; charging: boolean;
+    }
+    type Nav = Navigator & { getBattery?: () => Promise<BatteryManager> };
+    const nav = navigator as Nav;
+    if (!nav.getBattery) return;
+
+    let battery: BatteryManager | null = null;
+    let cancelled = false;
+    const onLevel = () => {
+      if (!battery) return;
+      const lvl = battery.level;
+      if (lvl < 0.10) void postHealthEvent('critical_battery', { level: lvl });
+      else if (lvl < 0.20) void postHealthEvent('low_battery', { level: lvl });
+    };
+    const onCharging = () => {
+      if (battery?.charging) void postHealthEvent('charging', { level: battery.level });
+    };
+    void nav.getBattery().then(b => {
+      if (cancelled) return;
+      battery = b;
+      b.addEventListener('levelchange', onLevel);
+      b.addEventListener('chargingchange', onCharging);
+      onLevel();
+    });
+    return () => {
+      cancelled = true;
+      battery?.removeEventListener('levelchange', onLevel);
+      battery?.removeEventListener('chargingchange', onCharging);
+    };
+  }, [postHealthEvent]);
+
+  // Orientation
+  useEffect(() => {
+    const onOrient = () => {
+      const o = (typeof screen !== 'undefined' && 'orientation' in screen)
+        ? (screen as Screen & { orientation?: { type: string } }).orientation?.type ?? 'unknown'
+        : 'unknown';
+      void postHealthEvent('orientation_changed', { orientation: o });
+    };
+    window.addEventListener('orientationchange', onOrient);
+    return () => window.removeEventListener('orientationchange', onOrient);
+  }, [postHealthEvent]);
+
+  // Permission revoke
+  useEffect(() => {
+    if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return;
+    let status: PermissionStatus | null = null;
+    let cancelled = false;
+    const onChange = () => {
+      if (status?.state === 'denied') void postHealthEvent('permission_revoked', { ts: Date.now() });
+    };
+    void navigator.permissions.query({ name: 'camera' as PermissionName })
+      .then(s => {
+        if (cancelled) return;
+        status = s;
+        s.addEventListener('change', onChange);
+      })
+      .catch(() => { /* unsupported permission name */ });
+    return () => {
+      cancelled = true;
+      status?.removeEventListener('change', onChange);
+    };
+  }, [postHealthEvent]);
+
+  // Heartbeat: WS publish kanalı zaten 15s timeout ile disconnect tespit eder.
+  // Burada sadece pingleri gönderiyoruz; WS açıkken her 5 saniyede bir.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() })); }
+        catch { /* socket closed mid-flight */ }
+      }
+    }, 5_000);
+    return () => clearInterval(t);
+  }, []);
 
   // ───── WS publish ────────────────────────────────────────────────
   const openWS = useCallback(() => {
