@@ -569,6 +569,9 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | Camera | 1.1 | 2026 | `camera_type: CameraType` eklendi — IP kamera, telefon, USB webcam ayrımı. `stream_url` açıklaması genişletildi | PRD-013 |
 | Student | 1.1 | 2026 | `room_id` ve `seat_number` kaldırıldı (öğrenciler odaya değil oturuma atanır — `session_students` tablosu). `department` eklendi | PRD-013 |
 | ExamSession | 1.1 | 2026 | `exam_id` eklendi (FK → exams). `name` ve `created_by` kaldırıldı (sınav adı `exams.name`'den gelir, oluşturan `exams.created_by`'dan) | PRD-013 |
+| Camera | 1.2 | 2026 | `is_fixed`, `owner_user_id`, `device_id`, `last_seen_at` eklendi; `room_id` nullable yapıldı (taşınabilir telefonlar için). `fixed_cameras_have_home_room` CHECK constraint | PRD-019 |
+| SessionCamera | 1.0 | 2026 | İlk tanım — oturum ↔ kamera M:N junction (PRD-019) | PRD-019 |
+| CameraHealthEvent | 1.0 | 2026 | İlk tanım — telefon sağlık event tipleri (battery/visibility/permission/orientation) | PRD-019 |
 
 ---
 

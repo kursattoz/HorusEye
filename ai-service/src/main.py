@@ -9,6 +9,7 @@ import yaml
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.publish_handler import router as publish_router
 from src.api.ws_handler import router as ws_router
 
 _CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
@@ -49,6 +50,7 @@ else:
     )
 
 app.include_router(ws_router)
+app.include_router(publish_router)
 
 
 @app.get("/health")

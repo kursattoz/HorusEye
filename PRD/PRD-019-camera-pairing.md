@@ -3,8 +3,9 @@
 **Owner:** Taha Kürşat Öztürk (product_owner) + Ali Sahil (ai_backend)
 **Bağımlılıklar:** PRD-000, PRD-001, PRD-006, PRD-013, PRD-016
 **Blocks:** —
-**Durum:** AKTIF (planning)
+**Durum:** AKTIF (in progress)
 **Created:** 2026-05-04
+**Sprint:** Sprint 6 (2026-05-05 → 2026-05-21) — BL-170 … BL-181
 
 ---
 

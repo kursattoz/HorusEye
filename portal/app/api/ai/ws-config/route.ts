@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     ws_url:           wsUrl,
     api_key:          apiKey,
     session_id:       sessionId,
-    protocol_version: '1.0',
+    protocol_version: '1.1',
     expires_in:       300, // 5 minutes — client should refresh on reconnect
   });
 }

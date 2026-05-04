@@ -81,6 +81,6 @@ describe('GET /api/ai/ws-config', () => {
     const body = await res.json();
     expect(body.ws_url).toBe('wss://test-ai.example');
     expect(body.api_key).toBe('test-key-123');
-    expect(body.protocol_version).toBe('1.0');
+    expect(body.protocol_version).toBe('1.1');
   });
 });

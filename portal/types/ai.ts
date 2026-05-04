@@ -3,7 +3,7 @@
 
 import type { IncidentSeverity, IncidentType } from '@/types';
 
-export const AI_PROTOCOL_VERSION = '1.0';
+export const AI_PROTOCOL_VERSION = '1.1';
 
 // ───────── client → server ─────────
 

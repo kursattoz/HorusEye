@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional, TypedDict, Union
 
-PROTOCOL_VERSION = "1.0"
+PROTOCOL_VERSION = "1.1"
 
 
 # ───────────────────── client → server ─────────────────────
@@ -27,6 +27,19 @@ class ClientSubscribe(TypedDict):
     # Optional client filters
     severity_min: Literal["low", "medium", "high", "critical"] | None
     incident_types: list[str] | None
+
+
+class ClientPublish(TypedDict):
+    """Initial message on /publish endpoint — phone authenticates as a frame source.
+
+    After this handshake, the client sends ardışık binary JPEG frame'leri
+    (header'sız ham buffer). PRD-019 §4.4.
+    """
+    type: Literal["publish"]
+    protocol_version: str
+    api_key: str
+    session_id: str
+    camera_id: str
 
 
 class ClientAck(TypedDict):
@@ -44,7 +57,7 @@ class ClientPing(TypedDict):
     timestamp: str  # ISO 8601
 
 
-ClientMessage = Union[ClientSubscribe, ClientAck, ClientUnsubscribe, ClientPing]
+ClientMessage = Union[ClientSubscribe, ClientPublish, ClientAck, ClientUnsubscribe, ClientPing]
 
 
 # ───────────────────── server → client ─────────────────────
@@ -182,4 +195,14 @@ def is_valid_subscribe(payload: Any) -> bool:
         and payload.get("type") == "subscribe"
         and isinstance(payload.get("api_key"), str)
         and isinstance(payload.get("session_id"), str)
+    )
+
+
+def is_valid_publish(payload: Any) -> bool:
+    return (
+        isinstance(payload, dict)
+        and payload.get("type") == "publish"
+        and isinstance(payload.get("api_key"), str)
+        and isinstance(payload.get("session_id"), str)
+        and isinstance(payload.get("camera_id"), str)
     )

@@ -234,13 +234,13 @@ export interface ExamRoom {
   updated_at: string;
 }
 
-// @interface Camera @version 1.1
+// @interface Camera @version 1.2 — adds is_fixed/owner_user_id/device_id/last_seen_at, room_id NULL (PRD-019)
 export type CameraRole = 'front_wide' | 'front_close' | 'rear_wide' | 'side_left' | 'side_right';
 export type CameraType = 'ip_camera' | 'phone' | 'usb_webcam';
 
 export interface Camera {
   id: string;
-  room_id: string;
+  room_id: string | null;          // NULL for movable cams without home room
   label: string;
   stream_url: string;
   camera_type: CameraType;
@@ -249,6 +249,36 @@ export interface Camera {
   position_y: number | null;
   quality_score: number;
   is_active: boolean;
+  is_fixed: boolean;
+  owner_user_id: string | null;    // null = system-owned
+  device_id: string | null;        // phone fingerprint for re-pair
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+// @interface SessionCamera @version 1.0 — PRD-019
+export interface SessionCamera {
+  id: string;
+  session_id: string;
+  camera_id: string;
+  added_at: string;
+  added_by: string | null;
+}
+
+// @interface CameraHealthEvent @version 1.0 — PRD-019
+export type CameraHealthEventType =
+  | 'connected' | 'disconnected' | 'reconnected'
+  | 'low_battery' | 'critical_battery' | 'charging'
+  | 'app_backgrounded' | 'app_foregrounded'
+  | 'overheat' | 'orientation_changed' | 'preview_offscreen'
+  | 'permission_revoked';
+
+export interface CameraHealthEvent {
+  id: string;
+  camera_id: string;
+  session_id: string | null;
+  event_type: CameraHealthEventType;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 }
 
