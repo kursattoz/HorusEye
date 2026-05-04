@@ -69,6 +69,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'Exam Module',
+    items: [
+      { label: 'Exams',     href: routes.exams,     icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Students',  href: routes.students,  icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
+    ],
+  },
+  {
     items: [
       { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
     ],
@@ -76,10 +83,8 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const COMING_SOON: ComingSoonItem[] = [
-  { label: 'Monitoring', icon: Monitor       },
-  { label: 'Exams',      icon: ClipboardList },
-  { label: 'Students',   icon: GraduationCap },
-  { label: 'Devices',    icon: Laptop        },
+  { label: 'Live Monitoring', icon: Monitor },
+  { label: 'Devices',         icon: Laptop  },
 ];
 
 interface SidebarProps {
