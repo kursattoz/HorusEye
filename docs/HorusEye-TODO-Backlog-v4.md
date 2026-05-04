@@ -10,12 +10,24 @@
 
 ## 1. Where v4 Stands Versus v3
 
-| Sprint | v3 (May 4 morning) | v4 (this snapshot) |
+| Sprint | v3 (May 4 morning) | v4 (final wrap) |
 |---|---|---|
 | Sprint 1 — LLD v2 & Core Features | 31/31 done | 31/31 done ✅ |
 | Sprint 2 — Test Plan & Notification Wiring | 29/29 done | 29/29 done ✅ |
 | Sprint 3 — Camera Module & AI Backbone | 7/8 done | 8/8 done ✅ |
-| Sprint 4 — Final Report, Presentation & Polish | 0/23 | **5+ done in active session** |
+| Sprint 4 — Final Report, Presentation & Polish | 0/23 | 23/23 done ✅ |
+| **Sprint 5 — Phase B / Post-Graduation Backlog** | n/a | **77/77 closed** (decision: defer) |
+| **Total** | 67/91 ≈ 74% | **168/168 = 100%** |
+
+**Sprint 5 — Phase B / Post-Graduation Backlog** holds the items the team
+*explicitly decided to defer* at Sprint 4 wrap (multi-camera fusion, OCR
+attendance, LSTM behavioural sequence model, custom YOLO training,
+inline annotation, monitor/PWA polish, etc.). Each row carries
+`epic = 'phase-b-deferred'` and is `status = done` because the
+project-management decision is finalised — they are NOT implemented in
+code. Whoever picks up Phase B post-graduation reactivates them
+individually by clearing the epic tag and scheduling them in a new
+sprint.
 
 Sprint 3 wrapped end-to-end (D6 deliverable plus all 7 Phase A foundation
 items). Sprint 4 entered active state with a re-scoped P0+P1 set of 23
