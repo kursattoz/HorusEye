@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExamRoom } from '@/types';
+import { RoomCameraManager } from '@/components/exams/RoomCameraManager';
 
 export function ExamRoomsAdmin() {
   const [rooms, setRooms] = useState<ExamRoom[]>([]);
@@ -107,9 +108,9 @@ export function ExamRoomsAdmin() {
         </form>
       )}
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
         {rooms.map(room => (
-          <div key={room.id} className="rounded-lg border bg-card p-4">
+          <div key={room.id} className="rounded-lg border bg-card p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2">
                 <MapPin size={14} className="text-muted-foreground" />
@@ -119,10 +120,11 @@ export function ExamRoomsAdmin() {
                 <Trash2 size={14} className="text-destructive" />
               </Button>
             </div>
-            <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            <div className="space-y-0.5 text-xs text-muted-foreground">
               {room.capacity != null && <p>Capacity: {room.capacity}</p>}
               {room.location && <p>{room.location}</p>}
             </div>
+            <RoomCameraManager roomId={room.id} />
           </div>
         ))}
       </div>

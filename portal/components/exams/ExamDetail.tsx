@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Users, GraduationCap, Camera as CameraIcon, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Users, GraduationCap, Camera as CameraIcon, Trash2, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExamRoom, ExamSession, Student } from '@/types';
+import { SessionAssignModal } from '@/components/exams/SessionAssignModal';
 
 interface SessionExpanded extends ExamSession {
   exam_rooms?: { id: string; name: string; capacity: number | null; location: string | null };
@@ -122,23 +123,40 @@ export function ExamDetail({ examId }: ExamDetailProps) {
 }
 
 function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete: () => void }) {
-  const [students, setStudents] = useState<Array<{ id: string; seat_number: string | null; students: Student }>>([]);
-  const [proctors, setProctors] = useState<Array<{ id: string; role: string; user_profiles: { id: string; full_name: string; email: string } }>>([]);
+  const [students,    setStudents]    = useState<Array<{ id: string; seat_number: string | null; students: Student }>>([]);
+  const [proctors,    setProctors]    = useState<Array<{ id: string; role: string; user_profiles: { id: string; full_name: string; email: string } }>>([]);
+  const [cameraCount, setCameraCount] = useState<number>(0);
+  const [showStudents, setShowStudents] = useState(false);
+  const [showProctors, setShowProctors] = useState(false);
+  const [reloadKey,    setReloadKey]    = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const res = await fetch(`/api/exam-sessions/${session.id}`, { cache: 'no-store' });
-      if (!res.ok || cancelled) return;
-      const d = await res.json();
+      const [sessionRes, camRes] = await Promise.all([
+        fetch(`/api/exam-sessions/${session.id}`, { cache: 'no-store' }),
+        fetch(`/api/cameras?room_id=${session.room_id}`, { cache: 'no-store' }),
+      ]);
       if (cancelled) return;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
-      setStudents(d.students ?? []);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
-      setProctors(d.proctors ?? []);
+      if (sessionRes.ok) {
+        const d = await sessionRes.json();
+        if (cancelled) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+        setStudents(d.students ?? []);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+        setProctors(d.proctors ?? []);
+      }
+      if (camRes.ok) {
+        const d = await camRes.json();
+        if (cancelled) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+        setCameraCount((d.cameras ?? []).length);
+      }
     })();
     return () => { cancelled = true; };
-  }, [session.id]);
+  }, [session.id, session.room_id, reloadKey]);
+
+  const refresh = () => setReloadKey(k => k + 1);
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">
@@ -155,28 +173,51 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded-md bg-muted/40 p-2 text-center">
+        <button onClick={() => setShowProctors(true)} className="rounded-md bg-muted/40 hover:bg-muted/70 transition p-2 text-center">
           <Users size={14} className="mx-auto mb-1 text-muted-foreground" />
           <p className="font-semibold">{proctors.length}</p>
           <p className="text-muted-foreground">Proctor{proctors.length !== 1 ? 's' : ''}</p>
-        </div>
-        <div className="rounded-md bg-muted/40 p-2 text-center">
+        </button>
+        <button onClick={() => setShowStudents(true)} className="rounded-md bg-muted/40 hover:bg-muted/70 transition p-2 text-center">
           <GraduationCap size={14} className="mx-auto mb-1 text-muted-foreground" />
           <p className="font-semibold">{students.length}</p>
           <p className="text-muted-foreground">Student{students.length !== 1 ? 's' : ''}</p>
-        </div>
+        </button>
         <div className="rounded-md bg-muted/40 p-2 text-center">
           <CameraIcon size={14} className="mx-auto mb-1 text-muted-foreground" />
-          <p className="font-semibold">—</p>
-          <p className="text-muted-foreground">Cameras</p>
+          <p className="font-semibold">{cameraCount}</p>
+          <p className="text-muted-foreground">Camera{cameraCount !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
-      <div className="flex justify-end pt-1">
-        <Button size="sm" variant="ghost" onClick={onDelete}>
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" onClick={() => setShowProctors(true)}>
+            <UserPlus size={13} /> Proctors
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setShowStudents(true)}>
+            <UserPlus size={13} /> Students
+          </Button>
+        </div>
+        <Button size="sm" variant="ghost" onClick={onDelete} title="Delete session">
           <Trash2 size={14} className="text-destructive" />
         </Button>
       </div>
+
+      <SessionAssignModal
+        open={showStudents}
+        onClose={() => setShowStudents(false)}
+        sessionId={session.id}
+        mode="students"
+        onAssigned={refresh}
+      />
+      <SessionAssignModal
+        open={showProctors}
+        onClose={() => setShowProctors(false)}
+        sessionId={session.id}
+        mode="proctors"
+        onAssigned={refresh}
+      />
     </div>
   );
 }
