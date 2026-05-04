@@ -1,18 +1,5 @@
 
--- Helper function: check if the current auth user is admin
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-as $$
-  SELECT EXISTS (
-    SELECT 1 FROM user_profiles
-    WHERE id = auth.uid() AND role = 'admin'
-  );
-$$;
-
--- Generic trigger function to keep updated_at in sync
+-- Generic trigger function to keep updated_at in sync (no FK deps)
 create or replace function public.update_updated_at_column()
 returns trigger
 language plpgsql
@@ -38,6 +25,21 @@ create table if not exists public.user_profiles (
   updated_at            timestamptz default now(),
   deleted_at            timestamptz
 );
+
+-- Helper function: check if the current auth user is admin.
+-- Defined AFTER user_profiles because language=sql validates the body at
+-- create time and would otherwise fail with "relation does not exist".
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+as $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
 
 -- Auto-update updated_at
 create trigger update_user_profiles_updated_at
