@@ -74,6 +74,9 @@ export class ServiceStack extends cdk.Stack {
     const aiServiceWsPub  = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_AI_SERVICE_WS_URL`);
     const aiServiceApiKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/AI_SERVICE_API_KEY`);
 
+    // Camera pairing (PRD-019) — HMAC secret for short-lived pair JWTs.
+    const pairTokenSecret = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/PAIR_TOKEN_SECRET`);
+
     const environment: Record<string, string> = {
       NEXT_PUBLIC_ENV: envName,
       NEXT_PUBLIC_CAMERA_MODULE_ENABLED: 'false',
@@ -88,6 +91,7 @@ export class ServiceStack extends cdk.Stack {
       AI_SERVICE_WS_URL: aiServiceWsUrl,
       NEXT_PUBLIC_AI_SERVICE_WS_URL: aiServiceWsPub,
       AI_SERVICE_API_KEY: aiServiceApiKey,
+      PAIR_TOKEN_SECRET: pairTokenSecret,
     };
 
     if (envName === 'production') {
