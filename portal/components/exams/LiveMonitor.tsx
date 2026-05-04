@@ -9,8 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AI_PROTOCOL_VERSION } from '@/types/ai';
 import type { ServerMessage, ServerIncident, ServerStatus, ServerFrame } from '@/types/ai';
-import { LiveVideoOverlay } from '@/components/exams/LiveVideoOverlay';
-import { CameraHealthBadge } from '@/components/exams/CameraHealthBadge';
+import { CameraViewport } from '@/components/exams/CameraViewport';
 import { CameraTile } from '@/components/exams/CameraTile';
 import { PhonePairModal } from '@/components/exams/PhonePairModal';
 import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
@@ -47,8 +46,12 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [pairOpen, setPairOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [pendingCameraId, setPendingCameraId] = useState<string | null>(null);
+  const [frameTsByCamera, setFrameTsByCamera] = useState<Map<string, number>>(new Map());
   const wsRef = useRef<WebSocket | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  // Cameras we've already auto-attached during this monitor session — guards
+  // against repeated POSTs as frames keep arriving for a pending camera.
+  const autoAttachedRef = useRef<Set<string>>(new Set());
   // Holds the latest attachCamera fn — referenced from the WS onmessage
   // closure, declared later. Indirection avoids TDZ in lexical ordering.
   const attachCameraRef = useRef<(cameraId: string) => Promise<void>>(async () => {});
@@ -123,17 +126,21 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                   next.set(camId, msg);
                   return next;
                 });
-                setFocusedCameraId(prev => prev ?? camId);
-                // Frame-based connect detection: if this camera matches a
-                // pending pair we're waiting on, auto-attach + focus + clear.
-                setPendingCameraId(prev => {
-                  if (prev && prev === camId) {
-                    void attachCameraRef.current(camId);
-                    setFocusedCameraId(camId);
-                    return null;
-                  }
-                  return prev;
+                setFrameTsByCamera(prev => {
+                  const next = new Map(prev);
+                  next.set(camId, Date.now());
+                  return next;
                 });
+                setFocusedCameraId(prev => prev ?? camId);
+                // Frame-based connect detection: fire auto-attach once per
+                // camera_id (set guards against repeats). pendingCameraId
+                // stays set so PhonePairModal's externalConnected flag holds
+                // true through the 1.5s confirmation window.
+                if (!autoAttachedRef.current.has(camId)) {
+                  autoAttachedRef.current.add(camId);
+                  void attachCameraRef.current(camId);
+                  setFocusedCameraId(camId);
+                }
                 break;
               }
               case 'error':
@@ -253,6 +260,34 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   );
   const focusedLabel = focusedRow?.camera.label ?? (focusedCameraId ? `cam ${focusedCameraId.slice(0, 8)}` : '');
 
+  // Stale detection: a camera whose last frame is older than 10s is "yayın
+  // koptu". Re-evaluate every 3s so the overlay shows up on time even if no
+  // new frames trigger a render.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 3_000);
+    return () => clearInterval(t);
+  }, []);
+  const STALE_AFTER_MS = 10_000;
+  const isStale = useCallback((cameraId: string) => {
+    const ts = frameTsByCamera.get(cameraId);
+    if (ts === undefined) return false;
+    return now - ts > STALE_AFTER_MS;
+  }, [frameTsByCamera, now]);
+  const focusedStale = focusedCameraId ? isStale(focusedCameraId) : false;
+
+  // Health summary — counts cameras by current state for the header pill.
+  const healthSummary = useMemo(() => {
+    let live = 0, stale = 0, offline = 0;
+    for (const sc of sessionCameras) {
+      const ts = frameTsByCamera.get(sc.camera_id);
+      if (ts === undefined) offline++;
+      else if (now - ts > STALE_AFTER_MS) stale++;
+      else live++;
+    }
+    return { live, stale, offline, total: sessionCameras.length };
+  }, [sessionCameras, frameTsByCamera, now]);
+
   if (!session) {
     return (
       <Alert>
@@ -273,31 +308,41 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
             <span className="font-semibold">{session.exam_rooms?.name ?? 'Session'}</span>
             <span className="text-xs text-muted-foreground">· status: {session.status}</span>
           </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {sessionCameras.map(sc => (
-              <CameraHealthBadge
-                key={sc.id}
-                cameraId={sc.camera_id}
-                cameraLabel={sc.camera.label}
-                cameraType={sc.camera.camera_type}
-                lastSeenAt={sc.camera.last_seen_at}
-              />
-            ))}
-            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setPairOpen(true)} title="Pair phone camera">
-              <Smartphone size={11} /> Pair
-            </Button>
-            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setManageOpen(true)} title="Manage cameras">
-              <Settings size={11} /> Manage
-            </Button>
+          <div className="flex items-center gap-2">
+            {/* Compact health summary — three pills with counts. Empty
+                pills hidden so the header stays clean with 0 cams. */}
+            {healthSummary.total > 0 && (
+              <div className="flex items-center gap-1 text-[11px] font-medium">
+                {healthSummary.live > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-2 py-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {healthSummary.live} live
+                  </span>
+                )}
+                {healthSummary.stale > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2 py-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {healthSummary.stale} stale
+                  </span>
+                )}
+                {healthSummary.offline > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground px-2 py-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                    {healthSummary.offline} offline
+                  </span>
+                )}
+              </div>
+            )}
+            <ConnectionBadge state={state} />
           </div>
-          <ConnectionBadge state={state} />
         </header>
 
-        {/* Focused camera area — flex-1 + min-h-0 ensures it never overflows. */}
+        {/* Focused camera area: zoom + rotate + pan via CameraViewport. */}
+        {focusedFrame ? (
+          <CameraViewport frame={focusedFrame} label={focusedLabel} stale={focusedStale} />
+        ) : (
         <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
-          {focusedFrame ? (
-            <LiveVideoOverlay frame={focusedFrame} showBbox label={focusedLabel} />
-          ) : state === 'connected' ? (
+          {state === 'connected' ? (
             <div className="text-center text-sm text-muted-foreground p-6">
               <RadioTower className="mx-auto h-12 w-12 text-primary/40 animate-pulse" />
               <p className="mt-4 font-medium text-foreground">Connected. Awaiting frames.</p>
@@ -325,7 +370,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
             </div>
           )}
         </div>
-
+        )}
       </div>
 
       {/* Right column: cameras card (top) + incident feed (bottom) */}
@@ -335,9 +380,15 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           <header className="border-b px-4 py-2 flex items-center gap-2 text-sm font-semibold">
             <Video size={14} className="text-muted-foreground" />
             Cameras
-            <span className="ml-auto text-xs font-normal text-muted-foreground">
-              {sessionCameras.length}
+            <span className="text-xs font-normal text-muted-foreground">
+              ({sessionCameras.length})
             </span>
+            <Button size="sm" variant="ghost" className="h-6 ml-auto px-2" onClick={() => setPairOpen(true)} title="Pair phone camera">
+              <Smartphone size={11} /> Pair
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setManageOpen(true)} title="Manage cameras">
+              <Settings size={11} />
+            </Button>
           </header>
           <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
             {sessionCameras.length === 0 && (
@@ -353,13 +404,14 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 cameraType={sc.camera.camera_type}
                 frame={framesByCamera.get(sc.camera_id) ?? null}
                 active={focusedCameraId === sc.camera_id}
+                stale={isStale(sc.camera_id)}
                 onSelect={() => setFocusedCameraId(sc.camera_id)}
               />
             ))}
             <button
               type="button"
               onClick={() => setPairOpen(true)}
-              className="aspect-video rounded-md border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground transition"
+              className="w-full aspect-video rounded-md border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground transition"
               title="Pair phone camera"
             >
               <Plus size={16} /> <span className="mt-1">Pair phone</span>

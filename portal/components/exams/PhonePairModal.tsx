@@ -11,6 +11,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface PairTokenResponse {
@@ -47,6 +49,7 @@ export function PhonePairModal({
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [healthConnected, setHealthConnected] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [labelInput, setLabelInput] = useState('');
 
   const phoneConnected = healthConnected || Boolean(externalConnected);
 
@@ -65,7 +68,7 @@ export function PhonePairModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId ?? null,
-          label: defaultLabel ?? '',
+          label: labelInput.trim() || defaultLabel || '',
         }),
       });
       const d = await r.json();
@@ -78,20 +81,19 @@ export function PhonePairModal({
     } finally {
       setCreating(false);
     }
-  }, [sessionId, defaultLabel]);
+  }, [sessionId, defaultLabel, labelInput]);
 
-  // Auto-request on open
+  // No auto-request: user picks a label first, then clicks Generate. This
+  // also avoids creating orphan camera records every time the modal opens.
   useEffect(() => {
-    if (open && !pair && !creating) {
-      void requestToken();
-    }
     if (!open) {
       setPair(null);
       setSecondsLeft(0);
       setHealthConnected(false);
       setError(null);
+      setLabelInput('');
     }
-  }, [open, pair, creating, requestToken]);
+  }, [open]);
 
   // Countdown ticker
   useEffect(() => {
@@ -167,6 +169,32 @@ export function PhonePairModal({
         </DialogHeader>
 
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+        {/* Step 1 — choose a label, mint the QR */}
+        {!pair && !creating && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => { e.preventDefault(); void requestToken(); }}
+          >
+            <div className="space-y-1">
+              <Label htmlFor="phone-label" className="text-xs">Camera label</Label>
+              <Input
+                id="phone-label"
+                value={labelInput}
+                onChange={e => setLabelInput(e.target.value)}
+                placeholder={defaultLabel || 'Sıra 1, Salon arkası, Kürşat telefonu…'}
+                autoFocus
+                maxLength={64}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Yan thumbnail ve ana ekran etiketinde bu isim görünecek. Sonra değiştirilebilir.
+              </p>
+            </div>
+            <Button type="submit" className="w-full">
+              <Smartphone size={14} /> QR kod oluştur
+            </Button>
+          </form>
+        )}
 
         {creating && (
           <div className="flex items-center justify-center py-12 text-muted-foreground">

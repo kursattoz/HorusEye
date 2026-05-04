@@ -14,16 +14,18 @@ interface Props {
   cameraType: 'ip_camera' | 'phone' | 'usb_webcam';
   frame: ServerFrame | null;
   active: boolean;
+  /** Last frame older than ~10s — show a "Yayın koptu" red overlay. */
+  stale?: boolean;
   onSelect: () => void;
 }
 
-function CameraTileImpl({ cameraId, label, cameraType, frame, active, onSelect }: Props) {
+function CameraTileImpl({ cameraId, label, cameraType, frame, active, stale = false, onSelect }: Props) {
   return (
     <button
       type="button"
       onClick={onSelect}
       title={label}
-      className={`relative shrink-0 w-32 sm:w-36 aspect-video rounded-md overflow-hidden border-2 transition group ${
+      className={`relative w-full aspect-video rounded-md overflow-hidden border-2 transition ${
         active ? 'border-primary shadow-lg shadow-primary/30' : 'border-border hover:border-primary/60'
       }`}
     >
@@ -54,16 +56,24 @@ function CameraTileImpl({ cameraId, label, cameraType, frame, active, onSelect }
           {cameraId.slice(0, 6)}
         </span>
       )}
+      {stale && frame && (
+        <div className="absolute inset-0 flex items-center justify-center bg-red-900/45 backdrop-blur-[1px]">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-white bg-red-600 px-1.5 py-0.5 rounded">
+            Yayın koptu
+          </span>
+        </div>
+      )}
     </button>
   );
 }
 
 // Skip re-render when only the focused camera's frame changed in the parent —
 // non-focused tiles only re-render when their own jpeg_base64 changes (frame
-// arrival for THIS camera) or when active flips.
+// arrival for THIS camera), active/stale flips, or label changes.
 export const CameraTile = memo(CameraTileImpl, (a, b) =>
   a.cameraId === b.cameraId &&
   a.active === b.active &&
+  a.stale === b.stale &&
   a.label === b.label &&
   a.cameraType === b.cameraType &&
   a.frame?.jpeg_base64 === b.frame?.jpeg_base64
