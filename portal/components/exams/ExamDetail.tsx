@@ -125,14 +125,20 @@ function SessionCard({ session, onDelete }: { session: SessionExpanded; onDelete
   const [students, setStudents] = useState<Array<{ id: string; seat_number: string | null; students: Student }>>([]);
   const [proctors, setProctors] = useState<Array<{ id: string; role: string; user_profiles: { id: string; full_name: string; email: string } }>>([]);
 
-  async function loadAssignments() {
-    const res = await fetch(`/api/exam-sessions/${session.id}`);
-    if (!res.ok) return;
-    const d = await res.json();
-    setStudents(d.students ?? []);
-    setProctors(d.proctors ?? []);
-  }
-  useEffect(() => { void loadAssignments(); }, [session.id]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch(`/api/exam-sessions/${session.id}`, { cache: 'no-store' });
+      if (!res.ok || cancelled) return;
+      const d = await res.json();
+      if (cancelled) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+      setStudents(d.students ?? []);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-await async update
+      setProctors(d.proctors ?? []);
+    })();
+    return () => { cancelled = true; };
+  }, [session.id]);
 
   return (
     <div className="rounded-lg border bg-card p-4 space-y-3">

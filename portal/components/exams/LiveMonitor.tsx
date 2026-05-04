@@ -28,11 +28,14 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   useEffect(() => {
     if (!session) return;
     if (!wsBase) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time validation of immutable prop
       setError('NEXT_PUBLIC_AI_SERVICE_WS_URL is not configured.');
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- pairs with setError above
       setState('error');
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- transition idle→connecting before async fetch
     setState('connecting');
 
     let cancelled = false;
