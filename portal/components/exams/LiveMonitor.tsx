@@ -1,20 +1,24 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertTriangle, Radio, RadioTower, Wifi, WifiOff, Video, VideoOff,
+  AlertTriangle, Plus, Radio, RadioTower, Settings, Smartphone, Wifi, WifiOff, Video, VideoOff,
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { AI_PROTOCOL_VERSION } from '@/types/ai';
 import type { ServerMessage, ServerIncident, ServerStatus, ServerFrame } from '@/types/ai';
 import { LiveVideoOverlay } from '@/components/exams/LiveVideoOverlay';
 import { CameraHealthBadge } from '@/components/exams/CameraHealthBadge';
+import { CameraTile } from '@/components/exams/CameraTile';
+import { PhonePairModal } from '@/components/exams/PhonePairModal';
+import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
 
 type ConnectState = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
 
 interface LiveMonitorProps {
   examId:   string;
-  session:  { id: string; status: string; exam_rooms?: { name: string } | null } | null;
+  session:  { id: string; status: string; room_id?: string | null; exam_rooms?: { name: string } | null } | null;
   wsBase:   string;
 }
 
@@ -34,11 +38,16 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [state, setState] = useState<ConnectState>('idle');
   const [incidents, setIncidents] = useState<ServerIncident[]>([]);
   const [statusMessages, setStatusMessages] = useState<ServerStatus[]>([]);
-  const [latestFrame, setLatestFrame] = useState<ServerFrame | null>(null);
+  const [framesByCamera, setFramesByCamera] = useState<Map<string, ServerFrame>>(new Map());
+  const [focusedCameraId, setFocusedCameraId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sessionCameras, setSessionCameras] = useState<SessionCameraRow[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [pairOpen, setPairOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
+  // ────────────── WS subscribe + frame demux ──────────────
   useEffect(() => {
     if (!session) return;
     if (!wsBase) {
@@ -56,8 +65,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     let ws: WebSocket | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
 
-    // BL-55 — fetch a server-issued WS config (URL + scoped api_key) so
-    // AI_SERVICE_API_KEY never lives in the browser bundle.
     void fetch(`/api/ai/ws-config?session_id=${encodeURIComponent(session.id)}`)
       .then(r => r.json())
       .then(cfg => {
@@ -100,14 +107,18 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 setIncidents(prev => [msg, ...prev].slice(0, 50));
                 break;
               case 'frame':
-                setLatestFrame(msg);
+                setFramesByCamera(prev => {
+                  const next = new Map(prev);
+                  next.set(msg.camera_id, msg);
+                  return next;
+                });
+                setFocusedCameraId(prev => prev ?? msg.camera_id);
                 break;
               case 'error':
                 setError(`AI service error: ${msg.message}`);
                 break;
               case 'pong':
               case 'detection':
-                // detection events feed into frame.detections; we ignore lone events
                 break;
             }
           } catch {
@@ -118,7 +129,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
         ws.onclose = () => setState('closed');
         ws.onerror = () => setState('error');
 
-        // Heartbeat ping every 25s
         heartbeat = setInterval(() => {
           if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
@@ -143,7 +153,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     };
   }, [session, wsBase]);
 
-  // Pull session_cameras (junction) for the health-badge row.
+  // ────────────── Session-cameras polling ──────────────
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
@@ -156,9 +166,50 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
       } catch { /* ignore */ }
     };
     void load();
-    const t = setInterval(load, 10_000);
+    const t = setInterval(load, 8_000);
     return () => { cancelled = true; clearInterval(t); };
   }, [session]);
+
+  // Whoami — needed for SessionCameraAttach ownership filtering.
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/auth/me', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancelled && d) setCurrentUserId(d.user?.id ?? null); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Drop frames for cameras that have been detached so the strip stays clean.
+  useEffect(() => {
+    const attached = new Set(sessionCameras.map(sc => sc.camera_id));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prune detached frames in derived store
+    setFramesByCamera(prev => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const id of next.keys()) {
+        if (!attached.has(id)) { next.delete(id); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear focus if its camera detached
+    setFocusedCameraId(prev => (prev && !attached.has(prev)) ? null : prev);
+  }, [sessionCameras]);
+
+  // Auto-focus the first attached camera if none focused yet.
+  useEffect(() => {
+    if (focusedCameraId) return;
+    if (sessionCameras.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- pick default focus when first cam appears
+    setFocusedCameraId(sessionCameras[0]?.camera_id ?? null);
+  }, [sessionCameras, focusedCameraId]);
+
+  const focusedFrame = focusedCameraId ? framesByCamera.get(focusedCameraId) ?? null : null;
+  const focusedRow   = useMemo(
+    () => sessionCameras.find(sc => sc.camera_id === focusedCameraId) ?? null,
+    [sessionCameras, focusedCameraId],
+  );
+  const focusedLabel = focusedRow?.camera.label ?? (focusedCameraId ? `cam ${focusedCameraId.slice(0, 8)}` : '');
 
   if (!session) {
     return (
@@ -172,8 +223,8 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-4 flex-1 min-h-0">
-      {/* Main: video frame + bbox overlay */}
-      <div className="rounded-lg border bg-card flex flex-col overflow-hidden">
+      {/* Main: video frame + camera strip */}
+      <div className="rounded-lg border bg-card flex flex-col overflow-hidden min-h-0">
         <header className="flex items-center justify-between gap-2 border-b px-4 py-2 flex-wrap">
           <div className="flex items-center gap-2 text-sm">
             <Video size={14} className="text-muted-foreground" />
@@ -190,18 +241,34 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 lastSeenAt={sc.camera.last_seen_at}
               />
             ))}
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setPairOpen(true)} title="Pair phone camera">
+              <Smartphone size={11} /> Pair
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 px-2" onClick={() => setManageOpen(true)} title="Manage cameras">
+              <Settings size={11} /> Manage
+            </Button>
           </div>
           <ConnectionBadge state={state} />
         </header>
 
-        <div className="flex-1 flex items-center justify-center bg-muted/30 relative">
-          {state === 'connected' && latestFrame ? (
-            <LiveVideoOverlay frame={latestFrame} />
+        {/* Focused camera area — flex-1 + min-h-0 ensures it never overflows. */}
+        <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
+          {focusedFrame ? (
+            <LiveVideoOverlay frame={focusedFrame} showBbox label={focusedLabel} />
           ) : state === 'connected' ? (
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm text-muted-foreground p-6">
               <RadioTower className="mx-auto h-12 w-12 text-primary/40 animate-pulse" />
               <p className="mt-4 font-medium text-foreground">Connected. Awaiting frames.</p>
-              <p className="mt-1 text-xs">Frames render here once the AI pipeline emits them.</p>
+              <p className="mt-1 text-xs">
+                {sessionCameras.length === 0
+                  ? 'No cameras attached yet — pair a phone or manage cameras.'
+                  : 'Phone is paired but no frames yet. Make sure the phone tab is open with permission granted.'}
+              </p>
+              {sessionCameras.length === 0 && (
+                <Button size="sm" className="mt-3" onClick={() => setPairOpen(true)}>
+                  <Plus size={12} /> Pair phone camera
+                </Button>
+              )}
             </div>
           ) : (
             <div className="text-center text-sm text-muted-foreground max-w-md p-6">
@@ -212,15 +279,35 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 {state === 'error'      && 'Could not connect to AI service.'}
                 {state === 'idle'       && 'AI service offline.'}
               </p>
-              <p className="mt-2 text-xs">
-                The AI service is deployed on-prem in Phase A. If you&apos;re testing locally, run{' '}
-                <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">docker compose up</code>{' '}
-                from <code className="bg-muted px-1.5 py-0.5 rounded text-[10px]">ai-service/</code>.
-              </p>
               {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
             </div>
           )}
         </div>
+
+        {/* Camera strip — thumbnails for switching focus. Hidden when 0/1 cams. */}
+        {sessionCameras.length > 0 && (
+          <div className="border-t bg-card px-3 py-2 flex items-center gap-2 overflow-x-auto">
+            {sessionCameras.map(sc => (
+              <CameraTile
+                key={sc.id}
+                cameraId={sc.camera_id}
+                label={sc.camera.label}
+                cameraType={sc.camera.camera_type}
+                frame={framesByCamera.get(sc.camera_id) ?? null}
+                active={focusedCameraId === sc.camera_id}
+                onSelect={() => setFocusedCameraId(sc.camera_id)}
+              />
+            ))}
+            <button
+              type="button"
+              onClick={() => setPairOpen(true)}
+              className="shrink-0 w-32 sm:w-36 aspect-video rounded-md border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground transition"
+              title="Pair phone camera"
+            >
+              <Plus size={16} /> <span className="mt-1">Pair phone</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sidebar: incident feed + status log */}
@@ -274,6 +361,30 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           </details>
         )}
       </div>
+
+      {/* Modals */}
+      <PhonePairModal
+        open={pairOpen}
+        onClose={() => setPairOpen(false)}
+        sessionId={session.id}
+        onConnected={async (cameraId) => {
+          // Auto-attach the freshly-paired phone to this session (no extra click).
+          try {
+            await fetch(`/api/exam-sessions/${session.id}/cameras`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ camera_id: cameraId }),
+            });
+          } catch { /* harmless — manual attach still possible */ }
+        }}
+      />
+      <SessionCameraAttach
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        sessionId={session.id}
+        sessionRoomId={session.room_id ?? ''}
+        currentUserId={currentUserId ?? ''}
+      />
     </div>
   );
 }
@@ -287,11 +398,11 @@ const SEVERITY_BADGE: Record<string, string> = {
 
 function ConnectionBadge({ state }: { state: ConnectState }) {
   const cfg: Record<ConnectState, { label: string; cls: string; icon: typeof Wifi }> = {
-    idle:        { label: 'Idle',        cls: 'bg-muted text-muted-foreground',        icon: WifiOff },
-    connecting:  { label: 'Connecting',  cls: 'bg-blue-500/10 text-blue-600',          icon: Radio },
-    connected:   { label: 'Live',        cls: 'bg-green-500/10 text-green-600',        icon: Wifi },
-    closed:      { label: 'Disconnected', cls: 'bg-muted text-muted-foreground',       icon: WifiOff },
-    error:       { label: 'Error',       cls: 'bg-red-500/10 text-red-600',            icon: WifiOff },
+    idle:        { label: 'Idle',         cls: 'bg-muted text-muted-foreground', icon: WifiOff },
+    connecting:  { label: 'Connecting',   cls: 'bg-blue-500/10 text-blue-600',   icon: Radio },
+    connected:   { label: 'Live',         cls: 'bg-green-500/10 text-green-600', icon: Wifi },
+    closed:      { label: 'Disconnected', cls: 'bg-muted text-muted-foreground', icon: WifiOff },
+    error:       { label: 'Error',        cls: 'bg-red-500/10 text-red-600',     icon: WifiOff },
   };
   const { label, cls, icon: Icon } = cfg[state];
   return (

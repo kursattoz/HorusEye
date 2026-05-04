@@ -27,7 +27,7 @@ export default async function ExamLivePage({ params }: Params) {
   // Pick the first session for this exam (single-session demo). Multi-cam UI lands later.
   const { data: sessionRows } = await supabase
     .from('exam_sessions')
-    .select('id, status, exam_rooms(name)')
+    .select('id, status, room_id, exam_rooms(name)')
     .eq('exam_id', id)
     .order('created_at')
     .limit(1);
@@ -36,8 +36,9 @@ export default async function ExamLivePage({ params }: Params) {
   const firstRow = sessionRows?.[0];
   const session = firstRow
     ? {
-        id:     firstRow.id,
-        status: firstRow.status,
+        id:      firstRow.id,
+        status:  firstRow.status,
+        room_id: firstRow.room_id,
         exam_rooms: Array.isArray(firstRow.exam_rooms) ? firstRow.exam_rooms[0] ?? null : firstRow.exam_rooms,
       }
     : null;

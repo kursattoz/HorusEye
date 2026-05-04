@@ -3,7 +3,7 @@
 // Phone redeems the token at /api/cameras/pair/redeem; PC polls for connect.
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth/api';
-import { signPairToken } from '@/lib/auth/pair-token';
+import { signPairToken, SCAN_WINDOW_SECONDS } from '@/lib/auth/pair-token';
 import { log } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
@@ -80,6 +80,9 @@ export async function POST(request: NextRequest) {
     camera_id: camera.id,
     token,
     pair_url,
-    expires_in: 300,
+    // The JWT itself lives 8h (resilient to phone tab close/reopen during
+    // the exam); the QR is presented as having a short scan window so the
+    // proctor knows to regenerate if it sits unused on screen.
+    scan_window_seconds: SCAN_WINDOW_SECONDS,
   }, { status: 201 });
 }

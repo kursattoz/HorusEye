@@ -1,76 +1,31 @@
 'use client';
 
-// BL-118 — Renders the latest annotated JPEG frame from the AI service
-// with detection bboxes overlaid on a canvas. Severity colors mirror
-// the incident severity palette in LiveMonitor.
+// PRD-019 §6.4 — Renders the latest annotated JPEG frame from the AI service.
+// The JPEG is shown via a plain <img> so the browser handles aspect-ratio
+// preservation natively (no canvas stretching). Bbox overlays sit in a
+// position-aligned <svg> with a viewBox of 0 0 1 1 — works in any container
+// size with no manual coordinate math.
 
-import { useEffect, useRef } from 'react';
 import type { ServerFrame } from '@/types/ai';
 
 interface LiveVideoOverlayProps {
   frame: ServerFrame | null;
+  showBbox?: boolean;
+  /** Override the camera id shown in the corner badge. */
+  label?: string;
 }
 
 const CLASS_COLORS: Record<string, string> = {
-  'cell phone': '#ef4444',  // red
-  'laptop':     '#f59e0b',  // amber
+  'cell phone': '#ef4444',
+  'laptop':     '#f59e0b',
   'book':       '#f59e0b',
   'keyboard':   '#f59e0b',
-  'person':     '#10b981',  // green (informational)
+  'person':     '#10b981',
 };
 
-const DEFAULT_COLOR = '#3b82f6'; // blue
+const DEFAULT_COLOR = '#3b82f6';
 
-export function LiveVideoOverlay({ frame }: LiveVideoOverlayProps) {
-  const imgRef    = useRef<HTMLImageElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    if (!frame) return;
-    const img    = imgRef.current;
-    const canvas = canvasRef.current;
-    if (!img || !canvas) return;
-
-    img.src = `data:image/jpeg;base64,${frame.jpeg_base64}`;
-    img.onload = () => {
-      canvas.width  = frame.width;
-      canvas.height = frame.height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // Draw detection boxes
-      ctx.lineWidth = 2;
-      ctx.font = 'bold 12px ui-sans-serif, system-ui, sans-serif';
-      ctx.textBaseline = 'top';
-
-      for (const det of frame.detections) {
-        const [x1, y1, x2, y2] = det.bbox;
-        const px1 = x1 * frame.width;
-        const py1 = y1 * frame.height;
-        const px2 = x2 * frame.width;
-        const py2 = y2 * frame.height;
-
-        const color = CLASS_COLORS[det.detection_class] ?? DEFAULT_COLOR;
-        ctx.strokeStyle = color;
-        ctx.fillStyle   = color;
-
-        // Box
-        ctx.strokeRect(px1, py1, px2 - px1, py2 - py1);
-
-        // Label background + text
-        const label = `${det.detection_class} ${(det.confidence * 100).toFixed(0)}%`;
-        const metrics = ctx.measureText(label);
-        const labelH  = 14;
-        const labelW  = metrics.width + 8;
-        ctx.fillRect(px1, py1 - labelH, labelW, labelH);
-        ctx.fillStyle = '#fff';
-        ctx.fillText(label, px1 + 4, py1 - labelH + 1);
-      }
-    };
-  }, [frame]);
-
+export function LiveVideoOverlay({ frame, showBbox = true, label }: LiveVideoOverlayProps) {
   if (!frame) {
     return (
       <p className="text-xs text-muted-foreground p-4 text-center">
@@ -79,16 +34,75 @@ export function LiveVideoOverlay({ frame }: LiveVideoOverlayProps) {
     );
   }
 
+  const aspect = frame.height > 0 ? `${frame.width} / ${frame.height}` : '16 / 9';
+
   return (
-    <div className="relative w-full h-full">
-      {/* Hidden img — used as the canvas source so we control sizing */}
-      <img ref={imgRef} alt="" className="hidden" />
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full object-contain"
-      />
-      <div className="absolute bottom-2 left-2 text-[10px] font-mono text-white/80 bg-black/40 px-2 py-0.5 rounded">
-        {frame.width}×{frame.height} · cam {frame.camera_id.slice(0,8)} · {frame.detections.length} det
+    <div
+      className="relative w-full h-full max-h-full overflow-hidden flex items-center justify-center bg-black"
+    >
+      <div
+        className="relative max-w-full max-h-full"
+        style={{ aspectRatio: aspect }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- base64 data URL, no remote image */}
+        <img
+          src={`data:image/jpeg;base64,${frame.jpeg_base64}`}
+          alt=""
+          className="block w-full h-full object-contain select-none"
+          draggable={false}
+        />
+
+        {showBbox && frame.detections.length > 0 && (
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            viewBox="0 0 1 1"
+            preserveAspectRatio="none"
+          >
+            {frame.detections.map((det, i) => {
+              const [x1, y1, x2, y2] = det.bbox;
+              const color = CLASS_COLORS[det.detection_class] ?? DEFAULT_COLOR;
+              const w = Math.max(0, x2 - x1);
+              const h = Math.max(0, y2 - y1);
+              return (
+                <rect
+                  key={i}
+                  x={x1}
+                  y={y1}
+                  width={w}
+                  height={h}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={0.004}
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            })}
+          </svg>
+        )}
+
+        {/* Class labels rendered on top with HTML so font scaling stays sharp. */}
+        {showBbox && frame.detections.map((det, i) => {
+          const [x1, y1] = det.bbox;
+          const color = CLASS_COLORS[det.detection_class] ?? DEFAULT_COLOR;
+          return (
+            <div
+              key={`lbl-${i}`}
+              className="absolute text-[10px] font-mono font-semibold text-white px-1 py-0.5 rounded-sm pointer-events-none"
+              style={{
+                left:    `${x1 * 100}%`,
+                top:     `${y1 * 100}%`,
+                background: color,
+                transform: 'translateY(-100%)',
+              }}
+            >
+              {det.detection_class} {(det.confidence * 100).toFixed(0)}%
+            </div>
+          );
+        })}
+
+        <div className="absolute bottom-1.5 left-1.5 text-[10px] font-mono text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
+          {label ?? `cam ${frame.camera_id.slice(0, 8)}`} · {frame.width}×{frame.height} · {frame.detections.length} det
+        </div>
       </div>
     </div>
   );

@@ -17,7 +17,7 @@ interface PairTokenResponse {
   camera_id: string;
   token: string;
   pair_url: string;
-  expires_in: number;
+  scan_window_seconds: number;
 }
 
 interface Props {
@@ -58,7 +58,7 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? 'pair token request failed');
       setPair(d);
-      setSecondsLeft(d.expires_in ?? 300);
+      setSecondsLeft(d.scan_window_seconds ?? 300);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
@@ -108,6 +108,14 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
     const t = setInterval(poll, POLL_INTERVAL_MS);
     return () => { cancelled = true; clearInterval(t); };
   }, [open, pair, phoneConnected]);
+
+  // Once paired, auto-close after a short confirmation window so the proctor
+  // can keep working without an extra click.
+  useEffect(() => {
+    if (!open || !phoneConnected) return;
+    const t = setTimeout(() => onClose(), 1500);
+    return () => clearTimeout(t);
+  }, [open, phoneConnected, onClose]);
 
   async function handleCopy() {
     if (!pair) return;

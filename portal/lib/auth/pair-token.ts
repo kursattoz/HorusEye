@@ -1,11 +1,19 @@
 // Camera pair JWT — PRD-019 §4.1.
-// HS256, 5-minute TTL, signed with PAIR_TOKEN_SECRET (server-only).
+// HS256, signed with PAIR_TOKEN_SECRET (server-only). Token doubles as
+// (a) the QR scan envelope and (b) the phone's bearer credential for
+// the duration of the exam. We keep the QR fresh by surfacing a short
+// "scan window" hint in the API response, but the underlying JWT lives
+// long enough that a phone whose tab is closed mid-exam can simply
+// reopen the same URL and resume publishing.
 
 import crypto from 'node:crypto';
 
 const ISS = 'horuseye-pair';
 const ALG = 'HS256';
-const DEFAULT_TTL_SECONDS = 5 * 60;
+// Default 8 hours — covers a long exam day. The QR scan window (shown to
+// the proctor) is a separate UX hint, not enforced by the JWT.
+const DEFAULT_TTL_SECONDS = 8 * 60 * 60;
+export const SCAN_WINDOW_SECONDS = 5 * 60;
 
 export interface PairTokenPayload {
   camera_id: string;
