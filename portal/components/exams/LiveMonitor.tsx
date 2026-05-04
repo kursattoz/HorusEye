@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle, Plus, Radio, RadioTower, Settings, Smartphone, Wifi, WifiOff, Video, VideoOff,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AI_PROTOCOL_VERSION } from '@/types/ai';
@@ -153,22 +154,24 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     };
   }, [session, wsBase]);
 
-  // ────────────── Session-cameras polling ──────────────
+  // ────────────── Session-cameras load (callable + polling) ──────
+  const loadSessionCameras = useCallback(async () => {
+    if (!session) return;
+    try {
+      const r = await fetch(`/api/exam-sessions/${session.id}/cameras`, { cache: 'no-store' });
+      const d = await r.json();
+      if (!r.ok) return;
+      setSessionCameras(d.session_cameras ?? []);
+    } catch { /* ignore */ }
+  }, [session]);
+
   useEffect(() => {
     if (!session) return;
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const r = await fetch(`/api/exam-sessions/${session.id}/cameras`, { cache: 'no-store' });
-        const d = await r.json();
-        if (cancelled || !r.ok) return;
-        setSessionCameras(d.session_cameras ?? []);
-      } catch { /* ignore */ }
-    };
-    void load();
-    const t = setInterval(load, 8_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [session]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load + interval poll for sessionCameras
+    void loadSessionCameras();
+    const t = setInterval(loadSessionCameras, 8_000);
+    return () => clearInterval(t);
+  }, [session, loadSessionCameras]);
 
   // Whoami — needed for SessionCameraAttach ownership filtering.
   useEffect(() => {
@@ -180,21 +183,12 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     return () => { cancelled = true; };
   }, []);
 
-  // Drop frames for cameras that have been detached so the strip stays clean.
-  useEffect(() => {
-    const attached = new Set(sessionCameras.map(sc => sc.camera_id));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- prune detached frames in derived store
-    setFramesByCamera(prev => {
-      let changed = false;
-      const next = new Map(prev);
-      for (const id of next.keys()) {
-        if (!attached.has(id)) { next.delete(id); changed = true; }
-      }
-      return changed ? next : prev;
-    });
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear focus if its camera detached
-    setFocusedCameraId(prev => (prev && !attached.has(prev)) ? null : prev);
-  }, [sessionCameras]);
+  // Note: we deliberately do NOT prune framesByCamera against sessionCameras
+  // here — the polling lags the WS subscribe by up to 8s, and pruning during
+  // that window would delete fresh frames before auto-attach lands and make
+  // the main view flicker. Tiles render by sessionCameras (so detached
+  // cameras vanish from the strip), and the in-memory frame map is cheap
+  // (latest jpeg per camera, ~50KB).
 
   // Auto-focus the first attached camera if none focused yet.
   useEffect(() => {
@@ -284,9 +278,25 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           )}
         </div>
 
-        {/* Camera strip — thumbnails for switching focus. Hidden when 0/1 cams. */}
-        {sessionCameras.length > 0 && (
-          <div className="border-t bg-card px-3 py-2 flex items-center gap-2 overflow-x-auto">
+      </div>
+
+      {/* Right column: cameras card (top) + incident feed (bottom) */}
+      <div className="flex flex-col gap-4 min-h-0">
+        {/* Cameras card */}
+        <div className="rounded-lg border bg-card flex flex-col overflow-hidden shrink-0">
+          <header className="border-b px-4 py-2 flex items-center gap-2 text-sm font-semibold">
+            <Video size={14} className="text-muted-foreground" />
+            Cameras
+            <span className="ml-auto text-xs font-normal text-muted-foreground">
+              {sessionCameras.length}
+            </span>
+          </header>
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto">
+            {sessionCameras.length === 0 && (
+              <p className="col-span-full text-xs text-muted-foreground italic px-1 py-3 text-center">
+                Henüz bağlı kamera yok.
+              </p>
+            )}
             {sessionCameras.map(sc => (
               <CameraTile
                 key={sc.id}
@@ -301,17 +311,16 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
             <button
               type="button"
               onClick={() => setPairOpen(true)}
-              className="shrink-0 w-32 sm:w-36 aspect-video rounded-md border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground transition"
+              className="aspect-video rounded-md border-2 border-dashed border-border hover:border-primary/60 flex flex-col items-center justify-center text-xs text-muted-foreground hover:text-foreground transition"
               title="Pair phone camera"
             >
               <Plus size={16} /> <span className="mt-1">Pair phone</span>
             </button>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Sidebar: incident feed + status log */}
-      <div className="rounded-lg border bg-card flex flex-col overflow-hidden">
+      {/* Incident feed card */}
+      <div className="rounded-lg border bg-card flex flex-col overflow-hidden flex-1 min-h-0">
         <header className="border-b px-4 py-2">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle size={14} className="text-amber-600" />
@@ -360,6 +369,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
             </ul>
           </details>
         )}
+        </div>
       </div>
 
       {/* Modals */}
@@ -368,14 +378,25 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
         onClose={() => setPairOpen(false)}
         sessionId={session.id}
         onConnected={async (cameraId) => {
-          // Auto-attach the freshly-paired phone to this session (no extra click).
+          // Auto-attach freshly paired phone to this session (no extra click)
+          // and refresh sessionCameras immediately instead of waiting for poll.
           try {
-            await fetch(`/api/exam-sessions/${session.id}/cameras`, {
+            const r = await fetch(`/api/exam-sessions/${session.id}/cameras`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ camera_id: cameraId }),
             });
-          } catch { /* harmless — manual attach still possible */ }
+            if (r.ok || r.status === 409) {
+              // 409 = already attached (idempotent success path)
+              setFocusedCameraId(cameraId);
+              await loadSessionCameras();
+            } else {
+              const d = await r.json().catch(() => ({}));
+              toast.error(`Auto-attach failed: ${d.error ?? r.status}`);
+            }
+          } catch (e) {
+            toast.error(`Auto-attach error: ${e instanceof Error ? e.message : 'network'}`);
+          }
         }}
       />
       <SessionCameraAttach
@@ -384,6 +405,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
         sessionId={session.id}
         sessionRoomId={session.room_id ?? ''}
         currentUserId={currentUserId ?? ''}
+        onChange={() => { void loadSessionCameras(); }}
       />
     </div>
   );

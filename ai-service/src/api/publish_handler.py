@@ -119,10 +119,18 @@ def _get_yolo() -> YoloDetector | None:
         if _yolo is not None:
             return _yolo
         try:
-            det = YoloDetector(DetectorConfig())
+            # Default 0.30 (vs ultralytics 0.45) — partial faces / low-light
+            # exam rooms drop below 0.45. False positives here are harmless;
+            # they still must clear the scoring tier in Phase B.
+            conf = float(os.getenv("YOLO_CONF_THRESHOLD", "0.30"))
+            iou = float(os.getenv("YOLO_IOU_THRESHOLD", "0.50"))
+            det = YoloDetector(DetectorConfig(
+                confidence_threshold=conf,
+                iou_threshold=iou,
+            ))
             det.load()
             _yolo = det
-            log.info("YOLO loaded for broadcast inference")
+            log.info("YOLO loaded for broadcast inference (conf=%.2f iou=%.2f)", conf, iou)
         except Exception as e:  # noqa: BLE001
             log.warning("YOLO load failed (%s) — frames will broadcast without detections", e)
             _yolo = None
