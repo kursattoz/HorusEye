@@ -113,7 +113,6 @@ describe('POST /api/incidents', () => {
     mockGetUser.mockResolvedValue({ data: { user: MOCK_USER } });
     mockFrom.mockReturnValue(chain(
       { data: { id: 'inc-new', ...VALID_BODY, occurred_at: '2026-05-04T12:00:00Z' }, error: null },
-      'single',
     ));
     const res = await POST(makeRequest(VALID_BODY));
     expect(res.status).toBe(201);

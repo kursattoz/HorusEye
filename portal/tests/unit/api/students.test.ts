@@ -104,7 +104,6 @@ describe('POST /api/students', () => {
     mockGetUser.mockResolvedValue({ data: { user: MOCK_USER } });
     mockFrom.mockReturnValue(makeChain(
       { data: null, error: { code: '23505', message: 'duplicate' } },
-      'single',
     ));
     const res = await POST(makeRequest({
       student_id: '20210001', full_name: 'Ayşe',
@@ -116,7 +115,6 @@ describe('POST /api/students', () => {
     mockGetUser.mockResolvedValue({ data: { user: MOCK_USER } });
     mockFrom.mockReturnValue(makeChain(
       { data: { id: 'new-uuid', student_id: '20210001', full_name: 'Ayşe', email: null, department: null, is_active: true, created_at: '', updated_at: '' }, error: null },
-      'single',
     ));
     const res = await POST(makeRequest({
       student_id: '20210001', full_name: 'Ayşe',

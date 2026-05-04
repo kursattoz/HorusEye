@@ -119,7 +119,6 @@ describe('POST /api/exams validation', () => {
     mockGetUser.mockResolvedValue({ data: { user: MOCK_USER } });
     mockFrom.mockReturnValue(makeChain(
       { data: { id: 'new-exam', name: 'Final', scheduled_date: '2026-06-15', status: 'scheduled' }, error: null },
-      'single',
     ));
     const res = await POST(makeRequest({
       name: 'Final', scheduled_date: '2026-06-15',
