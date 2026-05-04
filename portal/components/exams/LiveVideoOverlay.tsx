@@ -6,6 +6,7 @@
 // position-aligned <svg> with a viewBox of 0 0 1 1 — works in any container
 // size with no manual coordinate math.
 
+import { memo } from 'react';
 import type { ServerFrame } from '@/types/ai';
 
 interface LiveVideoOverlayProps {
@@ -25,7 +26,7 @@ const CLASS_COLORS: Record<string, string> = {
 
 const DEFAULT_COLOR = '#3b82f6';
 
-export function LiveVideoOverlay({ frame, showBbox = true, label }: LiveVideoOverlayProps) {
+function LiveVideoOverlayImpl({ frame, showBbox = true, label }: LiveVideoOverlayProps) {
   if (!frame) {
     return (
       <p className="text-xs text-muted-foreground p-4 text-center">
@@ -107,3 +108,12 @@ export function LiveVideoOverlay({ frame, showBbox = true, label }: LiveVideoOve
     </div>
   );
 }
+
+// Skip re-render when an unrelated camera's frame updates upstream — only
+// re-render when this overlay's frame envelope changes.
+export const LiveVideoOverlay = memo(LiveVideoOverlayImpl, (a, b) =>
+  a.frame?.camera_id === b.frame?.camera_id &&
+  a.frame?.timestamp === b.frame?.timestamp &&
+  a.showBbox === b.showBbox &&
+  a.label === b.label
+);

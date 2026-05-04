@@ -27,25 +27,38 @@ interface Props {
   defaultLabel?: string;
   /** Called once the phone has reported a 'connected' event. */
   onConnected?: (cameraId: string) => void;
+  /** Parent learns the camera_id as soon as the pair-token is minted; lets
+   * it observe the WS frame stream and trigger connect detection itself. */
+  onTokenIssued?: (cameraId: string) => void;
+  /** External "phone is connected" signal (e.g. parent saw a frame from
+   * this camera over the detections WS). OR'd with internal polling. */
+  externalConnected?: boolean;
 }
 
 const POLL_INTERVAL_MS = 2_000;
 
-export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConnected }: Props) {
+export function PhonePairModal({
+  open, onClose, sessionId, defaultLabel,
+  onConnected, onTokenIssued, externalConnected,
+}: Props) {
   const [pair, setPair] = useState<PairTokenResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
-  const [phoneConnected, setPhoneConnected] = useState(false);
+  const [healthConnected, setHealthConnected] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const phoneConnected = healthConnected || Boolean(externalConnected);
 
   const onConnectedRef = useRef(onConnected);
   onConnectedRef.current = onConnected;
+  const onTokenIssuedRef = useRef(onTokenIssued);
+  onTokenIssuedRef.current = onTokenIssued;
 
   const requestToken = useCallback(async () => {
     setCreating(true);
     setError(null);
-    setPhoneConnected(false);
+    setHealthConnected(false);
     try {
       const r = await fetch('/api/cameras/pair-token', {
         method: 'POST',
@@ -59,6 +72,7 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
       if (!r.ok) throw new Error(d.error ?? 'pair token request failed');
       setPair(d);
       setSecondsLeft(d.scan_window_seconds ?? 300);
+      onTokenIssuedRef.current?.(d.camera_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {
@@ -74,7 +88,7 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
     if (!open) {
       setPair(null);
       setSecondsLeft(0);
-      setPhoneConnected(false);
+      setHealthConnected(false);
       setError(null);
     }
   }, [open, pair, creating, requestToken]);
@@ -98,7 +112,7 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
         if (r.ok && Array.isArray(d.events)) {
           const isConnected = d.events.some((e: { event_type: string }) => e.event_type === 'connected');
           if (isConnected && !cancelled) {
-            setPhoneConnected(true);
+            setHealthConnected(true);
             onConnectedRef.current?.(pair.camera_id);
           }
         }
@@ -108,6 +122,18 @@ export function PhonePairModal({ open, onClose, sessionId, defaultLabel, onConne
     const t = setInterval(poll, POLL_INTERVAL_MS);
     return () => { cancelled = true; clearInterval(t); };
   }, [open, pair, phoneConnected]);
+
+  // External (frame-stream) connection signal — fire onConnected once when
+  // the parent flips externalConnected to true. This is the resilient path
+  // when the phone's health-event POST fails (CORS, expired token, etc.):
+  // the WS frame stream is sufficient proof that pairing succeeded.
+  const firedExternalRef = useRef(false);
+  useEffect(() => {
+    if (!open) { firedExternalRef.current = false; return; }
+    if (!externalConnected || !pair || firedExternalRef.current) return;
+    firedExternalRef.current = true;
+    onConnectedRef.current?.(pair.camera_id);
+  }, [open, externalConnected, pair]);
 
   // Once paired, auto-close after a short confirmation window so the proctor
   // can keep working without an extra click.

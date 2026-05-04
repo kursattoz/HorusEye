@@ -46,7 +46,16 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pairOpen, setPairOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [pendingCameraId, setPendingCameraId] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  // Holds the latest attachCamera fn — referenced from the WS onmessage
+  // closure, declared later. Indirection avoids TDZ in lexical ordering.
+  const attachCameraRef = useRef<(cameraId: string) => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    sessionIdRef.current = session?.id ?? null;
+  }, [session?.id]);
 
   // ────────────── WS subscribe + frame demux ──────────────
   useEffect(() => {
@@ -107,14 +116,26 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
               case 'incident':
                 setIncidents(prev => [msg, ...prev].slice(0, 50));
                 break;
-              case 'frame':
+              case 'frame': {
+                const camId = msg.camera_id;
                 setFramesByCamera(prev => {
                   const next = new Map(prev);
-                  next.set(msg.camera_id, msg);
+                  next.set(camId, msg);
                   return next;
                 });
-                setFocusedCameraId(prev => prev ?? msg.camera_id);
+                setFocusedCameraId(prev => prev ?? camId);
+                // Frame-based connect detection: if this camera matches a
+                // pending pair we're waiting on, auto-attach + focus + clear.
+                setPendingCameraId(prev => {
+                  if (prev && prev === camId) {
+                    void attachCameraRef.current(camId);
+                    setFocusedCameraId(camId);
+                    return null;
+                  }
+                  return prev;
+                });
                 break;
+              }
               case 'error':
                 setError(`AI service error: ${msg.message}`);
                 break;
@@ -164,6 +185,33 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
       setSessionCameras(d.session_cameras ?? []);
     } catch { /* ignore */ }
   }, [session]);
+
+  // Attach a paired camera to the session. Idempotent: 409 (already
+  // attached) is treated as success. Surfaces any real failure as a toast.
+  // Stored on attachCameraRef so the WS onmessage closure can call it
+  // without lexical ordering issues.
+  const attachCamera = useCallback(async (cameraId: string) => {
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    try {
+      const r = await fetch(`/api/exam-sessions/${sid}/cameras`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ camera_id: cameraId }),
+      });
+      if (r.ok || r.status === 409) {
+        await loadSessionCameras();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        toast.error(`Auto-attach failed (${r.status}): ${d.error ?? 'unknown'}`);
+      }
+    } catch (e) {
+      toast.error(`Auto-attach error: ${e instanceof Error ? e.message : 'network'}`);
+    }
+  }, [loadSessionCameras]);
+  useEffect(() => {
+    attachCameraRef.current = attachCamera;
+  }, [attachCamera]);
 
   useEffect(() => {
     if (!session) return;
@@ -375,28 +423,13 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
       {/* Modals */}
       <PhonePairModal
         open={pairOpen}
-        onClose={() => setPairOpen(false)}
+        onClose={() => { setPairOpen(false); setPendingCameraId(null); }}
         sessionId={session.id}
+        onTokenIssued={(cameraId) => setPendingCameraId(cameraId)}
+        externalConnected={Boolean(pendingCameraId && framesByCamera.has(pendingCameraId))}
         onConnected={async (cameraId) => {
-          // Auto-attach freshly paired phone to this session (no extra click)
-          // and refresh sessionCameras immediately instead of waiting for poll.
-          try {
-            const r = await fetch(`/api/exam-sessions/${session.id}/cameras`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ camera_id: cameraId }),
-            });
-            if (r.ok || r.status === 409) {
-              // 409 = already attached (idempotent success path)
-              setFocusedCameraId(cameraId);
-              await loadSessionCameras();
-            } else {
-              const d = await r.json().catch(() => ({}));
-              toast.error(`Auto-attach failed: ${d.error ?? r.status}`);
-            }
-          } catch (e) {
-            toast.error(`Auto-attach error: ${e instanceof Error ? e.message : 'network'}`);
-          }
+          setFocusedCameraId(cameraId);
+          await attachCamera(cameraId);
         }}
       />
       <SessionCameraAttach

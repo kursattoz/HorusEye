@@ -4,6 +4,7 @@
 // No bbox overlay (those go on the focused/main camera only). Click to
 // promote this tile to focus.
 
+import { memo } from 'react';
 import { Camera as CameraIcon, Smartphone, RadioTower } from 'lucide-react';
 import type { ServerFrame } from '@/types/ai';
 
@@ -16,7 +17,7 @@ interface Props {
   onSelect: () => void;
 }
 
-export function CameraTile({ cameraId, label, cameraType, frame, active, onSelect }: Props) {
+function CameraTileImpl({ cameraId, label, cameraType, frame, active, onSelect }: Props) {
   return (
     <button
       type="button"
@@ -56,3 +57,14 @@ export function CameraTile({ cameraId, label, cameraType, frame, active, onSelec
     </button>
   );
 }
+
+// Skip re-render when only the focused camera's frame changed in the parent —
+// non-focused tiles only re-render when their own jpeg_base64 changes (frame
+// arrival for THIS camera) or when active flips.
+export const CameraTile = memo(CameraTileImpl, (a, b) =>
+  a.cameraId === b.cameraId &&
+  a.active === b.active &&
+  a.label === b.label &&
+  a.cameraType === b.cameraType &&
+  a.frame?.jpeg_base64 === b.frame?.jpeg_base64
+);
