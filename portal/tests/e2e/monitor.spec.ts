@@ -20,8 +20,9 @@ test.describe('Health & monitor endpoints', () => {
     expect(typeof sb.latency_ms).toBe('number');
   });
 
-  test('/monitor page redirects unauthenticated user to login', async ({ page }) => {
-    await page.goto('/monitor');
+  test('/dev/monitor page redirects unauthenticated user to login', async ({ page }) => {
+    // Route lives under /dev/monitor (admin-only, gated by ADMIN_ONLY_ROUTES).
+    await page.goto('/dev/monitor');
     await expect(page).toHaveURL(/\/login/);
   });
 });
