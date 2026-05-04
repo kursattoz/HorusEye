@@ -1,0 +1,86 @@
+name: Build & Push — AI Service
+
+# Builds + pushes the FastAPI AI service Docker image to ECR. Triggered on
+# any change under ai-service/ on main, or manually via workflow_dispatch.
+# CDK stacks (HorusEye-AiService-Staging / -Production) must already exist;
+# this workflow does NOT run cdk deploy — it only refreshes the image and
+# forces ECS to pull the new :latest.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ai-service/**'
+      - '.github/workflows/ai-service-build.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REPO: horuseye/ai-service
+
+jobs:
+  build-push:
+    name: Build & Push AI image (linux/amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ai-service
+          file: ai-service/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:${{ github.sha }}
+            ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPO }}:latest
+          # Image is ~2-3GB (YOLO weights pre-baked); cache to GHA to speed
+          # up subsequent builds.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Force ECS to pull :latest. The services may not exist yet on the
+      # first run — ignore the failure so this job can still finish.
+      - name: Force-new-deployment (staging, if service exists)
+        run: |
+          set +e
+          CLUSTER=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Staging \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterArn'].OutputValue" --output text 2>/dev/null)
+          SERVICE=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Staging \
+            --query "Stacks[0].Outputs[?OutputKey=='ServiceArn'].OutputValue" --output text 2>/dev/null)
+          if [ -n "$CLUSTER" ] && [ -n "$SERVICE" ] && [ "$CLUSTER" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment --no-cli-pager
+          else
+            echo "Staging stack not yet deployed — skipping force-new-deployment"
+          fi
+
+      - name: Force-new-deployment (production, if service exists)
+        run: |
+          set +e
+          CLUSTER=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Production \
+            --query "Stacks[0].Outputs[?OutputKey=='ClusterArn'].OutputValue" --output text 2>/dev/null)
+          SERVICE=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Production \
+            --query "Stacks[0].Outputs[?OutputKey=='ServiceArn'].OutputValue" --output text 2>/dev/null)
+          if [ -n "$CLUSTER" ] && [ -n "$SERVICE" ] && [ "$CLUSTER" != "None" ]; then
+            aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --force-new-deployment --no-cli-pager
+          else
+            echo "Production stack not yet deployed — skipping force-new-deployment"
+          fi
