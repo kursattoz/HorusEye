@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { NetworkStack } from '../lib/network-stack';
 import { RegistryStack } from '../lib/registry-stack';
 import { ServiceStack } from '../lib/service-stack';
+import { AiServiceStack } from '../lib/ai-service-stack';
 
 const app = new cdk.App();
 
@@ -40,4 +41,29 @@ new ServiceStack(app, 'HorusEye-Production', {
   desiredCount: 2,
   cpu: 256,
   memoryLimitMiB: 512,
+});
+
+// ── AI service stacks (PRD-019) ──────────────────────────────────
+new AiServiceStack(app, 'HorusEye-AiService-Staging', {
+  env,
+  vpc: network.vpc,
+  repository: registry.aiServiceRepository,
+  domainName,
+  subdomain: 'ai-staging',
+  envName: 'staging',
+  desiredCount: 1,
+  cpu: 1024,            // YOLOv8n on CPU needs the headroom
+  memoryLimitMiB: 2048,
+});
+
+new AiServiceStack(app, 'HorusEye-AiService-Production', {
+  env,
+  vpc: network.vpc,
+  repository: registry.aiServiceRepository,
+  domainName,
+  subdomain: 'ai',
+  envName: 'production',
+  desiredCount: 1,
+  cpu: 1024,
+  memoryLimitMiB: 2048,
 });
