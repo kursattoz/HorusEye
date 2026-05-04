@@ -14,7 +14,7 @@ LogEvent: @1.2
 HealthStatus: @1.0
 Notification: @1.0
 ExamSession: @1.1
-Camera: @1.1
+Camera: @1.2
 Incident: @1.1
 Student: @1.1
 ExamRoom: @1.0

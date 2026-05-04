@@ -306,25 +306,29 @@ interface ExamRoom {
 }
 ```
 
-### 3.11 Camera `@1.1`
-**Kanal:** PRD-013 (internal)
+### 3.11 Camera `@1.2`
+**Kanal:** PRD-013 + PRD-019 (internal)
 
 ```typescript
-// @interface Camera @version 1.1
+// @interface Camera @version 1.2
 type CameraRole = 'front_wide' | 'front_close' | 'rear_wide' | 'side_left' | 'side_right';
 type CameraType = 'ip_camera' | 'phone' | 'usb_webcam';
 
 interface Camera {
   id: string;
-  room_id: string;             // FK → exam_rooms
+  room_id: string | null;          // NEW: nullable for movable cams (PRD-019)
   label: string;
-  stream_url: string;          // RTSP URL, HTTP URL (telefon), veya relay URL
-  camera_type: CameraType;     // Kamera bağlantı tipi
+  stream_url: string;
+  camera_type: CameraType;
   role: CameraRole;
   position_x: number | null;
   position_y: number | null;
   quality_score: number;
   is_active: boolean;
+  is_fixed: boolean;               // NEW (PRD-019)
+  owner_user_id: string | null;    // NEW (PRD-019) — null = system-owned
+  device_id: string | null;        // NEW (PRD-019) — phone fingerprint
+  last_seen_at: string | null;     // NEW (PRD-019)
   created_at: string;
 }
 ```
@@ -400,6 +404,42 @@ interface Incident {
   decided_by: string | null;                   // FK → user_profiles
   decided_at: string | null;                   // ISO 8601
   occurred_at: string;
+  created_at: string;
+}
+```
+
+### 3.14a SessionCamera `@1.0`
+**Kanal:** PRD-019 (owner)
+
+```typescript
+// @interface SessionCamera @version 1.0
+interface SessionCamera {
+  id:          string;
+  session_id:  string;     // FK → exam_sessions
+  camera_id:   string;     // FK → cameras
+  added_at:    string;
+  added_by:    string | null;
+}
+```
+
+### 3.14b CameraHealthEvent `@1.0`
+**Kanal:** PRD-019 (owner)
+
+```typescript
+// @interface CameraHealthEvent @version 1.0
+type CameraHealthEventType =
+  | 'connected' | 'disconnected' | 'reconnected'
+  | 'low_battery' | 'critical_battery' | 'charging'
+  | 'app_backgrounded' | 'app_foregrounded'
+  | 'overheat' | 'orientation_changed' | 'preview_offscreen'
+  | 'permission_revoked';
+
+interface CameraHealthEvent {
+  id:         string;
+  camera_id:  string;
+  session_id: string | null;
+  event_type: CameraHealthEventType;
+  metadata:   Record<string, unknown> | null;
   created_at: string;
 }
 ```
