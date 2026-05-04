@@ -64,7 +64,7 @@ export function ProjectAnalytics() {
   const [data, setData] = useState<ProjectData | null>(null);
 
   useEffect(() => {
-    fetch('/api/sprints/analytics')
+    fetch('/api/sprints/analytics', { cache: 'no-store' })
       .then(r => r.json())
       .then(setData);
   }, []);

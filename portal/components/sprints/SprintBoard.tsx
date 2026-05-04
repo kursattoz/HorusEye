@@ -45,7 +45,7 @@ export function SprintBoard() {
   const [creating, setCreating] = useState(false);
 
   async function fetchSprints() {
-    const res = await fetch('/api/sprints');
+    const res = await fetch('/api/sprints', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       setSprints(data.sprints ?? []);

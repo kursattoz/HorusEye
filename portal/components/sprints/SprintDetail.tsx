@@ -61,8 +61,8 @@ export function SprintDetail({ sprintId }: { sprintId: string }) {
 
   const fetchData = useCallback(async () => {
     const [sprintRes, sprintsRes] = await Promise.all([
-      fetch(`/api/sprints/${sprintId}`),
-      fetch('/api/sprints'),
+      fetch(`/api/sprints/${sprintId}`, { cache: 'no-store' }),
+      fetch('/api/sprints', { cache: 'no-store' }),
     ]);
     if (sprintRes.ok) {
       const data = await sprintRes.json();
