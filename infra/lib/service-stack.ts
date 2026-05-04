@@ -68,6 +68,12 @@ export class ServiceStack extends cdk.Stack {
     const appUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_APP_URL`);
     const cronSecret = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/CRON_SECRET`);
 
+    // AI service (PRD-013) — Phase A
+    const aiServiceUrl    = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/AI_SERVICE_URL`);
+    const aiServiceWsUrl  = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/AI_SERVICE_WS_URL`);
+    const aiServiceWsPub  = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/NEXT_PUBLIC_AI_SERVICE_WS_URL`);
+    const aiServiceApiKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/AI_SERVICE_API_KEY`);
+
     const environment: Record<string, string> = {
       NEXT_PUBLIC_ENV: envName,
       NEXT_PUBLIC_CAMERA_MODULE_ENABLED: 'false',
@@ -78,6 +84,10 @@ export class ServiceStack extends cdk.Stack {
       SMTP_ENCRYPTION_KEY: smtpEncryptionKey,
       NEXT_PUBLIC_APP_URL: appUrl,
       CRON_SECRET: cronSecret,
+      AI_SERVICE_URL: aiServiceUrl,
+      AI_SERVICE_WS_URL: aiServiceWsUrl,
+      NEXT_PUBLIC_AI_SERVICE_WS_URL: aiServiceWsPub,
+      AI_SERVICE_API_KEY: aiServiceApiKey,
     };
 
     if (envName === 'production') {
