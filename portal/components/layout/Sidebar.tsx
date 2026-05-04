@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Exams',     href: routes.exams,     icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
       { label: 'Students',  href: routes.students,  icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Rooms',     href: routes.examRooms, icon: Laptop,          roles: ['admin'] },
     ],
   },
   {
