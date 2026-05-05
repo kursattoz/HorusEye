@@ -40,6 +40,7 @@ from src.api.protocol import (
 from src.detection.face_mesh import get_face_mesh_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.persistence.incident_writer import write_incident
+from src.persistence.session_meta import get_expected_person_count
 from src.scoring.config import (
     GAZE_DIVERSION_CONFIG,
     HEAD_TURN_CONFIG,
@@ -52,6 +53,8 @@ from src.scoring.rules.gaze_diversion import update_signal as gaze_update_signal
 from src.scoring.rules.head_turn import evaluate as head_turn_eval
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
+from src.scoring.rules.unauthorized_person import evaluate as unauthorized_person_eval
+from src.scoring.session_state import drop_session_state, get_session_state
 from src.scoring.session_tracker import drop_tracker, get_tracker
 from src.scoring.track_state import track_store
 
@@ -240,6 +243,19 @@ def _detect_track_score_sync(
     # so we catch students who left their seat after the last frame.
     for state in track_store.states_for_camera(session_id, camera_id):
         cand = empty_seat_eval(state, ts=ts)
+        if cand is not None:
+            candidates.append(cand)
+
+    # BL-205 — unauthorized_person Phase A: live count vs expected.
+    expected_count = get_expected_person_count(session_id)
+    if expected_count is not None:
+        session_state = get_session_state(session_id, camera_id)
+        cand = unauthorized_person_eval(
+            session_state,
+            ts=ts,
+            expected_count=expected_count,
+            observed_count=len(person_tracks),
+        )
         if cand is not None:
             candidates.append(cand)
 
@@ -441,6 +457,7 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
         frame_store.drop(session_id, camera_id)
         drop_tracker(session_id, camera_id)
         track_store.drop_camera(session_id, camera_id)
+        drop_session_state(session_id, camera_id)
         log.info("publish stream closed: session=%s camera=%s total_frames=%d",
                  session_id, camera_id, frames_received)
 

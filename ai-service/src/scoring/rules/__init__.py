@@ -22,7 +22,7 @@ class IncidentCandidate:
     incident_type: str                                 # → incidents.incident_type
     severity: str                                      # → incidents.severity
     confidence: float                                  # → incidents.confidence
-    track_id: int                                      # → incidents.track_id
+    track_id: int | None                               # → incidents.track_id (None for session-level rules)
     triggered_rules: tuple[str, ...]                   # → incidents.triggered_rules
     bbox: tuple[float, float, float, float]            # anchor (object that triggered)
     person_bbox: tuple[float, float, float, float]     # the tracked person's bbox
