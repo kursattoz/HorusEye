@@ -11,6 +11,7 @@ import { AI_PROTOCOL_VERSION } from '@/types/ai';
 import type { ServerMessage, ServerIncident, ServerStatus, ServerFrame } from '@/types/ai';
 import { CameraViewport } from '@/components/exams/CameraViewport';
 import { CameraTile } from '@/components/exams/CameraTile';
+import { IncidentCard } from '@/components/exams/IncidentCard';
 import { PhonePairModal } from '@/components/exams/PhonePairModal';
 import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
 
@@ -435,21 +436,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           ) : (
             <ul className="divide-y">
               {incidents.map(inc => (
-                <li key={inc.message_id} className="p-3 hover:bg-muted/30">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${SEVERITY_BADGE[inc.severity] ?? 'bg-muted'}`}>
-                      {inc.severity}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(inc.occurred_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="mt-1.5 text-sm font-medium">{inc.incident_type.replace(/_/g, ' ')}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {inc.student_id ? `Student ${inc.student_id}` : `Track ${inc.track_id ?? '?'}`} ·
-                    {' '}confidence {Math.round(inc.confidence * 100)}%
-                  </p>
-                </li>
+                <IncidentCard key={inc.message_id} incident={inc} />
               ))}
             </ul>
           )}
@@ -495,13 +482,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
     </div>
   );
 }
-
-const SEVERITY_BADGE: Record<string, string> = {
-  low:      'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  medium:   'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  high:     'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-  critical: 'bg-red-500/10 text-red-600 dark:text-red-400',
-};
 
 function ConnectionBadge({ state }: { state: ConnectState }) {
   const cfg: Record<ConnectState, { label: string; cls: string; icon: typeof Wifi }> = {
