@@ -47,6 +47,11 @@ class TrackState:
     # the last window_seconds' worth of (ts, value) pairs.
     signal_traces: dict[str, deque[tuple[str, float]]] = field(default_factory=dict)
     last_seen_at: float = 0.0
+    # BL-220 — student match cache. Set when matcher resolves the track to
+    # an enrolled student; sticks for the rest of the track's lifetime.
+    matched_student_id: str | None = None
+    last_match_attempt_at: float | None = None
+    best_match_similarity: float | None = None
 
     def add(
         self,

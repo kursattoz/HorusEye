@@ -28,3 +28,4 @@ class IncidentCandidate:
     person_bbox: tuple[float, float, float, float]     # the tracked person's bbox
     raw_signals: dict[str, Any] = field(default_factory=dict)   # → incidents.raw_signals
     occurred_at: float = 0.0                           # epoch seconds → incidents.occurred_at
+    student_id: str | None = None                      # → incidents.student_id (BL-220 face match)

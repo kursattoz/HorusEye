@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import dataclasses
 import json
 import logging
 import os
@@ -39,6 +40,7 @@ from src.api.protocol import (
 )
 from src.detection.face_mesh import get_face_mesh_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
+from src.identity.student_matcher import match_track
 from src.persistence.incident_writer import write_incident
 from src.persistence.session_meta import get_expected_person_count
 from src.scoring.config import (
@@ -72,6 +74,15 @@ _IDLE_TIMEOUT_SECONDS = 15.0
 # - skip every other frame to keep CPU under budget
 _FACE_MESH_FRAME_SKIP = max(1, int(os.getenv("FACE_MESH_FRAME_SKIP", "2")))
 _MAX_FACES_PER_FRAME = max(1, int(os.getenv("FACE_MESH_MAX_FACES", "3")))
+
+
+def _with_student(
+    candidate: IncidentCandidate, student_id: str | None,
+) -> IncidentCandidate:
+    """Attach the matched student id to a freshly emitted candidate."""
+    if student_id is None or candidate.student_id is not None:
+        return candidate
+    return dataclasses.replace(candidate, student_id=student_id)
 
 # Geçici cv2 import — opencv-python-headless yoksa decode atlanır
 try:
@@ -229,6 +240,11 @@ def _detect_track_score_sync(
             other_detections=other_dets,
             overlap_threshold=PHONE_IN_HAND_CONFIG.overlap_threshold,
         )
+        # BL-220 — try to match the track against an enrolled student. The
+        # matcher caches on the state; subsequent calls are no-ops until
+        # cooldown expires.
+        match_track(state, frame_bgr=bgr, person_bbox=t.detection.bbox, ts=ts)
+
         cand = phone_in_hand_eval(
             state,
             ts=ts,
@@ -237,7 +253,7 @@ def _detect_track_score_sync(
             cfg=PHONE_IN_HAND_CONFIG,
         )
         if cand is not None:
-            candidates.append(cand)
+            candidates.append(_with_student(cand, state.matched_student_id))
         # BL-206 — paper_detected reuses the same overlap dict
         paper_cand = paper_detected_eval(
             state,
@@ -246,7 +262,7 @@ def _detect_track_score_sync(
             overlap_by_class=overlap,
         )
         if paper_cand is not None:
-            candidates.append(paper_cand)
+            candidates.append(_with_student(paper_cand, state.matched_student_id))
 
     # BL-204 — empty_seat watchdog. Scans every track state for the
     # (session, camera) — including ones the tracker has just dropped —
@@ -254,7 +270,7 @@ def _detect_track_score_sync(
     for state in track_store.states_for_camera(session_id, camera_id):
         cand = empty_seat_eval(state, ts=ts)
         if cand is not None:
-            candidates.append(cand)
+            candidates.append(_with_student(cand, state.matched_student_id))
 
     # BL-205 — unauthorized_person Phase A: live count vs expected.
     expected_count = get_expected_person_count(session_id)
@@ -284,13 +300,13 @@ def _detect_track_score_sync(
                 signal=signal, cfg=GAZE_DIVERSION_CONFIG,
             )
             if gaze_cand is not None:
-                candidates.append(gaze_cand)
+                candidates.append(_with_student(gaze_cand, state.matched_student_id))
             head_cand = head_turn_eval(
                 state, ts=ts, person_bbox=t.detection.bbox,
                 signal=signal, cfg=HEAD_TURN_CONFIG,
             )
             if head_cand is not None:
-                candidates.append(head_cand)
+                candidates.append(_with_student(head_cand, state.matched_student_id))
 
     out: list[dict[str, Any]] = [
         {

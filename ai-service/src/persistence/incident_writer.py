@@ -68,9 +68,9 @@ def _build_row(
     return {
         "id": incident_id,
         "session_id": session_id,
-        # student_id stays NULL through Sprint 7-9; Sprint 10 face-match will
-        # back-fill via the eşleştirme penceresi described in PRD-013 §7.1.
-        "student_id": None,
+        # student_id is populated by the Sprint 10 BL-220 matcher via
+        # candidate.student_id; pre-match incidents stay NULL.
+        "student_id": candidate.student_id,
         "track_id": candidate.track_id,
         "incident_type": candidate.incident_type,
         "severity": candidate.severity,
