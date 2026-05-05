@@ -37,10 +37,18 @@ from src.api.protocol import (
     is_valid_publish,
     status_message,
 )
+from src.detection.face_mesh import get_face_mesh_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.persistence.incident_writer import write_incident
-from src.scoring.config import PHONE_IN_HAND_CONFIG
+from src.scoring.config import (
+    GAZE_DIVERSION_CONFIG,
+    HEAD_TURN_CONFIG,
+    PHONE_IN_HAND_CONFIG,
+)
 from src.scoring.rules import IncidentCandidate
+from src.scoring.rules.gaze_diversion import evaluate as gaze_diversion_eval
+from src.scoring.rules.gaze_diversion import update_signal as gaze_update_signal
+from src.scoring.rules.head_turn import evaluate as head_turn_eval
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
 from src.scoring.session_tracker import drop_tracker, get_tracker
@@ -53,6 +61,12 @@ router = APIRouter()
 # Idle heartbeat: kapatma sınırı. Telefon 5s'te bir ping atar, 15s sessizlik
 # = disconnected.
 _IDLE_TIMEOUT_SECONDS = 15.0
+
+# BL-202 — Face-mesh sampling cap. PRD-013 §3.3:
+# - process at most ``MAX_FACES_PER_FRAME`` person tracks per frame
+# - skip every other frame to keep CPU under budget
+_FACE_MESH_FRAME_SKIP = max(1, int(os.getenv("FACE_MESH_FRAME_SKIP", "2")))
+_MAX_FACES_PER_FRAME = max(1, int(os.getenv("FACE_MESH_MAX_FACES", "3")))
 
 # Geçici cv2 import — opencv-python-headless yoksa decode atlanır
 try:
@@ -175,6 +189,7 @@ def _detect_track_score_sync(
     session_id: str,
     camera_id: str,
     ts: float,
+    frame_seq: int,
 ) -> tuple[list[dict[str, Any]], list[IncidentCandidate]]:
     """Run YOLO → BoT-SORT → rule engine over a BGR frame.
 
@@ -182,6 +197,10 @@ def _detect_track_score_sync(
     list is broadcast over the ServerFrame channel for live preview;
     candidates are persisted off-loop and then broadcast as ServerIncident
     envelopes. Synchronous — call via ``asyncio.to_thread``.
+
+    ``frame_seq`` is the per-camera frame counter (publish_handler increments
+    on every JPEG it pumps in). It drives the face-mesh sampling cap so we
+    don't run MediaPipe on every frame for every face.
     """
     det = _get_yolo()
     if det is None or bgr is None:
@@ -214,6 +233,29 @@ def _detect_track_score_sync(
         )
         if cand is not None:
             candidates.append(cand)
+
+    # BL-202 — face-mesh + gaze + head_turn rules.
+    # Sample every Nth frame, max ``_MAX_FACES_PER_FRAME`` people per frame.
+    if frame_seq % _FACE_MESH_FRAME_SKIP == 0 and person_tracks:
+        extractor = get_face_mesh_extractor()
+        for t in person_tracks[:_MAX_FACES_PER_FRAME]:
+            state = track_store.get_or_create(session_id, camera_id, t.track_id)
+            signal = extractor.extract_for_track(bgr, t.detection.bbox)
+            if signal is None:
+                continue
+            gaze_update_signal(state, ts, signal)
+            gaze_cand = gaze_diversion_eval(
+                state, ts=ts, person_bbox=t.detection.bbox,
+                signal=signal, cfg=GAZE_DIVERSION_CONFIG,
+            )
+            if gaze_cand is not None:
+                candidates.append(gaze_cand)
+            head_cand = head_turn_eval(
+                state, ts=ts, person_bbox=t.detection.bbox,
+                signal=signal, cfg=HEAD_TURN_CONFIG,
+            )
+            if head_cand is not None:
+                candidates.append(head_cand)
 
     out: list[dict[str, Any]] = [
         {
@@ -326,6 +368,7 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                             session_id,
                             camera_id,
                             ts_epoch,
+                            frames_received,
                         )
                     else:
                         detections, candidates = [], []
