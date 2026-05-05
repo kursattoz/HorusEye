@@ -30,12 +30,22 @@ class TrackSample:
 
 @dataclass
 class TrackState:
-    """5-minute rolling window of samples + per-rule cooldown table."""
+    """5-minute rolling window of samples + per-rule cooldown + fire history.
+
+    Sprint 8 BL-198 added :attr:`fired_history` so frequency rules
+    (``gaze_diversion`` requires ≥3 fires in 5 minutes) can count past
+    fires without needing a separate persistence query.
+    """
 
     track_id: int
     window_seconds: float = DEFAULT_WINDOW_SECONDS
     samples: deque[TrackSample] = field(default_factory=deque)
     fired_at: dict[str, float] = field(default_factory=dict)
+    fired_history: deque[tuple[str, float]] = field(default_factory=deque)
+    # Per-rule signal trace for raw_signals enrichment (BL-199).
+    # E.g. gaze_diversion samples yaw_deg every frame; the deque stores
+    # the last window_seconds' worth of (ts, value) pairs.
+    signal_traces: dict[str, deque[tuple[str, float]]] = field(default_factory=dict)
     last_seen_at: float = 0.0
 
     def add(
@@ -52,11 +62,23 @@ class TrackState:
             )
         )
         self.last_seen_at = ts
-        self._evict_older_than(ts - self.window_seconds)
+        cutoff = ts - self.window_seconds
+        self._evict_older_than(cutoff)
+        self._evict_history_older_than(cutoff)
+        self._evict_traces_older_than(cutoff)
 
     def _evict_older_than(self, cutoff_ts: float) -> None:
         while self.samples and self.samples[0].ts < cutoff_ts:
             self.samples.popleft()
+
+    def _evict_history_older_than(self, cutoff_ts: float) -> None:
+        while self.fired_history and self.fired_history[0][1] < cutoff_ts:
+            self.fired_history.popleft()
+
+    def _evict_traces_older_than(self, cutoff_ts: float) -> None:
+        for trace in self.signal_traces.values():
+            while trace and trace[0][1] < cutoff_ts:
+                trace.popleft()
 
     def sustained(self, class_name: str, min_seconds: float) -> bool:
         """Return ``True`` iff every sample in the most recent ``min_seconds``
@@ -80,6 +102,30 @@ class TrackState:
 
     def mark_fired(self, rule: str, now: float) -> None:
         self.fired_at[rule] = now
+        self.fired_history.append((rule, now))
+        self._evict_history_older_than(now - self.window_seconds)
+
+    def fires_in_window(self, rule: str, window_seconds: float, now: float) -> int:
+        """Count how many times ``rule`` has fired in the last ``window_seconds``."""
+        cutoff = now - window_seconds
+        return sum(1 for r, ts in self.fired_history if r == rule and ts >= cutoff)
+
+    def record_signal(self, name: str, ts: float, value: float) -> None:
+        """Append a per-rule signal sample (e.g. yaw_deg) for raw_signals
+        enrichment. Older samples beyond ``window_seconds`` evicted on add.
+        """
+        trace = self.signal_traces.setdefault(name, deque())
+        trace.append((str(ts), value))
+        cutoff = ts - self.window_seconds
+        while trace and float(trace[0][0]) < cutoff:
+            trace.popleft()
+
+    def signal_trace(self, name: str) -> list[tuple[float, float]]:
+        """Snapshot of ``name``'s trace as a list of (ts, value) tuples."""
+        trace = self.signal_traces.get(name)
+        if not trace:
+            return []
+        return [(float(ts), v) for ts, v in trace]
 
     def latest_sample(self) -> TrackSample | None:
         return self.samples[-1] if self.samples else None
