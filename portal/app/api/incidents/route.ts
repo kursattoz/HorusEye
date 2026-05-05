@@ -48,6 +48,12 @@ export async function GET(request: NextRequest) {
 
   if (sessionId)  q = q.eq('session_id',   sessionId);
   if (studentId)  q = q.eq('student_id',   studentId);
+  // BL-191 — review queue across an exam's sessions: pass session_ids=a,b,c
+  const sessionIdsCsv = url.searchParams.get('session_ids');
+  if (sessionIdsCsv) {
+    const ids = sessionIdsCsv.split(',').map(s => s.trim()).filter(Boolean);
+    if (ids.length > 0) q = q.in('session_id', ids);
+  }
   if (severity     && (SEVERITIES as readonly string[]).includes(severity))     q = q.eq('severity', severity);
   if (incidentType && (TYPES      as readonly string[]).includes(incidentType)) q = q.eq('incident_type', incidentType);
   if (reviewed === 'true')  q = q.eq('is_reviewed', true);
