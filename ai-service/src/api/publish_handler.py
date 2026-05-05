@@ -51,6 +51,7 @@ from src.scoring.rules.empty_seat import evaluate as empty_seat_eval
 from src.scoring.rules.gaze_diversion import evaluate as gaze_diversion_eval
 from src.scoring.rules.gaze_diversion import update_signal as gaze_update_signal
 from src.scoring.rules.head_turn import evaluate as head_turn_eval
+from src.scoring.rules.paper_detected import evaluate as paper_detected_eval
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
 from src.scoring.rules.unauthorized_person import evaluate as unauthorized_person_eval
@@ -237,6 +238,15 @@ def _detect_track_score_sync(
         )
         if cand is not None:
             candidates.append(cand)
+        # BL-206 — paper_detected reuses the same overlap dict
+        paper_cand = paper_detected_eval(
+            state,
+            ts=ts,
+            person_bbox=t.detection.bbox,
+            overlap_by_class=overlap,
+        )
+        if paper_cand is not None:
+            candidates.append(paper_cand)
 
     # BL-204 — empty_seat watchdog. Scans every track state for the
     # (session, camera) — including ones the tracker has just dropped —
