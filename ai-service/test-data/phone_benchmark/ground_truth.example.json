@@ -1,0 +1,10 @@
+{
+  "frames": [
+    { "filename": "lighting1_001.jpg", "lighting": "morning_sun",      "people": 3, "phone_visible": true },
+    { "filename": "lighting1_002.jpg", "lighting": "morning_sun",      "people": 3, "phone_visible": false },
+    { "filename": "lighting2_001.jpg", "lighting": "noon_balanced",    "people": 4, "phone_visible": true },
+    { "filename": "lighting2_002.jpg", "lighting": "noon_balanced",    "people": 4, "phone_visible": false },
+    { "filename": "lighting3_001.jpg", "lighting": "evening_fluoro",   "people": 2, "phone_visible": true },
+    { "filename": "lighting3_002.jpg", "lighting": "evening_fluoro",   "people": 2, "phone_visible": false }
+  ]
+}
