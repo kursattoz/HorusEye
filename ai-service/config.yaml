@@ -25,7 +25,7 @@ detection:
     'book':       paper_detected
     'keyboard':   paper_detected
 
-# BL-188 (Sprint 7) — rule-engine thresholds.
+# BL-188 / BL-201 — rule-engine thresholds.
 # Each knob can be overridden at runtime via the matching ENV var below
 # (env wins over file). PRD-013 §7.3 Phase A scoring table.
 scoring:
@@ -35,3 +35,17 @@ scoring:
     cooldown_seconds:  30.0        # ENV: PHONE_COOLDOWN_SECONDS
     high_severity_conf: 0.65       # ENV: PHONE_HIGH_CONF
     medium_severity_conf: 0.50     # ENV: PHONE_MEDIUM_CONF
+  gaze_diversion:
+    yaw_threshold:       30.0      # ENV: YAW_THRESHOLD
+    sustained_seconds:    3.0      # ENV: GAZE_DWELL_SECONDS
+    glance_cooldown_s:   30.0      # ENV: GAZE_GLANCE_COOLDOWN_S
+    incident_cooldown_s: 60.0      # ENV: GAZE_INCIDENT_COOLDOWN_S
+    fires_window_s:     300.0      # ENV: GAZE_FIRES_WINDOW_S
+    fires_for_medium:    3         # ENV: GAZE_FIRES_FOR_MEDIUM
+    fires_for_high:      6         # ENV: GAZE_FIRES_FOR_HIGH
+  head_turn:
+    yaw_threshold:      45.0       # ENV: HEAD_TURN_YAW_THRESHOLD
+    sustained_seconds:   2.0       # ENV: HEAD_TURN_DWELL_SECONDS
+    cooldown_seconds:   30.0       # ENV: HEAD_TURN_COOLDOWN_S
+    fires_window_s:    300.0       # ENV: HEAD_TURN_FIRES_WINDOW_S
+    fires_for_combo:     3         # ENV: HEAD_TURN_FIRES_FOR_COMBO
