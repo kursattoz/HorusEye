@@ -39,6 +39,7 @@ from src.api.protocol import (
 )
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.persistence.incident_writer import write_incident
+from src.scoring.config import PHONE_IN_HAND_CONFIG
 from src.scoring.rules import IncidentCandidate
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
@@ -202,12 +203,14 @@ def _detect_track_score_sync(
             ts=ts,
             person_bbox=t.detection.bbox,
             other_detections=other_dets,
+            overlap_threshold=PHONE_IN_HAND_CONFIG.overlap_threshold,
         )
         cand = phone_in_hand_eval(
             state,
             ts=ts,
             person_bbox=t.detection.bbox,
             overlapping_phone=overlap.get("cell phone"),
+            cfg=PHONE_IN_HAND_CONFIG,
         )
         if cand is not None:
             candidates.append(cand)

@@ -24,3 +24,14 @@ detection:
     'laptop':     paper_detected
     'book':       paper_detected
     'keyboard':   paper_detected
+
+# BL-188 (Sprint 7) — rule-engine thresholds.
+# Each knob can be overridden at runtime via the matching ENV var below
+# (env wins over file). PRD-013 §7.3 Phase A scoring table.
+scoring:
+  phone_in_hand:
+    overlap_threshold: 0.30        # ENV: PHONE_OVERLAP_THRESHOLD
+    sustained_seconds: 3.0         # ENV: PHONE_DWELL_SECONDS  — TIER-1 dwell
+    cooldown_seconds:  30.0        # ENV: PHONE_COOLDOWN_SECONDS
+    high_severity_conf: 0.65       # ENV: PHONE_HIGH_CONF
+    medium_severity_conf: 0.50     # ENV: PHONE_MEDIUM_CONF
