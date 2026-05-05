@@ -33,11 +33,17 @@ from src.api.broadcaster import broadcaster
 from src.api.protocol import (
     PROTOCOL_VERSION,
     error_message,
+    incident_message,
     is_valid_publish,
     status_message,
 )
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
+from src.persistence.incident_writer import write_incident
+from src.scoring.rules import IncidentCandidate
+from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
+from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
 from src.scoring.session_tracker import drop_tracker, get_tracker
+from src.scoring.track_state import track_store
 
 log = logging.getLogger(__name__)
 
@@ -163,29 +169,48 @@ def _decode_jpeg(buf: bytes) -> tuple[Any | None, int | None, int | None]:
     return bgr, int(w), int(h)
 
 
-def _detect_and_track_sync(
+def _detect_track_score_sync(
     bgr: Any,
     session_id: str,
     camera_id: str,
-) -> list[dict[str, Any]]:
-    """Run YOLO + per-stream BoT-SORT over a BGR frame.
+    ts: float,
+) -> tuple[list[dict[str, Any]], list[IncidentCandidate]]:
+    """Run YOLO → BoT-SORT → rule engine over a BGR frame.
 
-    Returns ServerDetection-like dicts. Person detections carry ``track_id``
-    from the tracker; non-person classes (cell phone, book, …) carry
-    ``track_id=None`` and feed the phone_in_hand rule via overlap with the
-    nearest person track. Synchronous — call via ``asyncio.to_thread``.
+    Returns ``(server_detections, incident_candidates)``. The detection
+    list is broadcast over the ServerFrame channel for live preview;
+    candidates are persisted off-loop and then broadcast as ServerIncident
+    envelopes. Synchronous — call via ``asyncio.to_thread``.
     """
     det = _get_yolo()
     if det is None or bgr is None:
-        return []
+        return [], []
     try:
         results = det.detect(bgr)
     except Exception as e:  # noqa: BLE001
         log.debug("YOLO inference failed: %s", e)
-        return []
+        return [], []
 
     tracker = get_tracker(session_id, camera_id)
     person_tracks, other_dets = tracker.step(results, bgr)
+
+    candidates: list[IncidentCandidate] = []
+    for t in person_tracks:
+        state = track_store.get_or_create(session_id, camera_id, t.track_id)
+        overlap = phone_in_hand_update(
+            state,
+            ts=ts,
+            person_bbox=t.detection.bbox,
+            other_detections=other_dets,
+        )
+        cand = phone_in_hand_eval(
+            state,
+            ts=ts,
+            person_bbox=t.detection.bbox,
+            overlapping_phone=overlap.get("cell phone"),
+        )
+        if cand is not None:
+            candidates.append(cand)
 
     out: list[dict[str, Any]] = [
         {
@@ -205,7 +230,7 @@ def _detect_and_track_sync(
         }
         for d in other_dets
     )
-    return out
+    return out, candidates
 
 
 # ───────────────────── route ─────────────────────
@@ -290,13 +315,17 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
 
                 # Fan out to detection subscribers — only if anyone is watching.
                 if broadcaster.subscriber_count(session_id) > 0:
-                    detections = (
-                        await asyncio.to_thread(
-                            _detect_and_track_sync, bgr, session_id, camera_id
+                    if bgr is not None:
+                        ts_epoch = datetime.now(timezone.utc).timestamp()
+                        detections, candidates = await asyncio.to_thread(
+                            _detect_track_score_sync,
+                            bgr,
+                            session_id,
+                            camera_id,
+                            ts_epoch,
                         )
-                        if bgr is not None
-                        else []
-                    )
+                    else:
+                        detections, candidates = [], []
                     frame_msg = {
                         "type": "frame",
                         "protocol_version": PROTOCOL_VERSION,
@@ -309,6 +338,26 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                         "detections": detections,
                     }
                     broadcaster.broadcast(session_id, frame_msg)
+
+                    # Persist + broadcast incidents (off the event loop —
+                    # write_incident hits Storage + Postgres).
+                    for cand in candidates:
+                        row = await asyncio.to_thread(
+                            write_incident,
+                            cand,
+                            session_id=session_id,
+                            camera_id=camera_id,
+                            frame_jpeg=buf,
+                        )
+                        if row is not None:
+                            broadcaster.broadcast(
+                                session_id, incident_message(row, session_id)
+                            )
+                            log.info(
+                                "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
+                                session_id, camera_id, cand.track_id,
+                                cand.incident_type, cand.severity,
+                            )
                 continue
 
             if "text" in msg and msg["text"] is not None:
@@ -336,6 +385,7 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
     finally:
         frame_store.drop(session_id, camera_id)
         drop_tracker(session_id, camera_id)
+        track_store.drop_camera(session_id, camera_id)
         log.info("publish stream closed: session=%s camera=%s total_frames=%d",
                  session_id, camera_id, frames_received)
 

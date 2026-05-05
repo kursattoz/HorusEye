@@ -206,3 +206,30 @@ def is_valid_publish(payload: Any) -> bool:
         and isinstance(payload.get("session_id"), str)
         and isinstance(payload.get("camera_id"), str)
     )
+
+
+def incident_message(row: dict[str, Any], session_id: str) -> ServerIncident:
+    """Render a persisted ``incidents`` row as a ``ServerIncident`` envelope.
+
+    BL-187 — emitted by the publish handler immediately after
+    :func:`src.persistence.incident_writer.write_incident` returns a row.
+    The same id rides in ``message_id`` and ``incident_id`` so the
+    Portal can de-duplicate live-monitor cards using either field.
+    """
+    return {
+        "type": "incident",
+        "protocol_version": PROTOCOL_VERSION,
+        "message_id": str(row["id"]),
+        "session_id": session_id,
+        "incident_id": str(row["id"]),
+        "student_id": row.get("student_id"),
+        "track_id": row.get("track_id"),
+        "incident_type": row["incident_type"],
+        "severity": row["severity"],
+        "confidence": float(row["confidence"]),
+        "risk_score": row.get("risk_score"),
+        "triggered_rules": list(row.get("triggered_rules") or []),
+        "camera_ids": list(row.get("camera_ids") or []),
+        "evidence_paths": list(row.get("evidence_paths") or []),
+        "occurred_at": row["occurred_at"],
+    }
