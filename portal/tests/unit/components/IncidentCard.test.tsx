@@ -1,6 +1,6 @@
-// BL-190 — IncidentCard rendering + evidence fetch behavior.
+// BL-190 / BL-200 — IncidentCard rendering + evidence fetch + expand panel.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { IncidentCard } from '@/components/exams/IncidentCard';
 import type { ServerIncident } from '@/types/ai';
 
@@ -79,5 +79,70 @@ describe('IncidentCard', () => {
       />,
     );
     expect(screen.getByText(/Student 20210001/)).toBeDefined();
+  });
+
+  // ───────── BL-200 expand panel ─────────
+
+  it('lazy-fetches incident detail on first expand and shows raw_signals', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.endsWith('/evidence?path=sess-1%2Finc-1.jpg')) {
+        return new Response(JSON.stringify({ signed_url: 'https://signed/x' }));
+      }
+      if (u === '/api/incidents/inc-1') {
+        return new Response(JSON.stringify({
+          incident: {
+            id: 'inc-1',
+            incident_type: 'gaze_diversion',
+            severity: 'medium',
+            confidence: 0.7,
+            triggered_rules: [],
+            evidence_paths: [],
+            raw_signals: {
+              rule: 'gaze_diversion',
+              fires_in_5min: 3,
+              yaw_threshold: 30,
+            },
+            occurred_at: baseIncident.occurred_at,
+          },
+        }));
+      }
+      return new Response('not found', { status: 404 });
+    });
+
+    const { container } = render(<IncidentCard incident={baseIncident} />);
+
+    // Card not yet expanded → detail endpoint must NOT have been called yet
+    expect(fetchSpy.mock.calls.find(c => String(c[0]) === '/api/incidents/inc-1')).toBeUndefined();
+
+    // Click button to expand (button is the whole card row)
+    const button = container.querySelector('button');
+    expect(button).not.toBeNull();
+    fireEvent.click(button!);
+
+    await waitFor(() => {
+      expect(fetchSpy.mock.calls.find(c => String(c[0]) === '/api/incidents/inc-1')).toBeDefined();
+    });
+    await waitFor(() => {
+      expect(container.textContent).toContain('fires_in_5min');
+      expect(container.textContent).toContain('rule');
+    });
+  });
+
+  it('handles incident detail fetch failure gracefully', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.endsWith('/evidence?path=sess-1%2Finc-1.jpg')) {
+        return new Response(JSON.stringify({ signed_url: 'https://signed/x' }));
+      }
+      return new Response('boom', { status: 500 });
+    });
+
+    const { container } = render(<IncidentCard incident={baseIncident} />);
+    fireEvent.click(container.querySelector('button')!);
+
+    await waitFor(() => {
+      expect(container.textContent?.toLowerCase()).toContain('no detail available');
+    });
   });
 });
