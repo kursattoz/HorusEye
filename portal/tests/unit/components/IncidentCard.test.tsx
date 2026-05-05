@@ -55,7 +55,10 @@ describe('IncidentCard', () => {
       const img = screen.getByAltText('Incident evidence') as HTMLImageElement;
       expect(img.src).toBe('https://signed.example/x');
     });
-    expect(fetchSpy).toHaveBeenCalledWith('/api/incidents/inc-1/evidence');
+    // Includes ?path query param matching the first evidence path
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/incidents/inc-1/evidence?path=sess-1%2Finc-1.jpg',
+    );
   });
 
   it('skips evidence fetch when no paths attached', () => {

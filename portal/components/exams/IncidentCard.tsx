@@ -19,15 +19,18 @@ interface Props {
 }
 
 export function IncidentCard({ incident }: Props) {
-  const hasEvidence = (incident.evidence_paths?.length ?? 0) > 0;
+  const evidencePath = incident.evidence_paths?.[0] ?? null;
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [loadingEvidence, setLoadingEvidence] = useState<boolean>(hasEvidence);
+  const [loadingEvidence, setLoadingEvidence] = useState<boolean>(Boolean(evidencePath));
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hasEvidence) return;
+    if (!evidencePath) return;
     let cancelled = false;
-    void fetch(`/api/incidents/${incident.incident_id}/evidence`)
+    const url =
+      `/api/incidents/${incident.incident_id}/evidence` +
+      `?path=${encodeURIComponent(evidencePath)}`;
+    void fetch(url)
       .then(r => {
         if (!r.ok) throw new Error(`evidence ${r.status}`);
         return r.json();
@@ -46,7 +49,7 @@ export function IncidentCard({ incident }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [incident.incident_id, hasEvidence]);
+  }, [incident.incident_id, evidencePath]);
 
   return (
     <li className="p-3 hover:bg-muted/30">
@@ -62,7 +65,7 @@ export function IncidentCard({ incident }: Props) {
       <div className="mt-1.5 flex gap-3">
         {/* Evidence thumbnail */}
         <div className="h-16 w-20 shrink-0 overflow-hidden rounded border bg-muted/30">
-          {!hasEvidence ? (
+          {!evidencePath ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <ImageOff size={16} />
             </div>
