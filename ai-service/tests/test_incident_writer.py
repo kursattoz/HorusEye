@@ -131,6 +131,8 @@ def test_write_incident_uploads_evidence_and_inserts_row(stub_client) -> None:
     assert row["student_id"] is None
     assert row["raw_signals"]["rule"] == "phone_in_hand"
     assert row["occurred_at"].startswith("2025-01-01T00:00:00")
+    # BL-207 — risk_score derived from severity
+    assert row["risk_score"] == 0.75
 
 
 def test_write_incident_with_no_jpeg_skips_evidence(stub_client) -> None:

@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.persistence.supabase_client import get_supabase_admin
+from src.scoring.calibration import severity_to_risk_score
 from src.scoring.rules import IncidentCandidate
 
 log = logging.getLogger(__name__)
@@ -74,6 +75,10 @@ def _build_row(
         "incident_type": candidate.incident_type,
         "severity": candidate.severity,
         "confidence": candidate.confidence,
+        # BL-207 — risk_score is derived from severity via the calibration
+        # table so every consumer agrees on the LOW/MEDIUM/HIGH/CRITICAL
+        # numerical equivalence.
+        "risk_score": severity_to_risk_score(candidate.severity),
         "triggered_rules": list(candidate.triggered_rules),
         "camera_ids": [camera_id],
         "evidence_paths": [evidence_path] if evidence_path else [],
