@@ -17,8 +17,10 @@ from typing import Optional
 
 from src.scoring.rules import IncidentCandidate
 from src.scoring.session_state import SessionRuleState
+from src.scoring.track_state import TrackState
 
 RULE_NAME = "unauthorized_person"
+PHASE_B_RULE = "unauthorized_person_phase_b"
 
 
 @dataclass(frozen=True)
@@ -70,9 +72,87 @@ def evaluate(
         person_bbox=(0.0, 0.0, 1.0, 1.0),
         raw_signals={
             "rule":               RULE_NAME,
+            "phase":              "a",
             "expected_count":     expected_count,
             "observed_count":     observed_count,
             "excess_for_seconds": excess_for,
+        },
+        occurred_at=ts,
+    )
+
+
+# ───────── Phase B (face-match) — BL-221 ─────────
+
+@dataclass(frozen=True)
+class UnauthorizedPersonPhaseBConfig:
+    """Phase B: a track that hasn't matched any enrolled student for
+    ``sustained_seconds`` of frames, with at least one match attempt made,
+    is treated as an intruder.
+
+    Co-exists with Phase A (above): Phase A catches "too many people in
+    the room", Phase B catches "this specific person isn't on the
+    enrolled list". Both can fire on the same intruder; the
+    incident_cooldown keeps the volume sane.
+    """
+    sustained_seconds: float = 30.0
+    cooldown_seconds:  float = 300.0
+
+
+def evaluate_phase_b(
+    track_state: TrackState,
+    ts: float,
+    person_bbox: tuple[float, float, float, float],
+    cfg: Optional[UnauthorizedPersonPhaseBConfig] = None,
+) -> Optional[IncidentCandidate]:
+    """Fire CRITICAL when a track has been around long enough without
+    matching any enrolled student.
+
+    Returns ``None`` when:
+    - the track already matched a student,
+    - it isn't old enough yet,
+    - no match attempt has been made (matcher hasn't run — could be a
+      brand-new track, give it the benefit of the doubt),
+    - the per-rule cooldown is still active.
+    """
+    cfg = cfg or UnauthorizedPersonPhaseBConfig()
+
+    if track_state.matched_student_id is not None:
+        return None
+    if not track_state.samples:
+        return None
+
+    track_age = track_state.samples[-1].ts - track_state.samples[0].ts
+    if track_age < cfg.sustained_seconds:
+        return None
+
+    # Don't accuse on the very first frame after spawn — wait for at
+    # least one match attempt so the matcher can't have just been busy.
+    if track_state.last_match_attempt_at is None:
+        return None
+
+    if not track_state.cooldown_ok(PHASE_B_RULE, cfg.cooldown_seconds, ts):
+        return None
+
+    track_state.mark_fired(PHASE_B_RULE, ts)
+
+    best_sim = track_state.best_match_similarity
+    return IncidentCandidate(
+        incident_type="unauthorized_person",
+        severity="critical",
+        confidence=0.85,
+        track_id=track_state.track_id,
+        triggered_rules=(
+            f"{PHASE_B_RULE}:no_face_match",
+            f"{PHASE_B_RULE}:track_age≥{cfg.sustained_seconds:.0f}s",
+        ),
+        bbox=person_bbox,
+        person_bbox=person_bbox,
+        raw_signals={
+            "rule":                  RULE_NAME,
+            "phase":                 "b",
+            "track_age_seconds":     track_age,
+            "best_match_similarity": best_sim,
+            "match_attempt_at":      track_state.last_match_attempt_at,
         },
         occurred_at=ts,
     )

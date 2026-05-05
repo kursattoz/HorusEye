@@ -57,6 +57,7 @@ from src.scoring.rules.paper_detected import evaluate as paper_detected_eval
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
 from src.scoring.rules.unauthorized_person import evaluate as unauthorized_person_eval
+from src.scoring.rules.unauthorized_person import evaluate_phase_b as unauthorized_person_phase_b_eval
 from src.scoring.session_state import drop_session_state, get_session_state
 from src.scoring.session_tracker import drop_tracker, get_tracker
 from src.scoring.track_state import track_store
@@ -263,6 +264,12 @@ def _detect_track_score_sync(
         )
         if paper_cand is not None:
             candidates.append(_with_student(paper_cand, state.matched_student_id))
+        # BL-221 — unauthorized_person Phase B per-track face match
+        unauth_b = unauthorized_person_phase_b_eval(
+            state, ts=ts, person_bbox=t.detection.bbox,
+        )
+        if unauth_b is not None:
+            candidates.append(unauth_b)
 
     # BL-204 — empty_seat watchdog. Scans every track state for the
     # (session, camera) — including ones the tracker has just dropped —
