@@ -21,6 +21,16 @@ RUN mkdir -p models \
  && (mv yolov8n.pt models/ 2>/dev/null || true) \
  && ls -lh models/
 
+# BL-216 (Sprint 10) — pre-bake insightface buffalo_l (ArcFace + RetinaFace).
+# ~280 MB download skipped on first request; insightface looks for models
+# under <root>/models/<pack_name>, so we point root=/app/models/insightface.
+ENV INSIGHTFACE_HOME=/app/models/insightface
+RUN mkdir -p "$INSIGHTFACE_HOME" \
+ && python -c "from insightface.app import FaceAnalysis; \
+fa = FaceAnalysis(name='buffalo_l', root='$INSIGHTFACE_HOME', providers=['CPUExecutionProvider']); \
+fa.prepare(ctx_id=-1, det_size=(640, 640))" \
+ && du -sh "$INSIGHTFACE_HOME"
+
 COPY config.yaml .
 COPY src/ ./src/
 

@@ -24,3 +24,10 @@ supabase>=2.0.0
 # Pinned to 0.10.14+ for Python 3.12 compatibility; OS deps (libGL,
 # libglib2.0-0) already satisfied by the opencv-python-headless layer.
 mediapipe>=0.10.14
+
+# BL-216 (Sprint 10) — insightface ArcFace ResNet50 face embedding (PRD-013 §6.13).
+# buffalo_l pack ships RetinaFace (detect) + ArcFace (embed); the Dockerfile
+# pre-bakes the ONNX models into /app/models/insightface to skip the cold
+# download on first request.
+insightface>=0.7.3
+onnxruntime>=1.17.0
