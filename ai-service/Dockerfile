@@ -1,12 +1,18 @@
 # Phase A — on-prem Docker (PRD-013 §12.3)
 FROM python:3.12-slim
 
-# Native deps: libGL/libglib for opencv-python-headless and mediapipe (BL-194).
+# Native deps:
+#   - libGL/libglib       — opencv-python-headless + mediapipe (BL-194)
+#   - build-essential     — insightface ships only sdist on PyPI for some
+#     versions; pip falls back to source build which needs g++ (BL-216).
+# build-essential adds ~200 MB to the image; if it ever becomes a real
+# concern, swap in a multi-stage build that copies only site-packages.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
