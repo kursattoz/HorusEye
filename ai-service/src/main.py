@@ -9,6 +9,7 @@ import yaml
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.embed_handler import router as embed_router
 from src.api.publish_handler import router as publish_router
 from src.api.ws_handler import router as ws_router
 
@@ -51,6 +52,7 @@ else:
 
 app.include_router(ws_router)
 app.include_router(publish_router)
+app.include_router(embed_router)
 
 
 @app.get("/health")
