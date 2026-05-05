@@ -37,6 +37,7 @@ from src.api.protocol import (
     status_message,
 )
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
+from src.scoring.session_tracker import drop_tracker, get_tracker
 
 log = logging.getLogger(__name__)
 
@@ -162,9 +163,18 @@ def _decode_jpeg(buf: bytes) -> tuple[Any | None, int | None, int | None]:
     return bgr, int(w), int(h)
 
 
-def _detect_sync(bgr: Any) -> list[dict[str, Any]]:
-    """Run YOLO over a BGR frame; returns ServerDetection-like dicts.
-    Synchronous — call via asyncio.to_thread."""
+def _detect_and_track_sync(
+    bgr: Any,
+    session_id: str,
+    camera_id: str,
+) -> list[dict[str, Any]]:
+    """Run YOLO + per-stream BoT-SORT over a BGR frame.
+
+    Returns ServerDetection-like dicts. Person detections carry ``track_id``
+    from the tracker; non-person classes (cell phone, book, …) carry
+    ``track_id=None`` and feed the phone_in_hand rule via overlap with the
+    nearest person track. Synchronous — call via ``asyncio.to_thread``.
+    """
     det = _get_yolo()
     if det is None or bgr is None:
         return []
@@ -173,15 +183,29 @@ def _detect_sync(bgr: Any) -> list[dict[str, Any]]:
     except Exception as e:  # noqa: BLE001
         log.debug("YOLO inference failed: %s", e)
         return []
-    return [
+
+    tracker = get_tracker(session_id, camera_id)
+    person_tracks, other_dets = tracker.step(results, bgr)
+
+    out: list[dict[str, Any]] = [
+        {
+            "track_id": t.track_id,
+            "detection_class": t.detection.class_name,
+            "confidence": float(t.detection.confidence),
+            "bbox": list(t.detection.bbox),
+        }
+        for t in person_tracks
+    ]
+    out.extend(
         {
             "track_id": None,
             "detection_class": d.class_name,
             "confidence": float(d.confidence),
             "bbox": list(d.bbox),
         }
-        for d in results
-    ]
+        for d in other_dets
+    )
+    return out
 
 
 # ───────────────────── route ─────────────────────
@@ -266,7 +290,13 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
 
                 # Fan out to detection subscribers — only if anyone is watching.
                 if broadcaster.subscriber_count(session_id) > 0:
-                    detections = await asyncio.to_thread(_detect_sync, bgr) if bgr is not None else []
+                    detections = (
+                        await asyncio.to_thread(
+                            _detect_and_track_sync, bgr, session_id, camera_id
+                        )
+                        if bgr is not None
+                        else []
+                    )
                     frame_msg = {
                         "type": "frame",
                         "protocol_version": PROTOCOL_VERSION,
@@ -305,6 +335,7 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                   session_id, camera_id, frames_received)
     finally:
         frame_store.drop(session_id, camera_id)
+        drop_tracker(session_id, camera_id)
         log.info("publish stream closed: session=%s camera=%s total_frames=%d",
                  session_id, camera_id, frames_received)
 

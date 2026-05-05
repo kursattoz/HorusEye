@@ -12,3 +12,7 @@ pytest-asyncio>=0.23.0
 
 # BL-42 — YOLOv8n COCO pre-trained inference (PRD-013 §4.1)
 ultralytics>=8.3.0
+
+# BL-182 (Sprint 7) — BoT-SORT multi-object tracker (PRD-013 §4.2)
+boxmot>=11.0.0
+lapx>=0.5.0
