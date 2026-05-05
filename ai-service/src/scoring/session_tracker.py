@@ -89,13 +89,19 @@ class SessionTracker:
         Returns ``(person_tracks, non_person_detections)``. Person tracks
         carry stable ``track_id`` values across frames; the non-person list
         preserves the input order for downstream rules.
+
+        Only tracks **matched in this frame** (missed_frames == 0) are
+        returned. The IoU fallback keeps unmatched tracks alive in its
+        internal pool for re-id, but the scoring layer (phone_in_hand,
+        empty_seat, …) must not update sustained signals on ghosts.
         """
         person_dets = [d for d in detections if d.class_name == "person"]
         other_dets = [d for d in detections if d.class_name != "person"]
 
         if self._botsort is None or np is None or frame_bgr is None:
-            tracks = (self._fallback or IoUTracker()).step(person_dets)
-            return tracks, other_dets
+            all_tracks = (self._fallback or IoUTracker()).step(person_dets)
+            visible = [t for t in all_tracks if t.missed_frames == 0]
+            return visible, other_dets
 
         try:
             tracks = self._step_botsort(person_dets, frame_bgr)
@@ -103,7 +109,9 @@ class SessionTracker:
         except Exception as e:  # noqa: BLE001 — keep streaming even if tracker bombs
             log.warning("BoT-SORT step failed (%s); falling back to IoU once", e)
             self._fallback = self._fallback or IoUTracker()
-            return self._fallback.step(person_dets), other_dets
+            all_tracks = self._fallback.step(person_dets)
+            visible = [t for t in all_tracks if t.missed_frames == 0]
+            return visible, other_dets
 
     def _step_botsort(self, person_dets: list[Detection], frame_bgr: Any) -> list[Track]:
         h, w = frame_bgr.shape[:2]
