@@ -13,32 +13,57 @@ const TYPES = [
 
 const SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 
+// BL-189 (Sprint 7) — paginated GET with severity / type / date-range filters.
+// The AI service writes incidents via service-role; review tooling consumes
+// this list. Default page size 20, hard cap 100 (PRD-013 §7.1 review queue).
+const SELECT_COLUMNS =
+  'id, session_id, student_id, track_id, incident_type, severity, confidence, ' +
+  'risk_score, triggered_rules, camera_ids, evidence_paths, raw_signals, ' +
+  'is_reviewed, reviewed_by, review_note, proctor_decision, decision_note, ' +
+  'decided_by, decided_at, occurred_at, created_at';
+
 export async function GET(request: NextRequest) {
   const auth = await requireAuth();
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
-  const sessionId  = url.searchParams.get('session_id');
-  const studentId  = url.searchParams.get('student_id');
-  const severity   = url.searchParams.get('severity');
-  const reviewed   = url.searchParams.get('is_reviewed');
-  const limit      = Math.min(Number(url.searchParams.get('limit') ?? 100), 500);
+  const sessionId    = url.searchParams.get('session_id');
+  const studentId    = url.searchParams.get('student_id');
+  const severity     = url.searchParams.get('severity');
+  const incidentType = url.searchParams.get('incident_type');
+  const reviewed     = url.searchParams.get('is_reviewed');
+  const from         = url.searchParams.get('from');
+  const to           = url.searchParams.get('to');
+
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit') ?? 20), 100));
+  const page  = Math.max(1, Number(url.searchParams.get('page') ?? 1));
+  const start = (page - 1) * limit;
+  const end   = start + limit - 1;
 
   let q = auth.supabase
     .from('incidents')
-    .select('id, session_id, student_id, track_id, incident_type, severity, confidence, risk_score, triggered_rules, camera_ids, evidence_paths, is_reviewed, reviewed_by, review_note, proctor_decision, decision_note, decided_by, decided_at, occurred_at, created_at')
+    .select(SELECT_COLUMNS, { count: 'exact' })
     .order('occurred_at', { ascending: false })
-    .limit(limit);
+    .range(start, end);
 
-  if (sessionId) q = q.eq('session_id', sessionId);
-  if (studentId) q = q.eq('student_id', studentId);
-  if (severity && (SEVERITIES as readonly string[]).includes(severity)) q = q.eq('severity', severity);
-  if (reviewed === 'true') q = q.eq('is_reviewed', true);
+  if (sessionId)  q = q.eq('session_id',   sessionId);
+  if (studentId)  q = q.eq('student_id',   studentId);
+  if (severity     && (SEVERITIES as readonly string[]).includes(severity))     q = q.eq('severity', severity);
+  if (incidentType && (TYPES      as readonly string[]).includes(incidentType)) q = q.eq('incident_type', incidentType);
+  if (reviewed === 'true')  q = q.eq('is_reviewed', true);
   if (reviewed === 'false') q = q.eq('is_reviewed', false);
+  if (from) q = q.gte('occurred_at', from);
+  if (to)   q = q.lte('occurred_at', to);
 
-  const { data, error } = await q;
+  const { data, error, count } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ incidents: data ?? [] });
+
+  return NextResponse.json({
+    incidents: data ?? [],
+    total:     count ?? 0,
+    page,
+    limit,
+  });
 }
 
 export async function POST(request: NextRequest) {
