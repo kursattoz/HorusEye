@@ -1,6 +1,7 @@
 # Phase A — on-prem Docker (PRD-013 §12.3)
 FROM python:3.12-slim
 
+# Native deps: libGL/libglib for opencv-python-headless and mediapipe (BL-194).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \

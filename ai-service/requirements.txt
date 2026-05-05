@@ -19,3 +19,8 @@ lapx>=0.5.0
 
 # BL-185 (Sprint 7) — Supabase service-role client for incident persistence
 supabase>=2.0.0
+
+# BL-194 (Sprint 8) — MediaPipe Face Mesh for gaze + head-pose (PRD-013 §4.3).
+# Pinned to 0.10.14+ for Python 3.12 compatibility; OS deps (libGL,
+# libglib2.0-0) already satisfied by the opencv-python-headless layer.
+mediapipe>=0.10.14
