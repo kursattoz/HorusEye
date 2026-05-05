@@ -43,7 +43,12 @@ new ServiceStack(app, 'HorusEye-Production', {
   memoryLimitMiB: 512,
 });
 
-// ── AI service stacks (PRD-019) ──────────────────────────────────
+// ── AI service stacks (PRD-019, PRD-020) ─────────────────────────
+// Sprint 8 (BL-203 follow-on): bump 1024/2048 → 2048/4096 for MediaPipe
+// FaceMesh per PRD-020 §4.1. Per-frame CPU budget at 5 FPS × 3 faces:
+//   YOLO ~50ms + BoT-SORT ~5ms + 3× FaceMesh ~30ms ≈ 145ms < 200ms.
+// Sprint 10 will bump again to 2048/6144 for ArcFace embeddings (BL-203
+// is the file's last touch this sprint; revisit in Sprint 10).
 new AiServiceStack(app, 'HorusEye-AiService-Staging', {
   env,
   vpc: network.vpc,
@@ -52,8 +57,8 @@ new AiServiceStack(app, 'HorusEye-AiService-Staging', {
   subdomain: 'ai-staging',
   envName: 'staging',
   desiredCount: 1,
-  cpu: 1024,            // YOLOv8n on CPU needs the headroom
-  memoryLimitMiB: 2048,
+  cpu: 2048,
+  memoryLimitMiB: 4096,
 });
 
 new AiServiceStack(app, 'HorusEye-AiService-Production', {
@@ -64,6 +69,6 @@ new AiServiceStack(app, 'HorusEye-AiService-Production', {
   subdomain: 'ai',
   envName: 'production',
   desiredCount: 1,
-  cpu: 1024,
-  memoryLimitMiB: 2048,
+  cpu: 2048,
+  memoryLimitMiB: 4096,
 });
