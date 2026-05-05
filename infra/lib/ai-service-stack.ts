@@ -59,6 +59,9 @@ export class AiServiceStack extends cdk.Stack {
     // SSM-backed secrets (re-using the portal's keys so handshakes match).
     const aiServiceApiKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/AI_SERVICE_API_KEY`);
     const pairTokenSecret = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/PAIR_TOKEN_SECRET`);
+    // BL-185 — Supabase service-role client for incident persistence.
+    const supabaseUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_URL`);
+    const supabaseServiceRoleKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_SERVICE_ROLE_KEY`);
 
     taskDef.addContainer('ai-service', {
       image: ecs.ContainerImage.fromEcrRepository(props.repository, 'latest'),
@@ -70,6 +73,8 @@ export class AiServiceStack extends cdk.Stack {
         HORUSEYE_ENV: props.envName,
         AI_SERVICE_API_KEY: aiServiceApiKey,
         PAIR_TOKEN_SECRET: pairTokenSecret,
+        SUPABASE_URL: supabaseUrl,
+        SUPABASE_SERVICE_ROLE_KEY: supabaseServiceRoleKey,
         CORS_ORIGINS: props.envName === 'production'
           ? 'https://horuseye.app'
           : 'https://staging.horuseye.app,https://horuseye.app',

@@ -16,3 +16,6 @@ ultralytics>=8.3.0
 # BL-182 (Sprint 7) — BoT-SORT multi-object tracker (PRD-013 §4.2)
 boxmot>=11.0.0
 lapx>=0.5.0
+
+# BL-185 (Sprint 7) — Supabase service-role client for incident persistence
+supabase>=2.0.0
