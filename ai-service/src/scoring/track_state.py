@@ -171,6 +171,18 @@ class TrackStore:
                 del self._states[k]
             return len(stale)
 
+    def states_for_camera(
+        self, session_id: str, camera_id: str,
+    ) -> list[TrackState]:
+        """Snapshot of all tracks in (session, camera). Used by frame-level
+        rules (empty_seat, unauthorized_person) that scan every track
+        regardless of whether it appeared in the latest YOLO output."""
+        with self._lock:
+            return [
+                st for (sid, cid, _), st in self._states.items()
+                if sid == session_id and cid == camera_id
+            ]
+
     def __len__(self) -> int:
         with self._lock:
             return len(self._states)

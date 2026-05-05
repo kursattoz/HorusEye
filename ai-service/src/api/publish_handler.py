@@ -46,6 +46,7 @@ from src.scoring.config import (
     PHONE_IN_HAND_CONFIG,
 )
 from src.scoring.rules import IncidentCandidate
+from src.scoring.rules.empty_seat import evaluate as empty_seat_eval
 from src.scoring.rules.gaze_diversion import evaluate as gaze_diversion_eval
 from src.scoring.rules.gaze_diversion import update_signal as gaze_update_signal
 from src.scoring.rules.head_turn import evaluate as head_turn_eval
@@ -231,6 +232,14 @@ def _detect_track_score_sync(
             overlapping_phone=overlap.get("cell phone"),
             cfg=PHONE_IN_HAND_CONFIG,
         )
+        if cand is not None:
+            candidates.append(cand)
+
+    # BL-204 — empty_seat watchdog. Scans every track state for the
+    # (session, camera) — including ones the tracker has just dropped —
+    # so we catch students who left their seat after the last frame.
+    for state in track_store.states_for_camera(session_id, camera_id):
+        cand = empty_seat_eval(state, ts=ts)
         if cand is not None:
             candidates.append(cand)
 
