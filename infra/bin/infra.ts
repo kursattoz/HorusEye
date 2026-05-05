@@ -44,11 +44,11 @@ new ServiceStack(app, 'HorusEye-Production', {
 });
 
 // ── AI service stacks (PRD-019, PRD-020) ─────────────────────────
-// Sprint 8 (BL-203 follow-on): bump 1024/2048 → 2048/4096 for MediaPipe
-// FaceMesh per PRD-020 §4.1. Per-frame CPU budget at 5 FPS × 3 faces:
-//   YOLO ~50ms + BoT-SORT ~5ms + 3× FaceMesh ~30ms ≈ 145ms < 200ms.
-// Sprint 10 will bump again to 2048/6144 for ArcFace embeddings (BL-203
-// is the file's last touch this sprint; revisit in Sprint 10).
+// Sprint 10 close: bump memory 4096 → 6144 for ArcFace ResNet50.
+// insightface buffalo_l ≈ 280 MB on disk + ~500 MB working RAM during
+// inference; bake-time + idle leaves us a comfortable margin at 6 GB.
+// CPU stays at 2048 — ArcFace runs once per track lifetime (cached on
+// TrackState.matched_student_id) so it doesn't grow the per-frame budget.
 new AiServiceStack(app, 'HorusEye-AiService-Staging', {
   env,
   vpc: network.vpc,
@@ -58,7 +58,7 @@ new AiServiceStack(app, 'HorusEye-AiService-Staging', {
   envName: 'staging',
   desiredCount: 1,
   cpu: 2048,
-  memoryLimitMiB: 4096,
+  memoryLimitMiB: 6144,
 });
 
 new AiServiceStack(app, 'HorusEye-AiService-Production', {
@@ -70,5 +70,5 @@ new AiServiceStack(app, 'HorusEye-AiService-Production', {
   envName: 'production',
   desiredCount: 1,
   cpu: 2048,
-  memoryLimitMiB: 4096,
+  memoryLimitMiB: 6144,
 });
