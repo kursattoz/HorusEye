@@ -33,10 +33,17 @@ export interface SmtpSettings {
   admin_email:  string;
 }
 
+export interface MailAttachment {
+  filename:    string;
+  content:     Buffer | Uint8Array;
+  contentType?: string;
+}
+
 export interface SendMailOptions {
-  to:      string;
-  subject: string;
-  html:    string;
+  to:           string;
+  subject:      string;
+  html:         string;
+  attachments?: MailAttachment[];
 }
 
 // ─── Fetch SMTP settings from DB (service role, bypasses RLS) ─────────────────
@@ -86,6 +93,11 @@ export async function sendMail(options: SendMailOptions): Promise<void> {
       subject: options.subject,
       html:    options.html,
       text:    htmlToPlainText(options.html),
+      attachments: options.attachments?.map((a) => ({
+        filename:    a.filename,
+        content:     Buffer.isBuffer(a.content) ? a.content : Buffer.from(a.content),
+        contentType: a.contentType ?? 'application/octet-stream',
+      })),
       headers: {
         'X-Mailer':   'HorusEye Mailer',
         'X-Priority': '3',
