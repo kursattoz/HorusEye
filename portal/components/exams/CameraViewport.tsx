@@ -10,12 +10,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LiveVideoOverlay } from '@/components/exams/LiveVideoOverlay';
-import type { ServerFrame } from '@/types/ai';
+import type { ServerFrame, ServerIncident } from '@/types/ai';
 
 interface Props {
   frame: ServerFrame | null;
   label?: string;
   stale?: boolean;
+  /** Sprint 14-18 — passed through to LiveVideoOverlay for the
+   *  per-track incident ring + chip labels. Caller filters by camera +
+   *  time window. */
+  activeIncidents?: ServerIncident[];
 }
 
 const ZOOM_MIN = 1;
@@ -23,7 +27,7 @@ const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.25;
 const ROTATIONS = [0, 90, 180, 270] as const;
 
-export function CameraViewport({ frame, label, stale }: Props) {
+export function CameraViewport({ frame, label, stale, activeIncidents }: Props) {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<typeof ROTATIONS[number]>(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -98,7 +102,13 @@ export function CameraViewport({ frame, label, stale }: Props) {
           className="w-full h-full transition-transform duration-150 ease-out flex items-center justify-center"
           style={{ transform, transformOrigin: 'center center' }}
         >
-          <LiveVideoOverlay frame={frame} showBbox label={label} stale={stale} />
+          <LiveVideoOverlay
+            frame={frame}
+            showBbox
+            label={label}
+            stale={stale}
+            activeIncidents={activeIncidents}
+          />
         </div>
       </div>
 
