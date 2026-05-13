@@ -55,6 +55,11 @@ export function CamPairCapture({ token, redeem }: Props) {
   const [streaming, setStreaming] = useState(true);
   const [wsState, setWsState]     = useState<WsState>('idle');
   const [framesSent, setFramesSent] = useState(0);
+  // BL-254: dev-only telemetry surfaces for debugging mobile reliability.
+  const [framesSkipped, setFramesSkipped] = useState(0);
+  const [bufferedAmountSample, setBufferedAmountSample] = useState(0);
+  const [lastCloseCode, setLastCloseCode] = useState<number | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [permError, setPermError] = useState<string | null>(null);
 
   // ───── camera setup ──────────────────────────────────────────────
@@ -249,11 +254,14 @@ export function CamPairCapture({ token, redeem }: Props) {
       setWsState('open');
       // BL-253: successful (re)connect — clear attempt counter.
       reconnectAttemptsRef.current = 0;
+      setReconnectAttempts(0); // BL-254 debug overlay
+      setLastCloseCode(null);
       void postHealthEvent('connected', { ua: navigator.userAgent });
     };
     ws.onerror = () => setWsState('error');
     ws.onclose = (ev: CloseEvent) => {
       setWsState('closed');
+      setLastCloseCode(ev.code); // BL-254 debug overlay
       void postHealthEvent('disconnected', {
         close_code: ev.code,
         close_reason: ev.reason,
@@ -285,6 +293,7 @@ export function CamPairCapture({ token, redeem }: Props) {
       reconnectTimerRef.current = setTimeout(() => {
         reconnectTimerRef.current = null;
         reconnectAttemptsRef.current = attempts + 1;
+        setReconnectAttempts(attempts + 1); // BL-254 debug overlay
         openWSRef.current?.();
       }, delay);
     };
@@ -341,6 +350,11 @@ export function CamPairCapture({ token, redeem }: Props) {
       // root-cause analysis). Skip the frame instead of queueing more.
       if (ws.bufferedAmount > 250_000) {
         framesSkippedRef.current += 1;
+        // BL-254: surface to state at most every Nth skip so we don't
+        // re-render on every backpressure event.
+        if (framesSkippedRef.current % 5 === 0) {
+          setFramesSkipped(framesSkippedRef.current);
+        }
         return;
       }
 
@@ -365,6 +379,17 @@ export function CamPairCapture({ token, redeem }: Props) {
     };
   }, [streaming]);
 
+  // BL-254: sample WS bufferedAmount at 1Hz for the dev overlay (avoids
+  // re-rendering on every capture tick).
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    const t = setInterval(() => {
+      const ws = wsRef.current;
+      setBufferedAmountSample(ws ? ws.bufferedAmount : 0);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="flex flex-col gap-3 max-w-md mx-auto">
       <div className="rounded-lg overflow-hidden bg-black aspect-video relative">
@@ -385,6 +410,21 @@ export function CamPairCapture({ token, redeem }: Props) {
               : 'Idle'}
           </span>
         </div>
+
+        {/* BL-254: dev-only telemetry overlay. Hidden in production
+            builds; field testers turning on a staging build see live
+            counters for the BL-251/252/253 reliability signals. */}
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 font-mono text-[10px] leading-tight text-white">
+            <div>sent: {framesSent}</div>
+            <div>skipped: {framesSkipped}</div>
+            <div>buf: {Math.round(bufferedAmountSample / 1024)}KB</div>
+            <div>retry: {reconnectAttempts}/{RECONNECT_DELAYS_MS.length}</div>
+            {lastCloseCode !== null && (
+              <div>last close: {lastCloseCode}</div>
+            )}
+          </div>
+        )}
       </div>
 
       {permError && (
