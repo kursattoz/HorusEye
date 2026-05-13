@@ -1,0 +1,40 @@
+# PRD-017 §8.1 — Source → unified class mapping.
+# Used by ai-service/scripts/merge_datasets.py (BL-262).
+#
+# IDs must match the target classes in ai-service/config.yaml so the
+# merged data.yaml stays compatible with the downstream YOLOv8 trainer.
+
+target_classes:
+  0: earbuds
+  1: phone
+  2: book
+  3: paper_notes
+
+source_mappings:
+  # Roboflow Universe earbuds variants.
+  roboflow_earbuds:
+    "earbuds":          0
+    "earbud":           0
+    "airpods":          0
+    "wireless_earbuds": 0
+    "in_ear":           0
+
+  # Open Images V7 — note the "Headphones" caveat in PRD-017 §8.1.
+  # OID Headphones includes over-ear; in-ear filtering happens during §6.2 review.
+  open_images:
+    "Headphones":  0
+    "Mobile phone": 1
+    "Book":        2
+
+  # COCO 2017 subset — class IDs 67 (cell phone) and 73 (book).
+  coco_subset:
+    "cell phone": 1
+    "book":       2
+
+  # Internal anonymized frames exported from real exams (PRD-017 §18.3).
+  internal:
+    "phone":       1
+    "earbuds":     0
+    "notes":       3
+    "cheat_sheet": 3
+    "paper_notes": 3
