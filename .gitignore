@@ -66,6 +66,19 @@ ai-service/models/*.pt
 ai-service/models/*.weights
 ai-service/models/*.onnx
 
+# ─── AI Dataset Pipeline (PRD-017 §17 / BL-264) ─
+# Keep the folder skeleton (.gitkeep), ignore the bulky payloads.
+ai-service/data/raw/**
+ai-service/data/converted/**
+ai-service/data/merged/**
+ai-service/data/exports/**
+ai-service/data/internal/positives/**
+ai-service/data/internal/negatives/**
+ai-service/data/internal/unreviewed/**
+ai-service/data/internal/controlled_tests/**
+!ai-service/data/**/.gitkeep
+!ai-service/data/**/README.md
+
 # ─── OS ─────────────────────────────────────────
 .DS_Store
 Thumbs.db

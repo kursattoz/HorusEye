@@ -161,11 +161,11 @@ interface HorusFile {
 }
 ```
 
-### 3.3 LogEvent `@1.2`
-**Kanal:** PRD-006 → PRD-007, PRD-013
+### 3.3 LogEvent `@1.3`
+**Kanal:** PRD-006 → PRD-007, PRD-013, PRD-017
 
 ```typescript
-// @interface LogEvent @version 1.2
+// @interface LogEvent @version 1.3
 interface LogEvent {
   id: string;
   event_type: LogEventType;   // Bkz: SYSTEM_GLOSSARY.LogEventType
@@ -564,6 +564,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | LogEvent | 1.0 | 2025 | İlk tanım | PRD-006,007 |
 | LogEvent | 1.1 | 2026 | `LogEventType`'a `file.update` ve `file.restore` eklendi | PRD-006,007 |
 | LogEvent | 1.2 | 2026 | `LogEventType`'a Faz 2 event tipleri eklendi: exam.*, session.*, student.*, attendance.*, camera.*, ai.*, proctor.* (17 yeni event). Kanal PRD-013 eklendi | PRD-006,007,013 |
+| LogEvent | 1.3 | 2026 | `LogEventType`'a Sprint 14 dataset event tipleri eklendi: `dataset.import`, `dataset.validate`, `dataset.merge`, `dataset.deploy`, `dataset.annotation_complete` (PRD-021 BL-271). Kanal PRD-017 eklendi | PRD-006,007,017 |
 | Feedback | 1.0 | 2025 | İlk tanım | PRD-002,004 |
 | Feedback | 1.1 | 2026 | `line_ref` tipi `number \| null` → `string \| null` (DB şeması `VARCHAR(20)` ile uyumlu, format: "sayfa:satır") | PRD-002,004 |
 | HealthStatus | 1.0 | 2025 | İlk tanım | PRD-007 |
@@ -655,7 +656,13 @@ type LogEventType =
   | 'ai.detection'      // Yüksek hacim — sadece Redis, DB'ye yazılmaz
   | 'ai.incident'       // Risk eşiği aşıldı → incident kaydı
   | 'ai.model_deploy'   // Yeni AI modeli aktif edildi
-  | 'ai.dataset_import'  // Yeni veri seti sisteme aktarıldı (PRD-017)
+  | 'ai.dataset_import'  // Yeni veri seti sisteme aktarıldı (PRD-017) — DEPRECATED, use dataset.import
+  // Faz 2 — Dataset Pipeline (PRD-017 / PRD-021 BL-271)
+  | 'dataset.import'              // İndirme tamamlandı (Roboflow/OID/COCO)
+  | 'dataset.validate'            // quality_report.json üretildi
+  | 'dataset.merge'               // Birleştirilmiş dataset hazır
+  | 'dataset.deploy'              // Dataset modele bağlandı / fine-tune başladı
+  | 'dataset.annotation_complete' // internal_training_samples annotation onayı
   // Faz 2 — Gözetmen Aksiyonları (PRD-013)
   | 'proctor.acknowledge'
   | 'proctor.decide'     // Post-exam: gözetmen kararı (clean/suspicious/violation)

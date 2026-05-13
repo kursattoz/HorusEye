@@ -9,7 +9,7 @@
 
 <!-- INTERFACE_DEPS
 AuthUser: @1.1
-LogEvent: @1.2
+LogEvent: @1.3
 HealthStatus: @1.0
 -->
 

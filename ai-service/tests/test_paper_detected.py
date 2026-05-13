@@ -46,7 +46,10 @@ def test_fires_medium_after_sustained_book_overlap() -> None:
     assert cand.raw_signals["matched_class"] == "book"
 
 
-def test_fires_medium_after_sustained_keyboard_overlap() -> None:
+def test_keyboard_no_longer_fires_paper_detected() -> None:
+    """BL-265: keyboard removed from PAPER_CLASSES. It doesn't belong on
+    an exam desk and the old mapping was a pure FP source — confirm the
+    rule stays silent even after sustained overlap."""
     state = TrackState(track_id=1)
     cfg = PaperDetectedConfig()
     kb = _keyboard(conf=0.55)
@@ -54,8 +57,7 @@ def test_fires_medium_after_sustained_keyboard_overlap() -> None:
     for ts in (0.0, 0.5, 1.0, 1.5, 2.0):
         overlap = update_overlap(state, ts=ts, person_bbox=PERSON_BBOX, other_detections=[kb])
         cand = evaluate(state, ts=ts, person_bbox=PERSON_BBOX, overlap_by_class=overlap, cfg=cfg)
-    assert cand is not None
-    assert cand.raw_signals["matched_class"] == "keyboard"
+    assert cand is None
 
 
 def test_silent_when_phone_overlaps_but_no_paper() -> None:

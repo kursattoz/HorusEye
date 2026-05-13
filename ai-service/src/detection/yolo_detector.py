@@ -33,7 +33,11 @@ class DetectorConfig:
     confidence_threshold: float = 0.45
     iou_threshold: float = 0.50
     device: str = "cpu"
-    classes_of_interest: tuple[int, ...] = (0, 63, 67, 73, 76)
+    # BL-265: laptop (63) and keyboard (76) removed — they don't belong
+    # on an exam desk and their previous paper_detected mapping was a
+    # false-positive source. Just person/phone/book now until Sprint 16
+    # ships the paper_notes custom class.
+    classes_of_interest: tuple[int, ...] = (0, 67, 73)
 
 
 class YoloDetector:

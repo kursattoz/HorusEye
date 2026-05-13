@@ -23,7 +23,8 @@ from src.detection.yolo_detector import Detection
 from src.scoring.rules import IncidentCandidate
 from src.scoring.track_state import TrackState
 
-PAPER_CLASSES: tuple[str, ...] = ("book", "keyboard")
+PAPER_CLASSES: tuple[str, ...] = ("book",)  # BL-265: keyboard removed
+                                              # (off-desk, FP-only signal)
 RULE_NAME = "paper_detected"
 
 

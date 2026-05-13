@@ -44,10 +44,11 @@ class TrackWindow:
 # ───────── default class → incident mapping ─────────
 
 _DEFAULT_CLASS_MAP: dict[str, str] = {
+    # BL-265: laptop / keyboard mappings removed — they conflated
+    # off-desk objects with cheat-paper. Sprint 16 introduces the
+    # paper_notes custom class for the real signal.
     "cell phone":  "phone_detected",
     "book":        "paper_detected",
-    "laptop":      "paper_detected",
-    "keyboard":    "paper_detected",
     "headphones":  "earbuds_detected",   # COCO doesn't include this; future custom class
 }
 
