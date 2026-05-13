@@ -28,7 +28,7 @@ import threading
 from collections import deque
 from dataclasses import dataclass, field
 
-from scoring.rules import IncidentCandidate
+from src.scoring.rules import IncidentCandidate
 
 # ── Severity strings (matches incidents.severity check constraint) ──
 SEVERITY_HIGH = "high"

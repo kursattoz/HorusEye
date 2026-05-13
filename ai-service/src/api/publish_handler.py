@@ -41,7 +41,7 @@ from src.api.protocol import (
 from src.detection.face_mesh import get_face_mesh_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.identity.student_matcher import match_track
-from scoring.behavior_patterns import evaluate_after_incident
+from src.scoring.behavior_patterns import evaluate_after_incident
 from src.persistence.incident_writer import write_incident
 from src.persistence.session_meta import get_expected_person_count
 from src.scoring.config import (
