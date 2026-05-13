@@ -24,6 +24,8 @@ export const routes = {
   examRooms:       '/exam-rooms',
   students:        '/students',
   studentDetail:   (id: string) => `/students/${id}`,
+  datasets:        '/admin/datasets',
+  datasetDetail:   (id: string) => `/admin/datasets/${id}`,
   settings:        '/settings',
   notifications:   '/notifications',
   monitor:         '/dev/monitor',
@@ -42,6 +44,7 @@ export const PROTECTED_ROUTES = [
   '/exams',
   '/exam-rooms',
   '/students',
+  '/admin',
   '/calendar',
   '/settings',
   '/notifications',
@@ -53,5 +56,6 @@ export const ADMIN_ONLY_ROUTES = [
   '/files',
   '/files/trash',
   '/team',
+  '/admin',
   '/dev/monitor',
 ] as const;
