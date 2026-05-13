@@ -15,7 +15,7 @@ HealthStatus: @1.0
 Notification: @1.0
 ExamSession: @1.1
 Camera: @1.2
-Incident: @1.1
+Incident: @1.2
 Student: @1.2
 ExamRoom: @1.0
 -->

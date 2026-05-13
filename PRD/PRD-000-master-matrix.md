@@ -385,11 +385,18 @@ interface Student {
 **Kanal:** PRD-013 (internal)
 
 ```typescript
-// @interface Incident @version 1.1
+// @interface Incident @version 1.2
 type IncidentType =
+  // Phase A / Sprint 7-13
   | 'phone_detected' | 'earbuds_detected' | 'paper_detected'
   | 'gaze_diversion' | 'head_turn' | 'empty_seat'
-  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty';
+  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty'
+  // Sprint 17 — pose / behavior / gaze refinements
+  | 'body_lean_neighbor' | 'standing_up' | 'hand_under_desk'
+  | 'hand_to_ear_mouth' | 'object_passing' | 'gaze_at_lap'
+  | 'gaze_at_neighbor' | 'synchronized_behavior'
+  // Sprint 18 — multi-cam + face covering
+  | 'face_covering';
 
 type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 type ProctorDecision = 'clean' | 'suspicious' | 'violation';
@@ -577,6 +584,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | Student | 1.0 | 2026 | İlk tanım — öğrenci yönetimi, toplu import, transfer (PRD-013 Phase A) | PRD-013 |
 | Incident | 1.0 | 2026 | İlk tanım — AI tespit olayları, severity, evidence (PRD-013 Phase A) | PRD-013 |
 | Incident | 1.1 | 2026 | `raw_signals`, `proctor_decision`, `decision_note`, `decided_by`, `decided_at` eklendi — post-exam review ve re-scoring desteği | PRD-013 |
+| Incident | 1.2 | 2026 | `IncidentType`'a Sprint 17 davranış kuralları (`body_lean_neighbor`, `standing_up`, `hand_under_desk`, `hand_to_ear_mouth`, `object_passing`, `gaze_at_lap`, `gaze_at_neighbor`, `synchronized_behavior`) ve Sprint 18 `face_covering` eklendi | PRD-013,021 |
 | Exam | 1.0 | 2026 | İlk tanım — sınav üst entity, multi-session, wizard, gözetmen/öğrenci ataması | PRD-013 |
 | Camera | 1.1 | 2026 | `camera_type: CameraType` eklendi — IP kamera, telefon, USB webcam ayrımı. `stream_url` açıklaması genişletildi | PRD-013 |
 | Student | 1.1 | 2026 | `room_id` ve `seat_number` kaldırıldı (öğrenciler odaya değil oturuma atanır — `session_students` tablosu). `department` eklendi | PRD-013 |
