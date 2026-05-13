@@ -1,14 +1,18 @@
 name: Build & Push — AI Service
 
 # Builds + pushes the FastAPI AI service Docker image to ECR. Triggered on
-# any change under ai-service/ on main, or manually via workflow_dispatch.
-# CDK stacks (HorusEye-AiService-Staging / -Production) must already exist;
-# this workflow does NOT run cdk deploy — it only refreshes the image and
-# forces ECS to pull the new :latest.
+# any change under ai-service/ on develop or main, or manually via
+# workflow_dispatch. CDK stacks (HorusEye-AiService-Staging /
+# -Production) must already exist; this workflow does NOT run cdk
+# deploy — it only refreshes the image and forces ECS to pull :latest.
+#
+# Branch routing:
+#   develop → staging only
+#   main    → production (staging is already up-to-date by then)
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'ai-service/**'
       - '.github/workflows/ai-service-build.yml'
@@ -57,9 +61,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Force ECS to pull :latest. The services may not exist yet on the
-      # first run — ignore the failure so this job can still finish.
-      - name: Force-new-deployment (staging, if service exists)
+      # Branch routing: develop → staging, main → production. The
+      # workflow_dispatch invocation falls through staging-only (safer
+      # default for a manual rebuild).
+      - name: Force-new-deployment (staging)
+        if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
         run: |
           set +e
           CLUSTER=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Staging \
@@ -72,7 +78,8 @@ jobs:
             echo "Staging stack not yet deployed — skipping force-new-deployment"
           fi
 
-      - name: Force-new-deployment (production, if service exists)
+      - name: Force-new-deployment (production)
+        if: github.ref == 'refs/heads/main'
         run: |
           set +e
           CLUSTER=$(aws cloudformation describe-stacks --stack-name HorusEye-AiService-Production \
