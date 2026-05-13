@@ -65,18 +65,26 @@ export function signPairToken(args: {
 
 export type PairTokenVerifyResult =
   | { ok: true; payload: PairTokenPayload }
-  | { ok: false; reason: 'malformed' | 'bad_signature' | 'expired' | 'wrong_issuer' };
+  | { ok: false; reason: 'malformed' | 'bad_signature' | 'expired' | 'wrong_issuer' | 'not_configured' };
 
 export function verifyPairToken(token: string): PairTokenVerifyResult {
   const parts = token.split('.');
   if (parts.length !== 3) return { ok: false, reason: 'malformed' };
   const [headerB64, payloadB64, sigB64] = parts as [string, string, string];
 
-  const expectedSig = crypto
-    .createHmac('sha256', getSecret())
-    .update(`${headerB64}.${payloadB64}`)
-    .digest();
-  const givenSig = b64urlDecode(sigB64);
+  // Surface "secret not configured" as a verification failure so callers
+  // can fall back to Supabase auth instead of crashing the request.
+  let expectedSig: Buffer;
+  let givenSig:    Buffer;
+  try {
+    expectedSig = crypto
+      .createHmac('sha256', getSecret())
+      .update(`${headerB64}.${payloadB64}`)
+      .digest();
+    givenSig = b64urlDecode(sigB64);
+  } catch {
+    return { ok: false, reason: 'not_configured' };
+  }
   if (
     expectedSig.length !== givenSig.length ||
     !crypto.timingSafeEqual(expectedSig, givenSig)
