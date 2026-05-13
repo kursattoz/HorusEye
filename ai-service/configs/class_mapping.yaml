@@ -9,8 +9,35 @@ target_classes:
   1: phone
   2: book
   3: paper_notes
+  4: smart_watch       # Sprint 15
+  5: pencil_case       # Sprint 16
+  6: calculator        # Sprint 16
 
 source_mappings:
+  # Sprint 16 — pencil case
+  oid_pencil_case:
+    "Pencil case": 5
+  roboflow_pencil_case:
+    "pencil_case":   5
+    "pencil-case":   5
+
+  # Sprint 16 — calculator
+  oid_calculator:
+    "Calculator": 6
+  roboflow_calculator:
+    "calculator": 6
+
+  # Sprint 16 — cheat-sheets / hidden notes → paper_notes
+  roboflow_cheat_sheets:
+    "cheat_sheet":   3
+    "cheat-sheet":   3
+    "hidden_notes":  3
+    "notes":         3
+  roboflow_hidden_notes:
+    "hidden_notes":  3
+    "notes":         3
+
+
   # Roboflow Universe earbuds variants.
   roboflow_earbuds:
     "earbuds":          0
