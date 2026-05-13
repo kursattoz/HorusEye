@@ -37,14 +37,20 @@ export interface HorusFile {
   metadata: Record<string, unknown>;
 }
 
-// @interface LogEvent @version 1.1
+// @interface LogEvent @version 1.3
 export type LogEventType =
   | 'auth.login' | 'auth.logout' | 'auth.failed' | 'auth.password_reset'
   | 'file.upload' | 'file.download' | 'file.delete' | 'file.view' | 'file.update' | 'file.restore'
   | 'feedback.create' | 'feedback.update' | 'feedback.delete'
   | 'user.create' | 'user.update' | 'user.delete'
   | 'checklist.create' | 'checklist.update' | 'checklist.check' | 'checklist.uncheck' | 'checklist.delete'
-  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit';
+  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit'
+  // Dataset pipeline (PRD-017 / PRD-021 BL-271)
+  | 'dataset.import'
+  | 'dataset.validate'
+  | 'dataset.merge'
+  | 'dataset.deploy'
+  | 'dataset.annotation_complete';
 
 export type LogSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 

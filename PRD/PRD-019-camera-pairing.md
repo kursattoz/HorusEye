@@ -12,7 +12,7 @@
 
 <!-- INTERFACE_DEPS
 AuthUser: @1.1
-LogEvent: @1.2
+LogEvent: @1.3
 Notification: @1.0
 Camera: @1.2
 ExamSession: @1.1
