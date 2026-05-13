@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { IncidentEvidencePreview } from '@/components/exams/IncidentEvidencePreview';
 import type { ProctorDecision } from '@/types';
 
 interface IncidentSummary {
@@ -116,6 +117,9 @@ export function IncidentDecisionModal({ open, onClose, incident, onDecided }: Pr
         </DialogHeader>
 
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+
+        {/* BL-238 — Full-res evidence + ±15s clip */}
+        <IncidentEvidencePreview incidentId={incident.id} />
 
         <div className="grid gap-2 sm:grid-cols-3">
           {CHOICES.map((c) => {
