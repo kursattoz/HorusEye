@@ -297,7 +297,10 @@ export interface ExamSession {
   updated_at: string;
 }
 
-// @interface Student @version 1.1
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type RiskTrend = 'rising' | 'stable' | 'falling';
+
+// @interface Student @version 1.2
 export interface Student {
   id: string;
   student_id: string;          // School ID (unique)
@@ -305,6 +308,12 @@ export interface Student {
   email: string | null;
   department: string | null;
   is_active: boolean;
+  // Risk cache (BL-225) — derived from incidents
+  risk_score: number;
+  risk_level: RiskLevel;
+  risk_trend: RiskTrend;
+  incident_count: number;
+  risk_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }

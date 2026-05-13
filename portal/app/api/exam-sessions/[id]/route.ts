@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .eq('session_id', id),
     auth.supabase
       .from('session_students')
-      .select('id, seat_number, students(id, student_id, full_name, email, department)')
+      .select('id, seat_number, students(id, student_id, full_name, email, department, risk_score, risk_level, risk_trend, incident_count, risk_updated_at)')
       .eq('session_id', id),
   ]);
 

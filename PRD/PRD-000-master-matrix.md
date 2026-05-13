@@ -353,11 +353,12 @@ interface ExamSession {
 }
 ```
 
-### 3.13 Student `@1.1`
+### 3.13 Student `@1.2`
 **Kanal:** PRD-013 (internal)
+**Yenilik (1.2):** Risk skoru cache alanları (BL-225, Sprint 11) — `students` tablosunda persist edilir, AI tarafından incident insert trigger'ı ile güncellenir.
 
 ```typescript
-// @interface Student @version 1.1
+// @interface Student @version 1.2
 interface Student {
   id: string;
   student_id: string;          // Okul numarası (unique)
@@ -365,6 +366,12 @@ interface Student {
   email: string | null;
   department: string | null;   // Bölüm (opsiyonel)
   is_active: boolean;
+  // ── Risk cache (BL-225, Sprint 11) — derived from incidents
+  risk_score: number;          // 0..1, weighted severity rolling 90d avg
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_trend: 'rising' | 'stable' | 'falling';
+  incident_count: number;
+  risk_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
