@@ -19,6 +19,8 @@ export const routes = {
   examNew:         '/exams/new',
   examDetail:      (id: string) => `/exams/${id}`,
   examLive:        (id: string) => `/exams/${id}/live`,
+  examReview:      (id: string) => `/exams/${id}/review`,
+  examAnalytics:   '/exams/analytics',
   examRooms:       '/exam-rooms',
   students:        '/students',
   settings:        '/settings',

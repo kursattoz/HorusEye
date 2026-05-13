@@ -58,6 +58,9 @@ export async function GET(request: NextRequest) {
   if (incidentType && (TYPES      as readonly string[]).includes(incidentType)) q = q.eq('incident_type', incidentType);
   if (reviewed === 'true')  q = q.eq('is_reviewed', true);
   if (reviewed === 'false') q = q.eq('is_reviewed', false);
+  // BL-235 — pending vs decided slices for the post-exam review page.
+  if (url.searchParams.get('only_undecided') === 'true') q = q.is('proctor_decision', null);
+  if (url.searchParams.get('only_decided')   === 'true') q = q.not('proctor_decision', 'is', null);
   if (from) q = q.gte('occurred_at', from);
   if (to)   q = q.lte('occurred_at', to);
 
