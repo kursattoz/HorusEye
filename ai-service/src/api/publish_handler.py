@@ -177,6 +177,137 @@ def _get_yolo() -> YoloDetector | None:
     return _yolo
 
 
+# ───────────────────── incident worker queue (BL-248) ─────────────────────
+# write_incident hits Supabase Storage + Postgres which used to be awaited
+# inline inside the publish receive loop. Slow DB or Storage latency would
+# back-pressure the loop, mobile clients overflowed their WS send buffer
+# and dropped with 1006 after ~10 frames (PRD-021 §3 Sprint 13 root cause).
+#
+# Decoupling: per-process asyncio.Queue + single background worker. The
+# receive loop only does put_nowait — bounded queue means a slow DB pulls
+# at the worker, not the publish path.
+
+@dataclass
+class _IncidentJob:
+    candidate: "IncidentCandidate"
+    session_id: str
+    camera_id: str
+    frame_jpeg: bytes
+
+
+_INCIDENT_QUEUE_MAXSIZE = max(10, int(os.getenv("INCIDENT_QUEUE_MAXSIZE", "100")))
+_incident_queue: Optional[asyncio.Queue] = None
+_incident_worker_task: Optional[asyncio.Task] = None
+
+
+def _get_incident_queue() -> asyncio.Queue:
+    global _incident_queue
+    if _incident_queue is None:
+        _incident_queue = asyncio.Queue(maxsize=_INCIDENT_QUEUE_MAXSIZE)
+    return _incident_queue
+
+
+def _enqueue_incident_chain(
+    candidates,
+    *,
+    session_id: str,
+    camera_id: str,
+    frame_jpeg: bytes,
+) -> None:
+    """Push every candidate onto the worker queue. Drops with a log line
+    when the queue is full — better than letting the publish loop block."""
+    q = _get_incident_queue()
+    for cand in candidates:
+        try:
+            q.put_nowait(_IncidentJob(
+                candidate=cand,
+                session_id=session_id,
+                camera_id=camera_id,
+                frame_jpeg=frame_jpeg,
+            ))
+        except asyncio.QueueFull:
+            log.warning(
+                "incident queue full incident_queue_drop=1 "
+                "session=%s camera=%s type=%s qsize=%d",
+                session_id, camera_id, cand.incident_type, q.qsize(),
+            )
+
+
+async def _incident_worker_loop() -> None:
+    """Drain _incident_queue: write_incident → broadcast → pattern chain."""
+    q = _get_incident_queue()
+    log.info("incident worker started incident_queue_maxsize=%d",
+             _INCIDENT_QUEUE_MAXSIZE)
+    while True:
+        job = await q.get()
+        try:
+            row = await asyncio.to_thread(
+                write_incident,
+                job.candidate,
+                session_id=job.session_id,
+                camera_id=job.camera_id,
+                frame_jpeg=job.frame_jpeg,
+            )
+            if row is not None:
+                broadcaster.broadcast(
+                    job.session_id, incident_message(row, job.session_id)
+                )
+                log.info(
+                    "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
+                    job.session_id, job.camera_id, job.candidate.track_id,
+                    job.candidate.incident_type, job.candidate.severity,
+                )
+                # BL-228: pattern detection chain — runs inside the worker
+                # so the publish loop never sees this branch's latency.
+                pattern_candidates = evaluate_after_incident(
+                    job.candidate, job.session_id
+                )
+                if pattern_candidates:
+                    log.info(
+                        "behavior pattern fired: session=%s student=%s patterns=%s",
+                        job.session_id, job.candidate.student_id,
+                        [p.triggered_rules for p in pattern_candidates],
+                    )
+                    _enqueue_incident_chain(
+                        pattern_candidates,
+                        session_id=job.session_id,
+                        camera_id=job.camera_id,
+                        frame_jpeg=job.frame_jpeg,
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 — keep worker alive across failures
+            log.exception(
+                "incident worker job failed session=%s camera=%s type=%s",
+                job.session_id, job.camera_id, job.candidate.incident_type,
+            )
+        finally:
+            q.task_done()
+
+
+async def start_incident_worker() -> None:
+    """Start the worker if not already running. Called from main.py startup."""
+    global _incident_worker_task
+    if _incident_worker_task is not None and not _incident_worker_task.done():
+        return
+    _incident_worker_task = asyncio.create_task(
+        _incident_worker_loop(), name="incident-worker"
+    )
+
+
+async def stop_incident_worker() -> None:
+    """Cancel + await the worker. Called from main.py shutdown."""
+    global _incident_worker_task
+    if _incident_worker_task is None:
+        return
+    _incident_worker_task.cancel()
+    try:
+        await _incident_worker_task
+    except (asyncio.CancelledError, Exception):  # noqa: BLE001
+        pass
+    _incident_worker_task = None
+
+
 # ───────────────────── helpers ─────────────────────
 
 
@@ -451,38 +582,19 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                         }
                         broadcaster.broadcast(session_id, frame_msg)
 
-                        # Persist + broadcast incidents (off the event loop —
-                        # write_incident hits Storage + Postgres).
-                        # BL-228: after each rule-fired candidate, run pattern
-                        # detection on the student's session-wide window and
-                        # persist any synthetic pattern incidents that emerge.
-                        pending = list(candidates)
-                        while pending:
-                            cand = pending.pop(0)
-                            row = await asyncio.to_thread(
-                                write_incident,
-                                cand,
+                        # BL-248: write_incident + broadcast + pattern detection
+                        # are now run by the module-level worker
+                        # (_incident_worker_loop) draining an asyncio.Queue.
+                        # The publish receive loop is non-blocking: a slow
+                        # Postgres or Storage write no longer back-pressures
+                        # the mobile WS send buffer.
+                        if candidates:
+                            _enqueue_incident_chain(
+                                candidates,
                                 session_id=session_id,
                                 camera_id=camera_id,
                                 frame_jpeg=buf,
                             )
-                            if row is not None:
-                                broadcaster.broadcast(
-                                    session_id, incident_message(row, session_id)
-                                )
-                                log.info(
-                                    "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
-                                    session_id, camera_id, cand.track_id,
-                                    cand.incident_type, cand.severity,
-                                )
-                                pattern_candidates = evaluate_after_incident(cand, session_id)
-                                if pattern_candidates:
-                                    log.info(
-                                        "behavior pattern fired: session=%s student=%s patterns=%s",
-                                        session_id, cand.student_id,
-                                        [p.triggered_rules for p in pattern_candidates],
-                                    )
-                                    pending.extend(pattern_candidates)
                     continue
 
                 if "text" in msg and msg["text"] is not None:
