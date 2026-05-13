@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth/api';
 import { log } from '@/lib/logger';
+import { notifyHighRiskForSession } from '@/lib/sessions/high-risk-notifier';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -46,6 +47,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const body = await request.json();
   const updates: Record<string, unknown> = {};
 
+  let statusTransitionedToActive = false;
   if (body.status !== undefined) {
     if (!(STATUS_VALUES as readonly string[]).includes(body.status)) {
       return NextResponse.json({ error: `status must be one of: ${STATUS_VALUES.join(', ')}` }, { status: 400 });
@@ -53,6 +55,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
     updates.status = body.status;
     if (body.status === 'active' && !body.started_at) updates.started_at = new Date().toISOString();
     if (body.status === 'ended'  && !body.ended_at)   updates.ended_at   = new Date().toISOString();
+    if (body.status === 'active') {
+      // Only fire the notifier when this is a transition into active.
+      const { data: prev } = await auth.supabase
+        .from('exam_sessions')
+        .select('status')
+        .eq('id', id)
+        .maybeSingle();
+      if (prev && prev.status !== 'active') statusTransitionedToActive = true;
+    }
   }
   if (body.started_at !== undefined) updates.started_at = body.started_at;
   if (body.ended_at !== undefined)   updates.ended_at   = body.ended_at;
@@ -79,6 +90,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
     action:        `Exam session updated`,
     metadata:      { fields: Object.keys(updates) },
   });
+
+  // BL-229 — fire-and-forget high-risk notification when the session
+  // becomes active. Errors are logged inside the helper; never crash the
+  // status-update response on a notification failure.
+  if (statusTransitionedToActive) {
+    void notifyHighRiskForSession(id, auth.userId).catch((e: unknown) => {
+      console.error('[high-risk-notify] failed', e);
+    });
+  }
 
   return NextResponse.json({ session: data });
 }
