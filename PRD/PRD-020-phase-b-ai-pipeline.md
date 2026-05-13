@@ -257,7 +257,7 @@ CREATE INDEX IF NOT EXISTS idx_students_face_embedding
 | 11-03 | /api/students/[id]/profile + /api/students/[id]/incidents (paginated) | portal_backend | 6 | — |
 | 11-04 | Incidents timeline: chronological feed, severity-colored | portal_frontend | 6 | — |
 | 11-05 | Behavior pattern detection: chronic phone-checker, sustained stranger interaction | ai_backend | 8 | PRD-013 §7.3 |
-| 11-06 | Pre-session high-risk notification: chief proctor warned (PRD-016) | portal_backend | 6 | PRD-016 |
+| 11-06 | Pre-session high-risk notification: session `chief_proctor` warned (PRD-016) | portal_backend | 6 | PRD-016 |
 | 11-07 | Student tile in /exams/[id]/sessions — risk badge | portal_frontend | 5 | — |
 | 11-08 | Charts: incident frequency over time, severity distribution (recharts) | portal_frontend | 8 | PRD-018 §6.8 (existing chart patterns) |
 | 11-09 | Per-student calibration: thresholds adjust per known fidgety students | ai_backend | 6 | PRD-013 §7.3 |
@@ -292,7 +292,7 @@ raporlar üretilir + ilgili kişilere gönderilir.
 | 12-03 | Bulk decision actions (örn tüm phone_detected'ı violation marka) | portal_frontend | 4 | — |
 | 12-04 | Evidence preview: full-res JPEG zoom + ±15s frame buffer (clip) | portal_frontend | 10 | PRD-013 §21.0 |
 | 12-05 | PDF rapor üretimi (Puppeteer in API route): per-session, per-student, per-exam | portal_backend | 10 | PRD-015 |
-| 12-06 | Rapor email distribution (PRD-014 SMTP) — chief proctor + admin | portal_backend | 6 | PRD-014 |
+| 12-06 | Rapor email distribution (PRD-014 SMTP) — session `chief_proctor` + admin | portal_backend | 6 | PRD-014 |
 | 12-07 | Audit trail: every decision → audit_logs + backlog_activity-style row | portal_backend | 4 | PRD-006 |
 | 12-08 | Evidence export: zip download (raw JPEG'ler + JSON metadata) — legal hold | portal_backend | 6 | PRD-013 §27 |
 | 12-09 | /exams/analytics trends dashboard (cross-exam patterns) | portal_frontend | 8 | PRD-013 §7 |
@@ -304,7 +304,7 @@ raporlar üretilir + ilgili kişilere gönderilir.
 - PDF rapor: incident özeti + thumbnail + decision + audit timestamp
 - Bulk action: 10 phone_detected → tek tıkla violation
 - Evidence zip: tüm JPEG'ler + decisions.json indirilir
-- Rapor mail: chief proctor inbox'ında PDF eki
+- Rapor mail: session `chief_proctor` inbox'ında PDF eki
 
 ---
 

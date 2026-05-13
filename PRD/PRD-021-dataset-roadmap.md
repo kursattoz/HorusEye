@@ -164,6 +164,21 @@ Tüm kararların gerekçesi `docs/dataset-plan/` §4'te. Özet:
 | Faz 2 (Sprint 12 live) | SHA-256 evidence manifest **kırılmaz** — anonimize kopyalar ayrı bucket/tablo; PDF üretimi `@react-pdf/renderer` aynı |
 | Faz 4 (PRD-013/019/020) | `ai_models`, `cameras`, `session_cameras` tabloları re-use; LiveMonitor `framesByCamera` Map zaten mevcut, sadece demo flag kaldırılır |
 
+### RBAC sözleşmesi (BL-273)
+
+User-rolleri **admin / supervisor / assistant** — `chief_proctor` bir
+**session-level** rolüdür (`session_proctors.role`) ve user role'ü değil.
+Plan boyunca yetki ifadeleri user-role bazlı olduğunda `supervisor`,
+session bazlı olduğunda `chief_proctor` (alt çizgili schema identifier)
+yazılır.
+
+| Endpoint | Guard |
+|---|---|
+| `/api/ai/datasets/*` | `requireAdmin()` → `user_profiles.role === 'admin'` |
+| `datasets` tablosu | RLS: `is_admin()` (SELECT/INSERT/UPDATE/DELETE) |
+| `internal_training_samples` | RLS: `is_admin()` (BL-270 ile aynı) |
+| `anonymized-training-frames` bucket | RLS: `bucket_id = ... AND is_admin()` (BL-269) |
+
 Detay: `docs/dataset-plan/` §3.
 
 ---
