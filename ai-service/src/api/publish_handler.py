@@ -41,6 +41,7 @@ from src.api.protocol import (
 from src.detection.face_mesh import get_face_mesh_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.identity.student_matcher import match_track
+from scoring.behavior_patterns import evaluate_after_incident
 from src.persistence.incident_writer import write_incident
 from src.persistence.session_meta import get_expected_person_count
 from src.scoring.config import (
@@ -445,7 +446,12 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
 
                     # Persist + broadcast incidents (off the event loop —
                     # write_incident hits Storage + Postgres).
-                    for cand in candidates:
+                    # BL-228: after each rule-fired candidate, run pattern
+                    # detection on the student's session-wide window and
+                    # persist any synthetic pattern incidents that emerge.
+                    pending = list(candidates)
+                    while pending:
+                        cand = pending.pop(0)
                         row = await asyncio.to_thread(
                             write_incident,
                             cand,
@@ -462,6 +468,14 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                                 session_id, camera_id, cand.track_id,
                                 cand.incident_type, cand.severity,
                             )
+                            pattern_candidates = evaluate_after_incident(cand, session_id)
+                            if pattern_candidates:
+                                log.info(
+                                    "behavior pattern fired: session=%s student=%s patterns=%s",
+                                    session_id, cand.student_id,
+                                    [p.triggered_rules for p in pattern_candidates],
+                                )
+                                pending.extend(pattern_candidates)
                 continue
 
             if "text" in msg and msg["text"] is not None:
