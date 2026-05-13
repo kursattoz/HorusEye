@@ -196,8 +196,13 @@ class _IncidentJob:
 
 
 _INCIDENT_QUEUE_MAXSIZE = max(10, int(os.getenv("INCIDENT_QUEUE_MAXSIZE", "100")))
+# BL-255: how many concurrent workers drain the queue. Default 2 covers
+# the steady-state incident burst rate (multiple rules can fire on the
+# same frame, plus pattern detection re-enqueues). Set higher if
+# write_incident latency dominates.
+_INCIDENT_WORKER_COUNT = max(1, int(os.getenv("INCIDENT_WORKER_COUNT", "2")))
 _incident_queue: Optional[asyncio.Queue] = None
-_incident_worker_task: Optional[asyncio.Task] = None
+_incident_worker_tasks: list = []
 
 
 def _get_incident_queue() -> asyncio.Queue:
@@ -286,26 +291,34 @@ async def _incident_worker_loop() -> None:
 
 
 async def start_incident_worker() -> None:
-    """Start the worker if not already running. Called from main.py startup."""
-    global _incident_worker_task
-    if _incident_worker_task is not None and not _incident_worker_task.done():
+    """Start the worker pool if not already running (BL-248 + BL-255)."""
+    global _incident_worker_tasks
+    # Drop any finished/cancelled tasks from the list so a re-call after
+    # startup() (e.g. test client teardown) restarts cleanly.
+    _incident_worker_tasks = [t for t in _incident_worker_tasks if not t.done()]
+    if _incident_worker_tasks:
         return
-    _incident_worker_task = asyncio.create_task(
-        _incident_worker_loop(), name="incident-worker"
-    )
+    _incident_worker_tasks = [
+        asyncio.create_task(_incident_worker_loop(), name=f"incident-worker-{i}")
+        for i in range(_INCIDENT_WORKER_COUNT)
+    ]
+    log.info("incident worker pool started incident_worker_count=%d",
+             _INCIDENT_WORKER_COUNT)
 
 
 async def stop_incident_worker() -> None:
-    """Cancel + await the worker. Called from main.py shutdown."""
-    global _incident_worker_task
-    if _incident_worker_task is None:
+    """Cancel + await every worker. Called from main.py shutdown."""
+    global _incident_worker_tasks
+    if not _incident_worker_tasks:
         return
-    _incident_worker_task.cancel()
-    try:
-        await _incident_worker_task
-    except (asyncio.CancelledError, Exception):  # noqa: BLE001
-        pass
-    _incident_worker_task = None
+    for t in _incident_worker_tasks:
+        t.cancel()
+    for t in _incident_worker_tasks:
+        try:
+            await t
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+    _incident_worker_tasks = []
 
 
 # ───────────────────── helpers ─────────────────────
