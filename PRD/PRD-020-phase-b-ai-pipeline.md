@@ -18,7 +18,7 @@ ExamSession: @1.1
 SessionCamera: @1.0
 CameraHealthEvent: @1.0
 Student: @1.2
-Incident: @1.1
+Incident: @1.2
 Sprint: @1.0
 BacklogItem: @2.0
 -->
