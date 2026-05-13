@@ -183,6 +183,34 @@ def write_incident(
         else None
     )
 
+    # Sprint 18 BL-310/315 — multi-cam severity fusion.
+    # Run BEFORE the calibration-bump severity_override gets baked into
+    # the row so the multi-cam confirm can stack on top. If the same
+    # incident_type already fired from another camera in this session
+    # within the dedup window, promote one tier (low→medium, medium→high,
+    # …) and flag multi_cam_confirmed in raw_signals.
+    from src.scoring.multi_cam_coordinator import get_coordinator
+    fusion_severity = severity_override or candidate.severity
+    fusion = get_coordinator().fuse(
+        session_id=session_id,
+        camera_id=camera_id,
+        track_id=candidate.track_id,
+        incident_type=candidate.incident_type,
+        severity=fusion_severity,
+        occurred_at=candidate.occurred_at,
+        student_id=candidate.student_id,
+    )
+    if fusion.multi_cam_confirmed:
+        severity_override = fusion.severity
+        extras = dict(raw_signal_extras or {})
+        extras["multi_cam"] = {
+            "confirmed":         True,
+            "matched_camera_id": fusion.matched[0] if fusion.matched else None,
+            "matched_track_id":  fusion.matched[1] if fusion.matched else None,
+            "fused_severity":    fusion.severity,
+        }
+        raw_signal_extras = extras
+
     row = _build_row(
         incident_id=incident_id,
         candidate=candidate,
