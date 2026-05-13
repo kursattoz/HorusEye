@@ -36,6 +36,8 @@ export function CamPairCapture({ token, redeem }: Props) {
   const wsRef     = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // BL-251: backpressure-skipped frame counter (BL-254 surfaces in debug overlay)
+  const framesSkippedRef = useRef<number>(0);
 
   const [facing, setFacing]       = useState<FacingMode>('environment');
   const [streaming, setStreaming] = useState(true);
@@ -238,6 +240,16 @@ export function CamPairCapture({ token, redeem }: Props) {
       const ws = wsRef.current;
       if (!video || !canvas || !ws || ws.readyState !== WebSocket.OPEN) return;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      // BL-251: bufferedAmount backpressure. Mobile WS send quota is
+      // small (~256KB on iOS Safari / Chrome). Once exceeded the socket
+      // closes silently with 1006 — which is exactly the production
+      // pattern that drops mobile streams after ~10 frames (publish_handler.py:388
+      // root-cause analysis). Skip the frame instead of queueing more.
+      if (ws.bufferedAmount > 250_000) {
+        framesSkippedRef.current += 1;
+        return;
+      }
 
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
