@@ -280,6 +280,20 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   }, [frameTsByCamera, now]);
   const focusedStale = focusedCameraId ? isStale(focusedCameraId) : false;
 
+  // Sprint 14-18 overlay: incidents that fired in the last ACTIVE_WINDOW_MS
+  // for the focused camera. The LiveVideoOverlay draws a severity ring +
+  // chip on the matching person bbox by track_id.
+  const ACTIVE_INCIDENT_WINDOW_MS = 15_000;
+  const focusedActiveIncidents = useMemo(() => {
+    if (!focusedCameraId) return [];
+    const cutoff = now - ACTIVE_INCIDENT_WINDOW_MS;
+    return incidents.filter(inc => {
+      if (!inc.camera_ids?.includes(focusedCameraId)) return false;
+      const occurredMs = Date.parse(inc.occurred_at);
+      return Number.isFinite(occurredMs) && occurredMs >= cutoff;
+    });
+  }, [incidents, focusedCameraId, now]);
+
   // Health summary — counts cameras by current state for the header pill.
   const healthSummary = useMemo(() => {
     let live = 0, stale = 0, offline = 0;
@@ -400,7 +414,12 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
             </div>
           </div>
         ) : focusedFrame ? (
-          <CameraViewport frame={focusedFrame} label={focusedLabel} stale={focusedStale} />
+          <CameraViewport
+            frame={focusedFrame}
+            label={focusedLabel}
+            stale={focusedStale}
+            activeIncidents={focusedActiveIncidents}
+          />
         ) : (
         <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
           {state === 'connected' ? (
