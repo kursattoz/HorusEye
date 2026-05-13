@@ -126,6 +126,38 @@ def _write_label_lines(label_path: Path, lines: list[tuple[int, float, float, fl
 
 # ──────────────────── core merge ────────────────────
 
+def _is_negatives_bundle(src: Path) -> bool:
+    """A negatives bundle has manifest.json with bundle_kind == 'negatives'."""
+    manifest = src / "manifest.json"
+    if not manifest.is_file():
+        return False
+    try:
+        meta = json.loads(manifest.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    return meta.get("bundle_kind") == "negatives"
+
+
+def collect_negatives(src: Path) -> list[dict[str, Any]]:
+    """Mine bundle: all images are negatives — empty label lines, no dominant
+    class. The stratified split distributes them across train/val randomly."""
+    out: list[dict[str, Any]] = []
+    img_dir = src / "images"
+    if not img_dir.is_dir():
+        return out
+    for img in sorted(img_dir.iterdir()):
+        if img.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+            continue
+        out.append({
+            "img_path":     img,
+            "label_lines":  [],
+            "dominant_cls": -1,        # sentinel: not bucketed by class
+            "source":       src.name,
+            "is_negative":  True,
+        })
+    return out
+
+
 def collect_samples(
     sources: list[Path],
     source_mappings: dict[str, dict[str, int]],
@@ -136,6 +168,14 @@ def collect_samples(
         if not src.is_dir():
             log.warning("skip missing source: %s", src)
             continue
+
+        # Negatives bundle short-circuit (PRD-017 §8.4 / BL-291)
+        if _is_negatives_bundle(src):
+            neg = collect_negatives(src)
+            log.info("source '%s' is a negatives bundle → %d images", src.name, len(neg))
+            samples.extend(neg)
+            continue
+
         name = src.name
         source_map = source_mappings.get(name)
         if not source_map:
@@ -173,6 +213,9 @@ def collect_samples(
     return samples
 
 
+NEGATIVES_CLS_ID = -1
+
+
 def apply_class_caps(
     samples: list[dict[str, Any]],
     *,
@@ -180,7 +223,12 @@ def apply_class_caps(
     min_per_class: int,
     rng: random.Random,
 ) -> tuple[list[dict[str, Any]], dict[int, int]]:
-    """Random undersample dominant classes above max; drop sparse classes."""
+    """Random undersample dominant classes above max; drop sparse classes.
+
+    Negatives (dominant_cls == -1, PRD-017 §8.4) skip the min floor —
+    they don't have a class to be sparse against — but still respect the
+    max cap so a giant negatives bundle doesn't swamp training.
+    """
     by_class: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for s in samples:
         by_class[s["dominant_cls"]].append(s)
@@ -188,7 +236,8 @@ def apply_class_caps(
     kept: list[dict[str, Any]] = []
     final_counts: dict[int, int] = {}
     for cls_id, group in by_class.items():
-        if len(group) < min_per_class:
+        is_negatives = cls_id == NEGATIVES_CLS_ID
+        if not is_negatives and len(group) < min_per_class:
             log.warning("class %d has only %d images (<%d) — dropped",
                         cls_id, len(group), min_per_class)
             continue
