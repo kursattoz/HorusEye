@@ -26,6 +26,10 @@ interface Props {
 
 const FRAME_INTERVAL_MS = 200;     // 5 FPS
 const JPEG_QUALITY = 0.7;
+// BL-253: exponential backoff schedule for auto-reconnect after WS close.
+// 3 attempts at 1s / 2s / 4s; beyond that we leave the connection 'closed'
+// and surface a manual Reconnect button to the user.
+const RECONNECT_DELAYS_MS: readonly number[] = [1000, 2000, 4000];
 
 type WsState = 'idle' | 'connecting' | 'open' | 'error' | 'closed';
 type FacingMode = 'environment' | 'user';
@@ -41,6 +45,11 @@ export function CamPairCapture({ token, redeem }: Props) {
   // BL-252: tracks whether streaming was active before tab went hidden so
   // resume on foreground doesn't override a user-initiated Pause.
   const wasStreamingBeforeHideRef = useRef<boolean>(false);
+  // BL-253: auto-reconnect with exponential backoff
+  const reconnectAttemptsRef = useRef<number>(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamingRef = useRef<boolean>(true);
+  const openWSRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing]       = useState<FacingMode>('environment');
   const [streaming, setStreaming] = useState(true);
@@ -238,16 +247,67 @@ export function CamPairCapture({ token, redeem }: Props) {
         camera_id: redeem.camera_id,
       }));
       setWsState('open');
+      // BL-253: successful (re)connect — clear attempt counter.
+      reconnectAttemptsRef.current = 0;
       void postHealthEvent('connected', { ua: navigator.userAgent });
     };
     ws.onerror = () => setWsState('error');
-    ws.onclose = () => setWsState('closed');
+    ws.onclose = (ev: CloseEvent) => {
+      setWsState('closed');
+      void postHealthEvent('disconnected', {
+        close_code: ev.code,
+        close_reason: ev.reason,
+      });
+      // BL-253: auto-reconnect with exponential backoff (1s / 2s / 4s).
+      // Only retry on abnormal closes when the user still wants to stream
+      // and the tab is foreground; otherwise the BL-252 visibility resume
+      // handles re-open.
+      if (!streamingRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (ev.code === 1000) return; // normal close (server unsubscribe)
+      if (ev.code >= 4000 && ev.code < 5000) return; // app-level (auth failed)
+
+      const attempts = reconnectAttemptsRef.current;
+      if (attempts >= RECONNECT_DELAYS_MS.length) {
+        void postHealthEvent('reconnect_gave_up', {
+          attempts,
+          close_code: ev.code,
+        });
+        return;
+      }
+      const delay = RECONNECT_DELAYS_MS[attempts];
+      void postHealthEvent('reconnect_scheduled', {
+        attempt: attempts + 1,
+        delay_ms: delay,
+        close_code: ev.code,
+      });
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        reconnectAttemptsRef.current = attempts + 1;
+        openWSRef.current?.();
+      }, delay);
+    };
   }, [redeem, postHealthEvent]);
+
+  // BL-253: keep openWSRef + streamingRef in sync so the onclose handler
+  // (closed over older openWS reference) can fire fresh reconnect calls.
+  useEffect(() => {
+    openWSRef.current = openWS;
+  }, [openWS]);
+  useEffect(() => {
+    streamingRef.current = streaming;
+  }, [streaming]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- openWS sets wsState transitions via the WS event handlers
     if (streaming) openWS();
     return () => {
+      // BL-253: cancel any pending reconnect when the effect tears down.
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       wsRef.current?.close();
       wsRef.current = null;
     };
