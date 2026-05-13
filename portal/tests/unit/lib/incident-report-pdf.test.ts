@@ -12,7 +12,7 @@ function makeData(overrides?: Partial<ReportData>): ReportData {
     scope: 'exam',
     generated_at: '2026-05-13T10:00:00Z',
     generated_by: 'Test Proctor',
-    exam: { id: 'exam-1', title: 'CMPE 491 Final', scheduled_at: '2026-05-13T09:00:00Z' },
+    exam: { id: 'exam-1', name: 'CMPE 491 Final', scheduled_date: '2026-05-13' },
     incidents: [
       {
         id: 'inc-1',

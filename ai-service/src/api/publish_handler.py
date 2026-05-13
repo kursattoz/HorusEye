@@ -177,6 +177,150 @@ def _get_yolo() -> YoloDetector | None:
     return _yolo
 
 
+# ───────────────────── incident worker queue (BL-248) ─────────────────────
+# write_incident hits Supabase Storage + Postgres which used to be awaited
+# inline inside the publish receive loop. Slow DB or Storage latency would
+# back-pressure the loop, mobile clients overflowed their WS send buffer
+# and dropped with 1006 after ~10 frames (PRD-021 §3 Sprint 13 root cause).
+#
+# Decoupling: per-process asyncio.Queue + single background worker. The
+# receive loop only does put_nowait — bounded queue means a slow DB pulls
+# at the worker, not the publish path.
+
+@dataclass
+class _IncidentJob:
+    candidate: "IncidentCandidate"
+    session_id: str
+    camera_id: str
+    frame_jpeg: bytes
+
+
+_INCIDENT_QUEUE_MAXSIZE = max(10, int(os.getenv("INCIDENT_QUEUE_MAXSIZE", "100")))
+# BL-255: how many concurrent workers drain the queue. Default 2 covers
+# the steady-state incident burst rate (multiple rules can fire on the
+# same frame, plus pattern detection re-enqueues). Set higher if
+# write_incident latency dominates.
+_INCIDENT_WORKER_COUNT = max(1, int(os.getenv("INCIDENT_WORKER_COUNT", "2")))
+_incident_queue: Optional[asyncio.Queue] = None
+_incident_worker_tasks: list = []
+
+
+def _get_incident_queue() -> asyncio.Queue:
+    global _incident_queue
+    if _incident_queue is None:
+        _incident_queue = asyncio.Queue(maxsize=_INCIDENT_QUEUE_MAXSIZE)
+    return _incident_queue
+
+
+def _enqueue_incident_chain(
+    candidates,
+    *,
+    session_id: str,
+    camera_id: str,
+    frame_jpeg: bytes,
+) -> None:
+    """Push every candidate onto the worker queue. Drops with a log line
+    when the queue is full — better than letting the publish loop block."""
+    q = _get_incident_queue()
+    for cand in candidates:
+        try:
+            q.put_nowait(_IncidentJob(
+                candidate=cand,
+                session_id=session_id,
+                camera_id=camera_id,
+                frame_jpeg=frame_jpeg,
+            ))
+        except asyncio.QueueFull:
+            log.warning(
+                "incident queue full incident_queue_drop=1 "
+                "session=%s camera=%s type=%s qsize=%d",
+                session_id, camera_id, cand.incident_type, q.qsize(),
+            )
+
+
+async def _incident_worker_loop() -> None:
+    """Drain _incident_queue: write_incident → broadcast → pattern chain."""
+    q = _get_incident_queue()
+    log.info("incident worker started incident_queue_maxsize=%d",
+             _INCIDENT_QUEUE_MAXSIZE)
+    while True:
+        job = await q.get()
+        try:
+            row = await asyncio.to_thread(
+                write_incident,
+                job.candidate,
+                session_id=job.session_id,
+                camera_id=job.camera_id,
+                frame_jpeg=job.frame_jpeg,
+            )
+            if row is not None:
+                broadcaster.broadcast(
+                    job.session_id, incident_message(row, job.session_id)
+                )
+                log.info(
+                    "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
+                    job.session_id, job.camera_id, job.candidate.track_id,
+                    job.candidate.incident_type, job.candidate.severity,
+                )
+                # BL-228: pattern detection chain — runs inside the worker
+                # so the publish loop never sees this branch's latency.
+                pattern_candidates = evaluate_after_incident(
+                    job.candidate, job.session_id
+                )
+                if pattern_candidates:
+                    log.info(
+                        "behavior pattern fired: session=%s student=%s patterns=%s",
+                        job.session_id, job.candidate.student_id,
+                        [p.triggered_rules for p in pattern_candidates],
+                    )
+                    _enqueue_incident_chain(
+                        pattern_candidates,
+                        session_id=job.session_id,
+                        camera_id=job.camera_id,
+                        frame_jpeg=job.frame_jpeg,
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 — keep worker alive across failures
+            log.exception(
+                "incident worker job failed session=%s camera=%s type=%s",
+                job.session_id, job.camera_id, job.candidate.incident_type,
+            )
+        finally:
+            q.task_done()
+
+
+async def start_incident_worker() -> None:
+    """Start the worker pool if not already running (BL-248 + BL-255)."""
+    global _incident_worker_tasks
+    # Drop any finished/cancelled tasks from the list so a re-call after
+    # startup() (e.g. test client teardown) restarts cleanly.
+    _incident_worker_tasks = [t for t in _incident_worker_tasks if not t.done()]
+    if _incident_worker_tasks:
+        return
+    _incident_worker_tasks = [
+        asyncio.create_task(_incident_worker_loop(), name=f"incident-worker-{i}")
+        for i in range(_INCIDENT_WORKER_COUNT)
+    ]
+    log.info("incident worker pool started incident_worker_count=%d",
+             _INCIDENT_WORKER_COUNT)
+
+
+async def stop_incident_worker() -> None:
+    """Cancel + await every worker. Called from main.py shutdown."""
+    global _incident_worker_tasks
+    if not _incident_worker_tasks:
+        return
+    for t in _incident_worker_tasks:
+        t.cancel()
+    for t in _incident_worker_tasks:
+        try:
+            await t
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+    _incident_worker_tasks = []
+
+
 # ───────────────────── helpers ─────────────────────
 
 
@@ -401,105 +545,121 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
             if mtype == "websocket.disconnect":
                 break
 
-            if "bytes" in msg and msg["bytes"] is not None:
-                buf: bytes = msg["bytes"]
-                bgr, w, h = _decode_jpeg(buf)
-                frame_store.put(
-                    PublishedFrame(
-                        session_id=session_id,
-                        camera_id=camera_id,
-                        raw_jpeg=buf,
-                        bgr=bgr,
-                        received_at=datetime.now(timezone.utc),
-                        width=w,
-                        height=h,
-                    )
-                )
-                frames_received += 1
-
-                # Fan out to detection subscribers — only if anyone is watching.
-                if broadcaster.subscriber_count(session_id) > 0:
-                    if bgr is not None:
-                        ts_epoch = datetime.now(timezone.utc).timestamp()
-                        detections, candidates = await asyncio.to_thread(
-                            _detect_track_score_sync,
-                            bgr,
-                            session_id,
-                            camera_id,
-                            ts_epoch,
-                            frames_received,
-                        )
-                    else:
-                        detections, candidates = [], []
-                    frame_msg = {
-                        "type": "frame",
-                        "protocol_version": PROTOCOL_VERSION,
-                        "session_id": session_id,
-                        "camera_id": camera_id,
-                        "width": w or 0,
-                        "height": h or 0,
-                        "jpeg_base64": base64.b64encode(buf).decode("ascii"),
-                        "timestamp": _now_iso(),
-                        "detections": detections,
-                    }
-                    broadcaster.broadcast(session_id, frame_msg)
-
-                    # Persist + broadcast incidents (off the event loop —
-                    # write_incident hits Storage + Postgres).
-                    # BL-228: after each rule-fired candidate, run pattern
-                    # detection on the student's session-wide window and
-                    # persist any synthetic pattern incidents that emerge.
-                    pending = list(candidates)
-                    while pending:
-                        cand = pending.pop(0)
-                        row = await asyncio.to_thread(
-                            write_incident,
-                            cand,
+            # BL-247: per-frame safety net — any non-disconnect exception
+            # from detection, write_incident, broadcast or send_json is
+            # logged with traceback and the loop continues with the next
+            # frame. Without this, a single rogue frame killed the WS
+            # silently and mobile clients dropped with 1006 after ~10
+            # frames (publish_handler.py:388-486 root cause).
+            try:
+                if "bytes" in msg and msg["bytes"] is not None:
+                    buf: bytes = msg["bytes"]
+                    bgr, w, h = _decode_jpeg(buf)
+                    frame_store.put(
+                        PublishedFrame(
                             session_id=session_id,
                             camera_id=camera_id,
-                            frame_jpeg=buf,
+                            raw_jpeg=buf,
+                            bgr=bgr,
+                            received_at=datetime.now(timezone.utc),
+                            width=w,
+                            height=h,
                         )
-                        if row is not None:
-                            broadcaster.broadcast(
-                                session_id, incident_message(row, session_id)
-                            )
-                            log.info(
-                                "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
-                                session_id, camera_id, cand.track_id,
-                                cand.incident_type, cand.severity,
-                            )
-                            pattern_candidates = evaluate_after_incident(cand, session_id)
-                            if pattern_candidates:
-                                log.info(
-                                    "behavior pattern fired: session=%s student=%s patterns=%s",
-                                    session_id, cand.student_id,
-                                    [p.triggered_rules for p in pattern_candidates],
-                                )
-                                pending.extend(pattern_candidates)
-                continue
+                    )
+                    frames_received += 1
 
-            if "text" in msg and msg["text"] is not None:
-                try:
-                    payload = json.loads(msg["text"])
-                except json.JSONDecodeError:
-                    await websocket.send_json(error_message("invalid_payload", "non-JSON text", session_id))
+                    # Fan out to detection subscribers — only if anyone is watching.
+                    if broadcaster.subscriber_count(session_id) > 0:
+                        if bgr is not None:
+                            ts_epoch = datetime.now(timezone.utc).timestamp()
+                            detections, candidates = await asyncio.to_thread(
+                                _detect_track_score_sync,
+                                bgr,
+                                session_id,
+                                camera_id,
+                                ts_epoch,
+                                frames_received,
+                            )
+                        else:
+                            detections, candidates = [], []
+                        frame_msg = {
+                            "type": "frame",
+                            "protocol_version": PROTOCOL_VERSION,
+                            "session_id": session_id,
+                            "camera_id": camera_id,
+                            "width": w or 0,
+                            "height": h or 0,
+                            "jpeg_base64": base64.b64encode(buf).decode("ascii"),
+                            "timestamp": _now_iso(),
+                            "detections": detections,
+                        }
+                        broadcaster.broadcast(session_id, frame_msg)
+
+                        # BL-248: write_incident + broadcast + pattern detection
+                        # are now run by the module-level worker
+                        # (_incident_worker_loop) draining an asyncio.Queue.
+                        # The publish receive loop is non-blocking: a slow
+                        # Postgres or Storage write no longer back-pressures
+                        # the mobile WS send buffer.
+                        if candidates:
+                            _enqueue_incident_chain(
+                                candidates,
+                                session_id=session_id,
+                                camera_id=camera_id,
+                                frame_jpeg=buf,
+                            )
                     continue
-                ptype = payload.get("type") if isinstance(payload, dict) else None
-                if ptype == "ping":
-                    await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
-                elif ptype == "unsubscribe":
-                    await websocket.send_json(
-                        status_message(session_id, "stream_ended", "publish closed by client", _now_iso())
-                    )
-                    await websocket.close()
-                    return
-                else:
-                    await websocket.send_json(
-                        error_message("invalid_payload", f"unknown control type: {ptype}", session_id)
-                    )
-    except WebSocketDisconnect:
-        log.debug("publish WS disconnected: session=%s camera=%s frames=%d",
-                  session_id, camera_id, frames_received)
+
+                if "text" in msg and msg["text"] is not None:
+                    try:
+                        payload = json.loads(msg["text"])
+                    except json.JSONDecodeError:
+                        await websocket.send_json(error_message("invalid_payload", "non-JSON text", session_id))
+                        continue
+                    ptype = payload.get("type") if isinstance(payload, dict) else None
+                    if ptype == "ping":
+                        await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
+                    elif ptype == "unsubscribe":
+                        await websocket.send_json(
+                            status_message(session_id, "stream_ended", "publish closed by client", _now_iso())
+                        )
+                        await websocket.close()
+                        return
+                    else:
+                        await websocket.send_json(
+                            error_message("invalid_payload", f"unknown control type: {ptype}", session_id)
+                        )
+            except WebSocketDisconnect:
+                # Clean disconnect — let the outer handler do cleanup.
+                raise
+            except Exception:  # noqa: BLE001 — intentional safety net
+                log.exception(
+                    "publish frame processing failed publish_exception=1 "
+                    "session=%s camera=%s frames=%d",
+                    session_id, camera_id, frames_received,
+                )
+                # Skip this frame and keep the loop alive.
+                continue
+    except WebSocketDisconnect as e:
+        # BL-249: structured close logging. e.code follows RFC 6455
+        # (1000 normal, 1001 going away, 1006 abnormal — the mobile drop
+        # signature, etc.). e.reason is empty for most browser closes.
+        log.info(
+            "publish WS disconnected: session=%s camera=%s frames=%d "
+            "ws_close_code=%s ws_close_reason=%r",
+            session_id, camera_id, frames_received,
+            getattr(e, "code", "unknown"),
+            getattr(e, "reason", ""),
+        )
+    except Exception:  # noqa: BLE001 — unexpected closure path
+        # BL-249: capture full traceback for non-disconnect failures.
+        # Without this the WS dies and CloudWatch shows nothing at INFO
+        # level — exactly the pattern we saw before BL-247.
+        log.exception(
+            "publish WS aborted unexpectedly publish_exception=1 "
+            "session=%s camera=%s frames=%d",
+            session_id, camera_id, frames_received,
+        )
     finally:
         frame_store.drop(session_id, camera_id)
         drop_tracker(session_id, camera_id)

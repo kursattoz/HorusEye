@@ -48,6 +48,10 @@ Script: `npm run validate:prd`
 | PRD-015 | PRD-015-reports-deliverables.md | Raporlar & Teslim Edilebilirler | AKTIF | 1.0 | PRD-000, PRD-001, PRD-003, PRD-014 |
 | PRD-016 | PRD-016-notifications.md | Bildirim Merkezi | AKTIF | 2.0 | PRD-000, PRD-001 |
 | PRD-017 | PRD-017-dataset-training-pipeline.md | Veri Seti Stratejisi & Model Eğitim Pipeline'ı | AKTIF | 1.1 | PRD-000, PRD-013 |
+| PRD-018 | PRD-018-sprint-backlog.md | Sprint Backlog Sistemi | AKTIF | 1.0 | PRD-000, PRD-001 |
+| PRD-019 | PRD-019-camera-pairing.md | Kamera Eşleştirme (Multi-Camera) | AKTIF | 1.0 | PRD-000, PRD-013 |
+| PRD-020 | PRD-020-phase-b-ai-pipeline.md | Phase B AI Pipeline (Sprint 7-12) | AKTIF | 1.0 | PRD-000, PRD-013, PRD-017, PRD-018 |
+| PRD-021 | PRD-021-dataset-roadmap.md | Dataset & Reliability Yol Haritası (Sprint 13-18) | AKTIF | 1.0 | PRD-000, PRD-013, PRD-017, PRD-018, PRD-019, PRD-020 |
 
 ---
 

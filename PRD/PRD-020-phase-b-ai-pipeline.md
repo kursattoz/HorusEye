@@ -348,6 +348,9 @@ PRD-020 = WHEN/HOW (sprint, atama, sıra, deliverable).
 Spec değişiklikleri PRD-013'e yapılır; PRD-020 sprint'lerini güncellemez
 (yeni backlog item ekler).
 
+**Phase C Continuation:** Sprint 12 sonrası (Sprint 13-18) **PRD-021**'de
+tanımlanmıştır. PRD-020 Sprint 7-12 ile sınırlıdır.
+
 ### 4.5 Risk Register
 
 | Risk | Olasılık | Etki | Mitigation |
