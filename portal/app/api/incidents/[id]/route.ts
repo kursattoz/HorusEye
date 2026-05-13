@@ -2,6 +2,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/auth/api';
 import { log } from '@/lib/logger';
+import { logIncidentDecision } from '@/lib/audit/incident-decision';
+import type { ProctorDecision } from '@/types';
 
 interface Params { params: Promise<{ id: string }> }
 
@@ -53,6 +55,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
   }
 
+  // Capture previous decision state for the audit before the write.
+  const { data: prev } = await auth.supabase
+    .from('incidents')
+    .select('proctor_decision, session_id, student_id, incident_type, severity')
+    .eq('id', id)
+    .maybeSingle();
+
   const { data, error } = await auth.supabase
     .from('incidents')
     .update(updates)
@@ -61,15 +70,32 @@ export async function PUT(request: NextRequest, { params }: Params) {
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await log({
-    event_type:    'system.info',
-    severity:      'info',
-    user_id:       auth.userId,
-    resource_type: 'incident',
-    resource_id:   id,
-    action:        `Incident reviewed/decided`,
-    metadata:      { fields: Object.keys(updates), decision: data.proctor_decision },
-  });
+  if (body.proctor_decision !== undefined) {
+    await logIncidentDecision({
+      incidentId:       id,
+      sessionId:        (prev?.session_id ?? data.session_id) as string | null,
+      studentId:        (prev?.student_id ?? data.student_id) as string | null,
+      incidentType:     (prev?.incident_type ?? data.incident_type) as string,
+      severity:         (prev?.severity ?? data.severity) as string,
+      previousDecision: (prev?.proctor_decision ?? null) as ProctorDecision | null,
+      newDecision:      data.proctor_decision as ProctorDecision | null,
+      decisionNote:     (updates.decision_note as string | undefined) ?? null,
+      decidedBy:        auth.userId,
+      source:           body.source === 'modal' || body.source === 'bulk' || body.source === 'timeline'
+                          ? body.source
+                          : 'api',
+    });
+  } else {
+    await log({
+      event_type:    'system.info',
+      severity:      'info',
+      user_id:       auth.userId,
+      resource_type: 'incident',
+      resource_id:   id,
+      action:        'Incident reviewed (no decision change)',
+      metadata:      { fields: Object.keys(updates) },
+    });
+  }
 
   return NextResponse.json({ incident: data });
 }
