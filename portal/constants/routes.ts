@@ -26,6 +26,7 @@ export const routes = {
   studentDetail:   (id: string) => `/students/${id}`,
   datasets:        '/admin/datasets',
   datasetDetail:   (id: string) => `/admin/datasets/${id}`,
+  cameraOverlap:   '/admin/camera-overlap',
   settings:        '/settings',
   notifications:   '/notifications',
   monitor:         '/dev/monitor',

@@ -78,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { label: 'Students',  href: routes.students,      icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
       { label: 'Rooms',     href: routes.examRooms,     icon: Laptop,          roles: ['admin'] },
       { label: 'Datasets',  href: routes.datasets,      icon: Database,        roles: ['admin'] },
+      { label: 'Cam Overlap', href: routes.cameraOverlap, icon: Laptop,        roles: ['admin'] },
     ],
   },
   {
