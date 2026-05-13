@@ -29,7 +29,7 @@ export default async function ExamReviewPage({ params }: Params) {
     .eq('exam_id', id)
     .order('started_at', { ascending: true });
 
-  const sessions = (sessionsData ?? []) as Array<{
+  const sessions = (sessionsData ?? []) as unknown as Array<{
     id: string;
     started_at: string | null;
     ended_at: string | null;

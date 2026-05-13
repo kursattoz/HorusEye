@@ -32,7 +32,10 @@ export function IncidentEvidencePreview({ incidentId }: { incidentId: string }) 
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true); setError(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading transition before async fetch
+    setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears prior error before refetch
+    setError(null);
     void fetch(`/api/incidents/${incidentId}/context`)
       .then(async (r) => {
         const body = await r.json();

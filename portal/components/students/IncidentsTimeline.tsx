@@ -68,7 +68,9 @@ export function IncidentsTimeline({ studentUuid }: { studentUuid: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading transition before async fetch
     setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clears prior error before refetch
     setError(null);
     const params = new URLSearchParams();
     params.set('limit', String(PAGE_SIZE));
