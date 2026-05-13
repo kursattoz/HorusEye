@@ -127,3 +127,4 @@ docs/team-roles.html
 *.dll
 *.so
 *.dylib
+ai-service/cvat/.env
