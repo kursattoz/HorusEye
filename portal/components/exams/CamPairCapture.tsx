@@ -453,8 +453,26 @@ export function CamPairCapture({ token, redeem }: Props) {
         </Button>
       </div>
 
-      {wsState === 'error' && (
-        <Button variant="outline" size="sm" onClick={openWS}>
+      {/* Manual Reconnect surface:
+          - 'error': initial WS open failed before any successful connect
+          - 'closed' + auto-retry exhausted: phone connected at least once,
+            then dropped 3× and auto-backoff (BL-253) gave up. Without this
+            second branch the phone stayed "closed" forever and the user
+            had to reload the tab.
+          The click resets the retry counter so subsequent failures get
+          a fresh backoff cycle instead of immediately giving up. */}
+      {(wsState === 'error'
+        || (wsState === 'closed' && reconnectAttempts >= RECONNECT_DELAYS_MS.length)) && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            reconnectAttemptsRef.current = 0;
+            setReconnectAttempts(0);
+            void postHealthEvent('reconnect_manual', { from: wsState });
+            openWS();
+          }}
+        >
           <RefreshCcw size={12} /> Reconnect
         </Button>
       )}
