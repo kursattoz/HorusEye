@@ -455,6 +455,37 @@ export function unblockRequestTemplate(data: UnblockRequestData): { subject: str
   return { subject, html };
 }
 
+// ─── Template: HorusEye PDF report email (BL-240) ────────────────────────────
+export interface ReportReadyData {
+  examTitle:      string;
+  scope:          'exam' | 'session' | 'student';
+  sender:         string;
+  message:        string | null;
+  incidentCount:  number;
+}
+
+export function reportReadyTemplate(data: ReportReadyData): string {
+  const scopeLabel =
+    data.scope === 'session' ? 'session-level' :
+    data.scope === 'student' ? 'student-level' : 'full-exam';
+  const subject = `HorusEye report — ${data.examTitle}`;
+  return layout(subject, `
+    ${heading('Exam report ready')}
+    ${paragraph(`<strong>${escapeHtml(data.sender)}</strong> has shared a ${scopeLabel} HorusEye report.`)}
+    ${infoBox([
+      { label: 'Exam',      value: escapeHtml(data.examTitle) },
+      { label: 'Scope',     value: scopeLabel },
+      { label: 'Incidents', value: String(data.incidentCount) },
+    ])}
+    ${data.message ? `
+      <div style="background:#f4f4f5;border-left:4px solid #18181b;border-radius:0 6px 6px 0;padding:16px;margin-bottom:24px;">
+        <p style="margin:0;font-size:14px;line-height:1.7;color:#3f3f46;white-space:pre-wrap;">${escapeHtml(data.message)}</p>
+      </div>
+    ` : ''}
+    ${paragraph('The full report is attached as a PDF. Decisions in the report are audit-logged in HorusEye.')}
+  `);
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function escapeHtml(str: string): string {
   return str
