@@ -10,7 +10,7 @@ import { ExamReviewQueue } from '@/components/exams/ExamReviewQueue';
 import { routes } from '@/constants/routes';
 import type { ProctorDecision } from '@/types';
 
-interface Exam { id: string; title: string; scheduled_at: string | null }
+interface Exam { id: string; name: string; scheduled_date: string | null }
 interface Session {
   id: string;
   started_at: string | null;
@@ -50,7 +50,7 @@ export function ExamReview({ exam, sessions }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link href={routes.examDetail(exam.id)} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-            <ArrowLeft size={14} /> {exam.title}
+            <ArrowLeft size={14} /> {exam.name}
           </Link>
           <h1 className="mt-1 text-2xl font-bold tracking-tight inline-flex items-center gap-2">
             <ClipboardCheck size={20} /> Post-exam review

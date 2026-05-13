@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const message = typeof body.message === 'string' ? body.message.slice(0, 2048) : null;
 
   const { data: exam } = await supabase
-    .from('exams').select('id, title, scheduled_at').eq('id', examId).maybeSingle();
+    .from('exams').select('id, name, scheduled_date').eq('id', examId).maybeSingle();
   if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
 
   interface SessionRow {
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const buffer = await generateIncidentReportPdf(reportData);
   const fname = [
     'horuseye',
-    exam.title.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
+    exam.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
     scope,
     scope === 'session' ? sessionId?.slice(0, 8) : scope === 'student' ? studentId : null,
     new Date().toISOString().slice(0, 10),
@@ -116,9 +116,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   await Promise.all(cleanRecipients.map((to) =>
     sendMail({
       to,
-      subject: `HorusEye report — ${exam.title}`,
+      subject: `HorusEye report — ${exam.name}`,
       html:    reportReadyTemplate({
-        examTitle:    exam.title,
+        examTitle:    exam.name,
         scope,
         sender:       reportData.generated_by,
         message,
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // BL-244 — in-app notification for admins that a report was sent.
   await notifyAdmins(
     'system',
-    `Report emailed — ${exam.title}`,
+    `Report emailed — ${exam.name}`,
     `${cleanRecipients.length} recipient(s) · scope=${scope} · ${reportData.incidents.length} incident(s)`,
     routes.examDetail(examId),
   );

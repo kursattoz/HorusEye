@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ChevronLeft, Radio } from 'lucide-react';
+import { ChevronLeft, ClipboardCheck, Radio } from 'lucide-react';
 import { getCurrentUser } from '@/app/actions/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
@@ -40,11 +40,18 @@ export default async function ExamDetailPage({ params }: Params) {
               {exam.scheduled_date} · {exam.scheduled_start.slice(0,5)}–{exam.scheduled_end.slice(0,5)} · {exam.duration_minutes} min
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link href={routes.examLive(id)}>
-              <Radio size={16} /> Live monitor
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link href={routes.examReview(id)}>
+                <ClipboardCheck size={16} /> Review
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={routes.examLive(id)}>
+                <Radio size={16} /> Live monitor
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 

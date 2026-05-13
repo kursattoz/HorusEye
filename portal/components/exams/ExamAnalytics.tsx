@@ -10,8 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ExamRow {
   id: string;
-  title: string;
-  scheduled_at: string | null;
+  name: string;
+  scheduled_date: string | null;
   total: number;
   clean: number;
   suspicious: number;
@@ -167,8 +167,8 @@ export function ExamAnalytics() {
             <tbody className="divide-y">
               {data.exams.map((e) => (
                 <tr key={e.id} className="hover:bg-muted/30">
-                  <td className="p-2 font-medium">{e.title}</td>
-                  <td className="p-2 text-xs text-muted-foreground">{e.scheduled_at ? new Date(e.scheduled_at).toLocaleDateString() : '—'}</td>
+                  <td className="p-2 font-medium">{e.name}</td>
+                  <td className="p-2 text-xs text-muted-foreground">{e.scheduled_date ?? '—'}</td>
                   <td className="p-2 text-right tabular-nums">{e.total}</td>
                   <td className="p-2 text-right tabular-nums text-red-700">{e.violation}</td>
                   <td className="p-2 text-right tabular-nums text-amber-700">{e.suspicious}</td>

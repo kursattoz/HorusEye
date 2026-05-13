@@ -49,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       status: string;
       started_at: string | null;
       ended_at: string | null;
-      exams: { id: string; title: string; scheduled_at: string | null } | null;
+      exams: { id: string; name: string; scheduled_date: string | null } | null;
       exam_rooms: { id: string; name: string } | null;
     } | null;
   }
@@ -62,7 +62,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       created_at,
       exam_sessions:session_id (
         id, status, started_at, ended_at,
-        exams:exam_id (id, title, scheduled_at),
+        exams:exam_id (id, name, scheduled_date),
         exam_rooms:room_id (id, name)
       )
     `)

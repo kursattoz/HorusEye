@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Plus, Upload, Search, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ interface ImportResult {
 }
 
 export function StudentsTable() {
+  const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
@@ -219,13 +220,13 @@ export function StudentsTable() {
             </thead>
             <tbody>
               {students.map(s => (
-                <tr key={s.id} className="border-t hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono text-xs">
-                    <Link href={routes.studentDetail(s.id)} className="hover:underline">{s.student_id}</Link>
-                  </td>
-                  <td className="px-3 py-2">
-                    <Link href={routes.studentDetail(s.id)} className="hover:underline">{s.full_name}</Link>
-                  </td>
+                <tr
+                  key={s.id}
+                  className="border-t hover:bg-muted/30 cursor-pointer"
+                  onClick={() => router.push(routes.studentDetail(s.id))}
+                >
+                  <td className="px-3 py-2 font-mono text-xs">{s.student_id}</td>
+                  <td className="px-3 py-2 font-medium">{s.full_name}</td>
                   <td className="px-3 py-2 text-muted-foreground">{s.email ?? '—'}</td>
                   <td className="px-3 py-2 text-muted-foreground">{s.department ?? '—'}</td>
                   <td className="px-3 py-2">
@@ -236,7 +237,7 @@ export function StudentsTable() {
                       hideLow
                     />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       variant="ghost"

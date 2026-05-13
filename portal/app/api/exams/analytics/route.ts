@@ -13,9 +13,9 @@ export async function GET(_req: NextRequest) {
   const [{ data: exams }, { data: incidents }] = await Promise.all([
     supabase
       .from('exams')
-      .select('id, title, scheduled_at')
-      .gte('scheduled_at', since)
-      .order('scheduled_at', { ascending: false })
+      .select('id, name, scheduled_date')
+      .gte('scheduled_date', since.slice(0, 10))
+      .order('scheduled_date', { ascending: false })
       .limit(30),
     supabase
       .from('incidents')
@@ -71,10 +71,10 @@ export async function GET(_req: NextRequest) {
     }
   }
 
-  const examRows = ((exams ?? []) as Array<{ id: string; title: string; scheduled_at: string | null }>).map((e) => ({
-    id:           e.id,
-    title:        e.title,
-    scheduled_at: e.scheduled_at,
+  const examRows = ((exams ?? []) as Array<{ id: string; name: string; scheduled_date: string | null }>).map((e) => ({
+    id:             e.id,
+    name:           e.name,
+    scheduled_date: e.scheduled_date,
     ...byExam.get(e.id) ?? { total: 0, clean: 0, suspicious: 0, violation: 0, pending: 0 },
   }));
 

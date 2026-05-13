@@ -39,7 +39,7 @@ interface PastSession {
     status: string;
     started_at: string | null;
     ended_at: string | null;
-    exam: { id: string; title: string; scheduled_at: string | null } | null;
+    exam: { id: string; name: string; scheduled_date: string | null } | null;
     room: { id: string; name: string } | null;
   } | null;
   incident_count: number;
@@ -166,7 +166,7 @@ function SessionsList({ sessions }: { sessions: PastSession[] }) {
             <li key={s.session_id} className="flex items-center justify-between gap-4 p-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {s.session?.exam?.title ?? 'Unknown exam'}
+                  {s.session?.exam?.name ?? 'Unknown exam'}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <CalendarRange size={12} />

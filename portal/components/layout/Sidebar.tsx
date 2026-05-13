@@ -21,6 +21,7 @@ import {
   Kanban,
   CalendarDays,
   Trash2,
+  BarChart3,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
 import { switchTheme } from '@/lib/utils/switchTheme';
@@ -71,9 +72,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Exam Module',
     items: [
-      { label: 'Exams',     href: routes.exams,     icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
-      { label: 'Students',  href: routes.students,  icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
-      { label: 'Rooms',     href: routes.examRooms, icon: Laptop,          roles: ['admin'] },
+      { label: 'Exams',     href: routes.exams,         icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Analytics', href: routes.examAnalytics, icon: BarChart3,       roles: ['admin','supervisor','assistant'] },
+      { label: 'Students',  href: routes.students,      icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Rooms',     href: routes.examRooms,     icon: Laptop,          roles: ['admin'] },
     ],
   },
   {

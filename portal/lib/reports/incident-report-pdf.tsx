@@ -23,7 +23,7 @@ export interface ReportData {
   scope: ReportScope;
   generated_at: string;
   generated_by: string;
-  exam: { id: string; title: string; scheduled_at: string | null };
+  exam: { id: string; name: string; scheduled_date: string | null };
   session?: { id: string; started_at: string | null; ended_at: string | null; room: string | null };
   student?: { student_id: string; full_name: string; department: string | null };
   incidents: IncidentRow[];
@@ -95,8 +95,8 @@ function HorusEyeReport({ data }: { data: ReportData }) {
         </Text>
 
         <View>
-          <Row label="Exam"    value={data.exam.title} />
-          {data.exam.scheduled_at && <Row label="Scheduled" value={new Date(data.exam.scheduled_at).toLocaleString()} />}
+          <Row label="Exam"    value={data.exam.name} />
+          {data.exam.scheduled_date && <Row label="Scheduled" value={data.exam.scheduled_date} />}
           {data.session && <Row label="Session"  value={`${data.session.room ?? 'Room ?'}${data.session.started_at ? ' · ' + new Date(data.session.started_at).toLocaleString() : ''}`} />}
           {data.student && <Row label="Student"  value={`${data.student.full_name} (${data.student.student_id})${data.student.department ? ' · ' + data.student.department : ''}`} />}
         </View>

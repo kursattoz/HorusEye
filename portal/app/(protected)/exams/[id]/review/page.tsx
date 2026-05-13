@@ -18,7 +18,7 @@ export default async function ExamReviewPage({ params }: Params) {
   const supabase = await createClient();
   const { data: exam } = await supabase
     .from('exams')
-    .select('id, title, scheduled_at')
+    .select('id, name, scheduled_date')
     .eq('id', id)
     .maybeSingle();
   if (!exam) notFound();

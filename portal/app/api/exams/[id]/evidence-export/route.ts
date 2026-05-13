@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const sessionScope = url.searchParams.get('session_id');
 
   const { data: exam } = await supabase
-    .from('exams').select('id, title, scheduled_at').eq('id', examId).maybeSingle();
+    .from('exams').select('id, name, scheduled_date').eq('id', examId).maybeSingle();
   if (!exam) return new Response('Exam not found', { status: 404 });
 
   const { data: sessionsData } = await supabase
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   // manifest.json + a README
   zip.file('manifest.json', JSON.stringify({
     exam_id:      exam.id,
-    exam_title:   exam.title,
+    exam_name:    exam.name,
     scope:        sessionScope ? 'session' : 'exam',
     session_id:   sessionScope,
     generated_at: new Date().toISOString(),
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   zip.file('README.txt',
     `HorusEye legal-hold evidence export\n` +
-    `Exam: ${exam.title}\n` +
+    `Exam: ${exam.name}\n` +
     `Generated: ${new Date().toISOString()}\n\n` +
     `Each file's SHA-256 hash and incident metadata is in manifest.json.\n` +
     `Files are stored under evidence/<session_id>/<incident_id>-<n>.<ext>.\n`
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const fname = [
     'horuseye',
-    exam.title.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
+    exam.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
     'evidence',
     sessionScope ? sessionScope.slice(0, 8) : 'exam',
     new Date().toISOString().slice(0, 10),

@@ -1,0 +1,3296 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="tr" xml:lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="HorusEye Team" />
+  <meta name="dcterms.date" content="2026-05-13" />
+  <title>HorusEye Dataset Geliştirme Planı v2.1 (Final)</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {  background-color: #f8f8f8; }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ef2929; } /* Alert */
+    code span.an { color: #8f5902; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #204a87; } /* Attribute */
+    code span.bn { color: #0000cf; } /* BaseN */
+    code span.cf { color: #204a87; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4e9a06; } /* Char */
+    code span.cn { color: #8f5902; } /* Constant */
+    code span.co { color: #8f5902; font-style: italic; } /* Comment */
+    code span.cv { color: #8f5902; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #8f5902; font-weight: bold; font-style: italic; } /* Documentation */
+    code span.dt { color: #204a87; } /* DataType */
+    code span.dv { color: #0000cf; } /* DecVal */
+    code span.er { color: #a40000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #0000cf; } /* Float */
+    code span.fu { color: #204a87; font-weight: bold; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #8f5902; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #204a87; font-weight: bold; } /* Keyword */
+    code span.op { color: #ce5c00; font-weight: bold; } /* Operator */
+    code span.ot { color: #8f5902; } /* Other */
+    code span.pp { color: #8f5902; font-style: italic; } /* Preprocessor */
+    code span.sc { color: #ce5c00; font-weight: bold; } /* SpecialChar */
+    code span.ss { color: #4e9a06; } /* SpecialString */
+    code span.st { color: #4e9a06; } /* String */
+    code span.va { color: #000000; } /* Variable */
+    code span.vs { color: #4e9a06; } /* VerbatimString */
+    code span.wa { color: #8f5902; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">HorusEye Dataset Geliştirme Planı v2.1 (Final)</h1>
+<p class="subtitle">Sınav Gözetleme AI — Sprint 11/12 Sonrası Nihai Yol
+Haritası</p>
+<p class="author">HorusEye Team</p>
+<p class="date">2026-05-13</p>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#yönetici-özeti" id="toc-yönetici-özeti"><span
+class="toc-section-number">1</span> Yönetici Özeti</a></li>
+<li><a href="#mevcut-durum-analizi" id="toc-mevcut-durum-analizi"><span
+class="toc-section-number">2</span> Mevcut Durum Analizi</a>
+<ul>
+<li><a href="#sprint-11-12-kapanış-çıktıları-live"
+id="toc-sprint-11-12-kapanış-çıktıları-live"><span
+class="toc-section-number">2.1</span> Sprint 11 &amp; 12 Kapanış
+Çıktıları (Live)</a>
+<ul>
+<li><a href="#sprint-11-profile-risk-model"
+id="toc-sprint-11-profile-risk-model"><span
+class="toc-section-number">2.1.1</span> Sprint 11 (Profile + Risk
+Model)</a></li>
+<li><a href="#sprint-12-review-workflow-auto-reports"
+id="toc-sprint-12-review-workflow-auto-reports"><span
+class="toc-section-number">2.1.2</span> Sprint 12 (Review Workflow +
+Auto-Reports)</a></li>
+</ul></li>
+<li><a href="#bilinen-problem-camera-pair-drop-p0"
+id="toc-bilinen-problem-camera-pair-drop-p0"><span
+class="toc-section-number">2.2</span> Bilinen Problem — Camera Pair Drop
+(P0)</a></li>
+<li><a href="#aktif-modeller" id="toc-aktif-modeller"><span
+class="toc-section-number">2.3</span> Aktif Modeller</a>
+<ul>
+<li><a href="#coco-2017-yolov8n-stock"
+id="toc-coco-2017-yolov8n-stock"><span
+class="toc-section-number">2.3.1</span> COCO 2017 — YOLOv8n
+(Stock)</a></li>
+<li><a href="#mediapipe-face-mesh-google-pre-trained"
+id="toc-mediapipe-face-mesh-google-pre-trained"><span
+class="toc-section-number">2.3.2</span> MediaPipe Face Mesh — Google
+Pre-trained</a></li>
+<li><a href="#insightface-buffalo_l-pre-trained-onnx-paketi"
+id="toc-insightface-buffalo_l-pre-trained-onnx-paketi"><span
+class="toc-section-number">2.3.3</span> InsightFace Buffalo_L —
+pre-trained ONNX paketi</a></li>
+</ul></li>
+<li><a href="#eksik-yanlış-konfigürasyon"
+id="toc-eksik-yanlış-konfigürasyon"><span
+class="toc-section-number">2.4</span> Eksik / Yanlış Konfigürasyon</a>
+<ul>
+<li><a href="#config.yaml-class-mapping-bozuk"
+id="toc-config.yaml-class-mapping-bozuk"><span
+class="toc-section-number">2.4.1</span> config.yaml class mapping
+bozuk</a></li>
+<li><a href="#boş-klasörler" id="toc-boş-klasörler"><span
+class="toc-section-number">2.4.2</span> Boş Klasörler</a></li>
+<li><a href="#eksik-tespit-sınıfları"
+id="toc-eksik-tespit-sınıfları"><span
+class="toc-section-number">2.4.3</span> Eksik Tespit Sınıfları</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#faz-uyum-tasarım-kararları"
+id="toc-faz-uyum-tasarım-kararları"><span
+class="toc-section-number">3</span> Faz Uyum &amp; Tasarım Kararları</a>
+<ul>
+<li><a href="#faz-0-1-uyumu-foundation"
+id="toc-faz-0-1-uyumu-foundation"><span
+class="toc-section-number">3.1</span> Faz 0-1 Uyumu
+(Foundation)</a></li>
+<li><a href="#faz-2-uyumu-sprint-12-live"
+id="toc-faz-2-uyumu-sprint-12-live"><span
+class="toc-section-number">3.2</span> Faz 2 Uyumu (Sprint 12
+live)</a></li>
+<li><a href="#faz-4-uyumu-prd-013-019-020"
+id="toc-faz-4-uyumu-prd-013-019-020"><span
+class="toc-section-number">3.3</span> Faz 4 Uyumu (PRD-013 / 019 /
+020)</a></li>
+<li><a href="#tasarım-kararları-v2.0-sabit"
+id="toc-tasarım-kararları-v2.0-sabit"><span
+class="toc-section-number">3.4</span> Tasarım Kararları (v2.0 —
+sabit)</a>
+<ul>
+<li><a href="#karar-1-anonimize-frame-storage-tablo-bucket"
+id="toc-karar-1-anonimize-frame-storage-tablo-bucket"><span
+class="toc-section-number">3.4.1</span> Karar 1 — Anonimize Frame
+Storage: Tablo + Bucket</a></li>
+<li><a href="#karar-2-bucket-konfigürasyonu"
+id="toc-karar-2-bucket-konfigürasyonu"><span
+class="toc-section-number">3.4.2</span> Karar 2 — Bucket
+Konfigürasyonu</a></li>
+<li><a href="#karar-3-audit-event-type-genişleme"
+id="toc-karar-3-audit-event-type-genişleme"><span
+class="toc-section-number">3.4.3</span> Karar 3 — Audit Event Type
+Genişleme</a></li>
+<li><a href="#karar-4-tarihler-relative"
+id="toc-karar-4-tarihler-relative"><span
+class="toc-section-number">3.4.4</span> Karar 4 — Tarihler
+Relative</a></li>
+<li><a href="#karar-5-detection-worker-pool-p2-sprint-13te-stretch"
+id="toc-karar-5-detection-worker-pool-p2-sprint-13te-stretch"><span
+class="toc-section-number">3.4.5</span> Karar 5 — Detection Worker Pool
+(P2) Sprint 13’te Stretch</a></li>
+<li><a href="#karar-6-bl-numaralandırma"
+id="toc-karar-6-bl-numaralandırma"><span
+class="toc-section-number">3.4.6</span> Karar 6 — BL
+Numaralandırma</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#genişletilmiş-tespit-hedefleri"
+id="toc-genişletilmiş-tespit-hedefleri"><span
+class="toc-section-number">4</span> Genişletilmiş Tespit Hedefleri</a>
+<ul>
+<li><a href="#kategori-a-nesne-tespiti-yolo-fine-tune"
+id="toc-kategori-a-nesne-tespiti-yolo-fine-tune"><span
+class="toc-section-number">4.1</span> Kategori A — Nesne Tespiti (YOLO
+fine-tune)</a></li>
+<li><a href="#kategori-b-vücut-pozisyonu-hareket"
+id="toc-kategori-b-vücut-pozisyonu-hareket"><span
+class="toc-section-number">4.2</span> Kategori B — Vücut Pozisyonu /
+Hareket</a></li>
+<li><a href="#kategori-c-kimlik-yüz"
+id="toc-kategori-c-kimlik-yüz"><span
+class="toc-section-number">4.3</span> Kategori C — Kimlik &amp;
+Yüz</a></li>
+</ul></li>
+<li><a href="#dataset-kaynak-kataloğu"
+id="toc-dataset-kaynak-kataloğu"><span
+class="toc-section-number">5</span> Dataset Kaynak Kataloğu</a>
+<ul>
+<li><a href="#nesne-tespit-datasetleri"
+id="toc-nesne-tespit-datasetleri"><span
+class="toc-section-number">5.1</span> Nesne Tespit Datasetleri</a>
+<ul>
+<li><a href="#coco-2017-common-objects-in-context"
+id="toc-coco-2017-common-objects-in-context"><span
+class="toc-section-number">5.1.1</span> COCO 2017 (Common Objects in
+Context)</a></li>
+<li><a href="#open-images-v7-google"
+id="toc-open-images-v7-google"><span
+class="toc-section-number">5.1.2</span> Open Images V7 (Google)</a></li>
+<li><a href="#roboflow-universe" id="toc-roboflow-universe"><span
+class="toc-section-number">5.1.3</span> Roboflow Universe</a></li>
+<li><a href="#objects365-v2" id="toc-objects365-v2"><span
+class="toc-section-number">5.1.4</span> Objects365 V2</a></li>
+<li><a href="#lvis-v1-large-vocabulary-instance-segmentation"
+id="toc-lvis-v1-large-vocabulary-instance-segmentation"><span
+class="toc-section-number">5.1.5</span> LVIS v1 (Large Vocabulary
+Instance Segmentation)</a></li>
+</ul></li>
+<li><a href="#pose-action-recognition-datasetleri"
+id="toc-pose-action-recognition-datasetleri"><span
+class="toc-section-number">5.2</span> Pose / Action Recognition
+Datasetleri</a>
+<ul>
+<li><a href="#coco-keypoints" id="toc-coco-keypoints"><span
+class="toc-section-number">5.2.1</span> COCO Keypoints</a></li>
+<li><a href="#ava-actions-v2.2-atomic-visual-actions"
+id="toc-ava-actions-v2.2-atomic-visual-actions"><span
+class="toc-section-number">5.2.2</span> AVA Actions v2.2 (Atomic Visual
+Actions)</a></li>
+<li><a href="#kinetics-700-2020" id="toc-kinetics-700-2020"><span
+class="toc-section-number">5.2.3</span> Kinetics-700-2020</a></li>
+<li><a href="#ntu-rgbd-120" id="toc-ntu-rgbd-120"><span
+class="toc-section-number">5.2.4</span> NTU RGB+D 120</a></li>
+<li><a href="#hagrid-hand-gesture-recognition-image-dataset"
+id="toc-hagrid-hand-gesture-recognition-image-dataset"><span
+class="toc-section-number">5.2.5</span> HaGRID (HAnd Gesture Recognition
+Image Dataset)</a></li>
+</ul></li>
+<li><a href="#gaze-datasetleri" id="toc-gaze-datasetleri"><span
+class="toc-section-number">5.3</span> Gaze Datasetleri</a>
+<ul>
+<li><a href="#gaze360" id="toc-gaze360"><span
+class="toc-section-number">5.3.1</span> Gaze360</a></li>
+<li><a href="#eth-xgaze" id="toc-eth-xgaze"><span
+class="toc-section-number">5.3.2</span> ETH-XGaze</a></li>
+<li><a href="#mpiigaze-mpiifacegaze"
+id="toc-mpiigaze-mpiifacegaze"><span
+class="toc-section-number">5.3.3</span> MPIIGaze / MPIIFaceGaze</a></li>
+<li><a href="#l2cs-net-pretrained-model"
+id="toc-l2cs-net-pretrained-model"><span
+class="toc-section-number">5.3.4</span> L2CS-Net (Pretrained
+Model)</a></li>
+</ul></li>
+<li><a href="#yüz-maske-datasetleri"
+id="toc-yüz-maske-datasetleri"><span
+class="toc-section-number">5.4</span> Yüz &amp; Maske Datasetleri</a>
+<ul>
+<li><a href="#maskedface-net" id="toc-maskedface-net"><span
+class="toc-section-number">5.4.1</span> MaskedFace-Net</a></li>
+<li><a href="#wider-face" id="toc-wider-face"><span
+class="toc-section-number">5.4.2</span> WIDER FACE</a></li>
+</ul></li>
+<li><a href="#person-re-identification-çoklu-kamera"
+id="toc-person-re-identification-çoklu-kamera"><span
+class="toc-section-number">5.5</span> Person Re-Identification (Çoklu
+Kamera)</a>
+<ul>
+<li><a href="#market-1501" id="toc-market-1501"><span
+class="toc-section-number">5.5.1</span> Market-1501</a></li>
+<li><a href="#msmt17" id="toc-msmt17"><span
+class="toc-section-number">5.5.2</span> MSMT17</a></li>
+<li><a href="#cuhk03" id="toc-cuhk03"><span
+class="toc-section-number">5.5.3</span> CUHK03</a></li>
+</ul></li>
+<li><a href="#cheating-specific-akademik-topluluk"
+id="toc-cheating-specific-akademik-topluluk"><span
+class="toc-section-number">5.6</span> Cheating-Specific (Akademik /
+Topluluk)</a></li>
+</ul></li>
+<li><a href="#veri-toplama-metodolojisi"
+id="toc-veri-toplama-metodolojisi"><span
+class="toc-section-number">6</span> Veri Toplama Metodolojisi</a>
+<ul>
+<li><a href="#pipeline-genel-akışı" id="toc-pipeline-genel-akışı"><span
+class="toc-section-number">6.1</span> Pipeline Genel Akışı</a></li>
+<li><a href="#kontrollü-veri-toplama-protokolü"
+id="toc-kontrollü-veri-toplama-protokolü"><span
+class="toc-section-number">6.2</span> Kontrollü Veri Toplama
+Protokolü</a>
+<ul>
+<li><a href="#genel-kurallar" id="toc-genel-kurallar"><span
+class="toc-section-number">6.2.1</span> Genel Kurallar</a></li>
+<li><a href="#senaryo-şablonları" id="toc-senaryo-şablonları"><span
+class="toc-section-number">6.2.2</span> Senaryo Şablonları</a></li>
+<li><a href="#annotation" id="toc-annotation"><span
+class="toc-section-number">6.2.3</span> Annotation</a></li>
+<li><a href="#privacy-kvkk" id="toc-privacy-kvkk"><span
+class="toc-section-number">6.2.4</span> Privacy / KVKK</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#sprint-1318-detaylı-planlama"
+id="toc-sprint-1318-detaylı-planlama"><span
+class="toc-section-number">7</span> Sprint 13–18 Detaylı Planlama</a>
+<ul>
+<li><a href="#sprint-13-live-pipeline-reliability"
+id="toc-sprint-13-live-pipeline-reliability"><span
+class="toc-section-number">7.1</span> Sprint 13 — Live Pipeline
+Reliability</a>
+<ul>
+<li><a href="#hedef-metrikler" id="toc-hedef-metrikler"><span
+class="toc-section-number">7.1.1</span> Hedef Metrikler</a></li>
+<li><a href="#backlog" id="toc-backlog"><span
+class="toc-section-number">7.1.2</span> Backlog</a></li>
+<li><a href="#kabul-kriterleri" id="toc-kabul-kriterleri"><span
+class="toc-section-number">7.1.3</span> Kabul Kriterleri</a></li>
+<li><a href="#risk-notu" id="toc-risk-notu"><span
+class="toc-section-number">7.1.4</span> Risk Notu</a></li>
+</ul></li>
+<li><a href="#sprint-14-dataset-pipeline-foundation"
+id="toc-sprint-14-dataset-pipeline-foundation"><span
+class="toc-section-number">7.2</span> Sprint 14 — Dataset Pipeline
+Foundation</a>
+<ul>
+<li><a href="#backlog-1" id="toc-backlog-1"><span
+class="toc-section-number">7.2.1</span> Backlog</a></li>
+<li><a href="#çıktı" id="toc-çıktı"><span
+class="toc-section-number">7.2.2</span> Çıktı</a></li>
+<li><a href="#kabul-kriterleri-1" id="toc-kabul-kriterleri-1"><span
+class="toc-section-number">7.2.3</span> Kabul Kriterleri</a></li>
+</ul></li>
+<li><a href="#sprint-15-phone-earbuds-smartwatch-eğitimi"
+id="toc-sprint-15-phone-earbuds-smartwatch-eğitimi"><span
+class="toc-section-number">7.3</span> Sprint 15 — Phone &amp; Earbuds
+&amp; Smartwatch Eğitimi</a>
+<ul>
+<li><a href="#backlog-2" id="toc-backlog-2"><span
+class="toc-section-number">7.3.1</span> Backlog</a></li>
+<li><a href="#kabul-kriterleri-2" id="toc-kabul-kriterleri-2"><span
+class="toc-section-number">7.3.2</span> Kabul Kriterleri</a></li>
+</ul></li>
+<li><a href="#sprint-16-paper-notes-kalemlik-hesap-makinesi"
+id="toc-sprint-16-paper-notes-kalemlik-hesap-makinesi"><span
+class="toc-section-number">7.4</span> Sprint 16 — Paper Notes &amp;
+Kalemlik &amp; Hesap Makinesi</a>
+<ul>
+<li><a href="#backlog-3" id="toc-backlog-3"><span
+class="toc-section-number">7.4.1</span> Backlog</a></li>
+<li><a href="#kabul-kriterleri-3" id="toc-kabul-kriterleri-3"><span
+class="toc-section-number">7.4.2</span> Kabul Kriterleri</a></li>
+</ul></li>
+<li><a href="#sprint-17-pose-davranış-gaze-refinement"
+id="toc-sprint-17-pose-davranış-gaze-refinement"><span
+class="toc-section-number">7.5</span> Sprint 17 — Pose &amp; Davranış
+&amp; Gaze Refinement</a>
+<ul>
+<li><a href="#backlog-4" id="toc-backlog-4"><span
+class="toc-section-number">7.5.1</span> Backlog</a></li>
+<li><a href="#kabul-kriterleri-4" id="toc-kabul-kriterleri-4"><span
+class="toc-section-number">7.5.2</span> Kabul Kriterleri</a></li>
+</ul></li>
+<li><a href="#sprint-18-multi-camera-fusion-livemonitor-refactor"
+id="toc-sprint-18-multi-camera-fusion-livemonitor-refactor"><span
+class="toc-section-number">7.6</span> Sprint 18 — Multi-Camera Fusion +
+LiveMonitor Refactor</a>
+<ul>
+<li><a href="#backlog-5" id="toc-backlog-5"><span
+class="toc-section-number">7.6.1</span> Backlog</a></li>
+<li><a href="#kabul-kriterleri-5" id="toc-kabul-kriterleri-5"><span
+class="toc-section-number">7.6.2</span> Kabul Kriterleri</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#doğrulama-kapıları" id="toc-doğrulama-kapıları"><span
+class="toc-section-number">8</span> Doğrulama Kapıları</a>
+<ul>
+<li><a href="#sprint-sonu-zorunlu-kontroller"
+id="toc-sprint-sonu-zorunlu-kontroller"><span
+class="toc-section-number">8.1</span> Sprint Sonu Zorunlu
+Kontroller</a></li>
+<li><a href="#class-bazlı-kpi-tablosu"
+id="toc-class-bazlı-kpi-tablosu"><span
+class="toc-section-number">8.2</span> Class-Bazlı KPI Tablosu</a></li>
+<li><a href="#benchmark-set-yapısı" id="toc-benchmark-set-yapısı"><span
+class="toc-section-number">8.3</span> Benchmark Set Yapısı</a></li>
+</ul></li>
+<li><a href="#risk-register" id="toc-risk-register"><span
+class="toc-section-number">9</span> Risk Register</a>
+<ul>
+<li><a href="#reliability-riskleri-sprint-13-kapsamı"
+id="toc-reliability-riskleri-sprint-13-kapsamı"><span
+class="toc-section-number">9.1</span> Reliability Riskleri (Sprint 13
+Kapsamı)</a></li>
+<li><a href="#dataset-riskleri-sprint-1418-kapsamı"
+id="toc-dataset-riskleri-sprint-1418-kapsamı"><span
+class="toc-section-number">9.2</span> Dataset Riskleri (Sprint 14–18
+Kapsamı)</a></li>
+</ul></li>
+<li><a href="#sözlük-öğrenme-için" id="toc-sözlük-öğrenme-için"><span
+class="toc-section-number">10</span> Sözlük (Öğrenme için)</a></li>
+<li><a href="#ekler" id="toc-ekler"><span
+class="toc-section-number">11</span> Ekler</a>
+<ul>
+<li><a href="#ek-a-yararlı-komutlar"
+id="toc-ek-a-yararlı-komutlar"><span
+class="toc-section-number">11.1</span> Ek A — Yararlı Komutlar</a>
+<ul>
+<li><a href="#fiftyone-ile-coco-subset"
+id="toc-fiftyone-ile-coco-subset"><span
+class="toc-section-number">11.1.1</span> FiftyOne ile COCO
+subset</a></li>
+<li><a href="#open-images-v7-selective-download"
+id="toc-open-images-v7-selective-download"><span
+class="toc-section-number">11.1.2</span> Open Images V7 selective
+download</a></li>
+<li><a href="#roboflow-cli-ile-dataset-indirme"
+id="toc-roboflow-cli-ile-dataset-indirme"><span
+class="toc-section-number">11.1.3</span> Roboflow CLI ile dataset
+indirme</a></li>
+<li><a href="#yolov8-fine-tune" id="toc-yolov8-fine-tune"><span
+class="toc-section-number">11.1.4</span> YOLOv8 fine-tune</a></li>
+<li><a href="#cvat-self-hosted-docker"
+id="toc-cvat-self-hosted-docker"><span
+class="toc-section-number">11.1.5</span> CVAT self-hosted
+(Docker)</a></li>
+</ul></li>
+<li><a href="#ek-b-lisans-hızlı-bakış"
+id="toc-ek-b-lisans-hızlı-bakış"><span
+class="toc-section-number">11.2</span> Ek B — Lisans Hızlı
+Bakış</a></li>
+<li><a href="#ek-c-referans-kodları-prd-ve-sprint-backlogu"
+id="toc-ek-c-referans-kodları-prd-ve-sprint-backlogu"><span
+class="toc-section-number">11.3</span> Ek C — Referans Kodları (PRD ve
+Sprint backlogu)</a></li>
+<li><a href="#ek-d-versiyon-geçmişi"
+id="toc-ek-d-versiyon-geçmişi"><span
+class="toc-section-number">11.4</span> Ek D — Versiyon Geçmişi</a></li>
+</ul></li>
+</ul>
+</nav>
+<div class="page-break">
+
+</div>
+<h1 data-number="1" id="yönetici-özeti"><span
+class="header-section-number">1</span> Yönetici Özeti</h1>
+<p>HorusEye, <strong>çoklu kamera tabanlı bir sınav gözetleme AI
+sistemidir</strong>. Mayıs 2026 itibarıyla <strong>Sprint 11 ve Sprint
+12 production’a alınmakta</strong> — behavior pattern detection
+(BL-228), risk tile (BL-230), evidence ZIP export + SHA-256 manifest
+(BL-242), PDF e-posta raporları (BL-240), audit-trail testleri (BL-245)
+canlıya çıktı.</p>
+<p>Buna rağmen iki <strong>kritik açık</strong> var:</p>
+<ol type="1">
+<li><strong>Reliability:</strong> Kamera pair WebSocket’i mobile
+cihazlarda ~10 frame sonra koparıyor. AWS temiz; sorun YOLO lazy-load +
+receive loop’ta sessiz exception + frontend backpressure eksiği. Bu
+giderilmeden hiçbir dataset gerçek sınıfta toplanamaz.</li>
+<li><strong>Data:</strong> Sistem yalnızca <strong>3 pre-trained
+model</strong> ile çalışıyor (COCO YOLOv8n stock, MediaPipe Face Mesh,
+InsightFace Buffalo_L). Mevcut <code>config.yaml</code>
+<code>keyboard</code>/<code>laptop</code>’u <code>paper_detected</code>
+olarak haritalıyor; bu mantıksız. Asıl kopya kanalları (kopya kağıdı,
+akıllı saat, kablosuz kulaklık, vücut pozisyonu) hiç tespit
+edilmiyor.</li>
+</ol>
+<p>Bu plan iki açığı tek bir yol haritasında birleştirir:</p>
+<p><strong>6 yeni sprint önerilir (Sprint 13–18, ~470 saat
+toplam):</strong></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Sprint</th>
+<th>Tema</th>
+<th>Çıktı</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>13</strong></td>
+<td><strong>Live Pipeline Reliability</strong></td>
+<td><strong>Camera pair drop kök nedenleri P0 düzeltmeleri</strong></td>
+</tr>
+<tr>
+<td>14</td>
+<td>Dataset Pipeline Foundation</td>
+<td>İmport/convert/validate/merge gerçekten çalışır + Phase uyumu</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Phone &amp; Earbuds &amp; Smartwatch</td>
+<td>YOLOv8n custom v1.0 deploy edilir</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Kopya Kağıdı &amp; Kalemlik &amp; Hesap Mak.</td>
+<td>YOLOv8n v2.0; kontrollü veri toplama</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Pose &amp; Davranış &amp; Gaze Refinement</td>
+<td>MediaPipe Pose; body-lean, gaze_at_lap, sync_behavior</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Multi-Camera Fusion + Face Covering</td>
+<td>Cross-cam Re-ID + <code>face_covering</code> + LiveMonitor grid</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hızlı kazanç önerisi — ilk gün (~9 saat toplam):</strong></p>
+<div class="tier1">
+<ul>
+<li><strong>BL-13-01 + 13-02 (7h):</strong> YOLO eager init + publish
+loop safe except → mobile drop pattern’i derhal durur</li>
+<li><strong>BL-14-08 (2h):</strong> <code>config.yaml</code>’dan
+keyboard/laptop sınıflarını <strong>kaldır</strong>; sistem sınavda
+görünmeyecek nesneleri taramayı bırakır → FP düşer, CPU kazanır</li>
+</ul>
+<p>Bu 9 saatlik müdahale <strong>diğer sprint işlerini
+bekletmeden</strong> paralel yapılabilir; mevcut production gürültüsünü
+anında düşürür.</p>
+</div>
+<p><strong>Hedef metrikler (Sprint 18 sonu):</strong></p>
+<ul>
+<li>Mobile camera pair drop oranı <strong>&lt; %0.5 / saat</strong>
+(mevcut: ~%80 / 30 sn)</li>
+<li>Phone precision ≥ %90 (mevcut: ~%75)</li>
+<li>Earbuds precision ≥ %75 (mevcut: yok)</li>
+<li>Smart watch precision ≥ %75 (mevcut: yok)</li>
+<li>Paper notes precision ≥ %75 kontrollü, ≥ %65 canlı (mevcut:
+yok)</li>
+<li><code>gaze_at_lap</code> precision ≥ %75 (gizli telefon erken
+yakalama)</li>
+<li><code>face_covering</code> precision ≥ %80 (kimlik gizleme)</li>
+<li>Multi-cam onaylı incident precision ≥ %92 (mevcut: tek kamera)</li>
+</ul>
+<p><strong>Versiyon değişiklik geçmişi:</strong></p>
+<ul>
+<li><strong>v1.0:</strong> İlk plan — 5 sprint (Sprint 13-17), dataset
+kataloğu</li>
+<li><strong>v2.0:</strong> Sprint 13 olarak Live Pipeline Reliability
+eklendi (eski sprintler 14-18’e kaydı); Faz 0-1/2/4 uyum bölümü ve 6
+Tasarım Kararı; Sprint 14’e 5 alignment BL</li>
+<li><strong>v2.1 (final):</strong> Coverage kapatma — Sprint 17’ye
+<code>gaze_at_lap</code>, <code>gaze_at_neighbor</code> calibration,
+<code>synchronized_behavior</code>, L2CS-Net fallback eklendi; Sprint
+18’e <code>face_covering</code> (MaskedFace-Net) eklendi; Sprint 15’e
+Objects365+LVIS fallback augmentation; quick win callout’lar Sprint
+13/14’e prominentlendi; <code>water_bottle_with_label</code> catalog’dan
+çıkarıldı (niş, planı sadeleştirdi)</li>
+</ul>
+<div class="page-break">
+
+</div>
+<h1 data-number="2" id="mevcut-durum-analizi"><span
+class="header-section-number">2</span> Mevcut Durum Analizi</h1>
+<p>Bu bölüm <strong>gerçek kod üzerinde</strong> doğrulanmıştır.
+PRD’lerdeki plan değil, bugün çalışan halini yansıtır.</p>
+<h2 data-number="2.1" id="sprint-11-12-kapanış-çıktıları-live"><span
+class="header-section-number">2.1</span> Sprint 11 &amp; 12 Kapanış
+Çıktıları (Live)</h2>
+<h3 data-number="2.1.1" id="sprint-11-profile-risk-model"><span
+class="header-section-number">2.1.1</span> Sprint 11 (Profile + Risk
+Model)</h3>
+<ul>
+<li><strong>Behavior pattern detection</strong> — chronic phone-checker
+tespiti (commit <code>1b0aa80</code>, BL-228) —
+<code>ai-service/src/scoring/calibration.py</code></li>
+<li><strong>Risk tile</strong> — <code>/students</code> ve
+<code>/exams/[id]/sessions</code> listelerinde risk badge (BL-230) —
+<code>portal/components/students/</code></li>
+<li><strong>Incident frequency + by-type charts</strong> — recharts
+AreaChart pattern (BL-231)</li>
+<li><strong>Chronological incidents timeline</strong> UI (BL-227)</li>
+<li><strong>/students/[id] profile</strong> sayfa + risk card
+(BL-224)</li>
+<li><strong>Per-student calibration</strong> — incident threshold per
+öğrenci (<code>portal/app/api/students/[id]/calibration/</code> —
+pending merge)</li>
+</ul>
+<h3 data-number="2.1.2"
+id="sprint-12-review-workflow-auto-reports"><span
+class="header-section-number">2.1.2</span> Sprint 12 (Review Workflow +
+Auto-Reports)</h3>
+<ul>
+<li><strong>Evidence ZIP export + SHA-256 manifest</strong> (BL-242) —
+<code>portal/app/api/exams/[id]/evidence-export/route.ts:1-157</code>.
+Her dosya için SHA-256, byte count, storage path, proctor decision
+manifest’te</li>
+<li><strong>PDF e-posta raporları</strong> (BL-240) —
+<code>portal/app/api/exams/[id]/reports/email/route.ts:1-166</code>.
+Tool: <code>@react-pdf/renderer</code> (puppeteer DEĞİL)</li>
+<li><strong>Cross-exam analytics dashboard</strong> —
+<code>portal/app/(protected)/exams/analytics/page.tsx</code></li>
+<li><strong>Audit-trail testleri</strong> (BL-245) —
+<code>portal/tests/unit/lib/incident-decision-audit.test.ts</code>,
+<code>incident-report-pdf.test.ts</code></li>
+</ul>
+<p><strong>Plana etkisi:</strong> Bu altyapı <strong>dataset pipeline
+tarafından korunmalıdır.</strong> Özellikle SHA-256 manifest’i kırmamak
+için anonimize training kopyaları <strong>ayrı bucket/tabloda</strong>
+yaşar (bkz. Tasarım Kararları §4).</p>
+<h2 data-number="2.2" id="bilinen-problem-camera-pair-drop-p0"><span
+class="header-section-number">2.2</span> Bilinen Problem — Camera Pair
+Drop (P0)</h2>
+<p>Mobile cihazlarda kamera pair WebSocket’i <strong>~10 frame sonra
+koparıyor</strong>. Production’da reproduksible. AWS infra temiz (ECS
+RUNNING 7+ gün, ALB healthy, CPU &lt; %50, memory %19, idle_timeout
+900s, hiç 5xx yok).</p>
+<p><strong>Kök nedenler (4 katman, sıralı):</strong></p>
+<div class="accent-box">
+<strong>Layer 2 — AI Service
+<code>publish_handler.py:342-496</code></strong>
+</div>
+<ul>
+<li>Detection işi ana receive loop’unda <strong>sync</strong> çalışıyor;
+<code>_detect_track_score_sync</code>, <code>write_incident</code>,
+<code>broadcaster.broadcast</code> herhangi biri Exception atarsa
+<strong>sadece <code>WebSocketDisconnect</code> yakalanıyor</strong> →
+loop dışına propagate → uvicorn WS’i sessizce kapatıyor. CloudWatch’ta
+stack trace görünmüyor (FastAPI WS default INFO log seviyesinde)</li>
+<li><strong>YOLO lazy-load</strong>
+(<code>publish_handler.py:149-176</code>): ilk frame inference’ı 5–15 sn
+loop’u bloke ediyor. Bu süre boyunca mobile WS TCP buffer’ı şişiyor; 10
+frame × ~80KB JPEG ≈ 800 KB → telefon WS send quota’sı dolunca
+<strong>1006 ile koparıyor</strong></li>
+</ul>
+<div class="accent-box">
+<strong>Layer 3 — Frontend <code>CamPairCapture.tsx</code></strong>
+</div>
+<ul>
+<li><strong><code>ws.bufferedAmount</code> kontrolü yok</strong> (satır
+235-254): backpressure algılamıyor, <code>ws.send(buf)</code>
+durdurulmuyor → buffer şişiyor → 1006</li>
+<li><strong>Visibility-pause yok</strong> (satır 97-106): telefon ekranı
+sönünce <code>MediaStream</code> freeze, <code>setInterval</code>
+browser tarafından 1 sn’ye throttle’lanıyor → frame yok → server 15 sn
+idle timeout</li>
+<li><strong>Otomatik reconnect yok</strong>: <code>ws.onclose</code>
+sadece state set ediyor, kullanıcının manuel buton basması gerek</li>
+<li><code>setInterval(tick, 200ms)</code> async tick — tick &gt; 200ms
+sürerse paralel tick’ler başlıyor</li>
+</ul>
+<p><strong>Plana etkisi:</strong> Bu sorunlar <strong>dataset toplamadan
+önce</strong> çözülmelidir. Aksi takdirde:</p>
+<ul>
+<li>Kontrollü senaryo çekimleri yarıda kopar → veri kaybı</li>
+<li>Canlı sınavdan anonimize frame çıkarma pipeline’ı çalışmaz</li>
+<li>Multi-camera fusion (Sprint 18) zaten kararsız tek-cam üzerinde inşa
+edilemez</li>
+</ul>
+<p><strong>Çözüm:</strong> Yeni Sprint 13 (Live Pipeline Reliability)
+tüm P0/P1 maddeleri kapsar. Detay §6.1.</p>
+<h2 data-number="2.3" id="aktif-modeller"><span
+class="header-section-number">2.3</span> Aktif Modeller</h2>
+<h3 data-number="2.3.1" id="coco-2017-yolov8n-stock"><span
+class="header-section-number">2.3.1</span> COCO 2017 — YOLOv8n
+(Stock)</h3>
+<ul>
+<li><strong>Dosya:</strong>
+<code>ai-service/src/detection/yolo_detector.py:56</code></li>
+<li><strong>Model path:</strong> <code>models/yolov8n.pt</code>
+(config.yaml:14)</li>
+<li><strong>Indirme:</strong> Ultralytics tarafından ilk çağrıda
+otomatik (~6 MB)</li>
+<li><strong>Dockerfile pre-bake:</strong>
+<code>Dockerfile:26</code></li>
+<li><strong>Durum:</strong> Stock; <strong>fine-tune YOK</strong></li>
+<li><strong>Filtrelenen sınıflar:</strong> <code>0 person</code>,
+<code>63 laptop</code>, <code>67 cell phone</code>,
+<code>73 book</code>, <code>76 keyboard</code> (config.yaml:20)</li>
+</ul>
+<h3 data-number="2.3.2"
+id="mediapipe-face-mesh-google-pre-trained"><span
+class="header-section-number">2.3.2</span> MediaPipe Face Mesh — Google
+Pre-trained</h3>
+<ul>
+<li><strong>Paket:</strong> <code>mediapipe&gt;=0.10.14</code>
+(requirements.txt:24)</li>
+<li><strong>Kullanım:</strong>
+<code>src/scoring/rules/gaze_diversion.py</code>, head turn</li>
+<li><strong>Çıktı:</strong> 478 noktalı 3D yüz landmark’ı +
+yaw/pitch/roll açıları</li>
+<li><strong>FPS:</strong> 5 (sampling)</li>
+</ul>
+<h3 data-number="2.3.3"
+id="insightface-buffalo_l-pre-trained-onnx-paketi"><span
+class="header-section-number">2.3.3</span> InsightFace Buffalo_L —
+pre-trained ONNX paketi</h3>
+<ul>
+<li><strong>Paket:</strong> <code>insightface&gt;=0.7.3</code>
+(requirements.txt:31)</li>
+<li><strong>İçerik:</strong> RetinaFace (detector) + ArcFace ResNet50
+(embedder, 512-dim)</li>
+<li><strong>Dockerfile pre-bake:</strong> <code>Dockerfile:34–38</code>
+(~280 MB)</li>
+<li><strong>Durum:</strong> Sprint 10 ile pgvector enrollment hazır;
+canlı match henüz geniş kullanımda değil</li>
+</ul>
+<h2 data-number="2.4" id="eksik-yanlış-konfigürasyon"><span
+class="header-section-number">2.4</span> Eksik / Yanlış
+Konfigürasyon</h2>
+<h3 data-number="2.4.1" id="config.yaml-class-mapping-bozuk"><span
+class="header-section-number">2.4.1</span> config.yaml class mapping
+bozuk</h3>
+<p><code>ai-service/config.yaml:22-26</code> şu an:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">incident_class_map</span><span class="kw">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;cell phone&#39;</span><span class="kw">:</span><span class="at"> phone_detected</span><span class="co">   # OK</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;laptop&#39;</span><span class="kw">:</span><span class="at">     paper_detected</span><span class="co">   # YANLIS — laptop kağıt değil</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;book&#39;</span><span class="kw">:</span><span class="at">       paper_detected</span><span class="co">   # YANLIS — kitap ile kopya kağıdı farklı</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;keyboard&#39;</span><span class="kw">:</span><span class="at">   paper_detected</span><span class="co">   # YANLIS — sınıfta klavye yok</span></span></code></pre></div>
+<p><strong>Etkisi:</strong> Test sırasında biri klavye getirirse
+<code>paper_detected</code> HIGH incident üretir. Production’a girince
+<code>book</code> doğal masa eşyası <code>paper</code> sayılır → false
+positive sağanak.</p>
+<h3 data-number="2.4.2" id="boş-klasörler"><span
+class="header-section-number">2.4.2</span> Boş Klasörler</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Klasör</th>
+<th>İçindekiler</th>
+<th>Olması Gereken</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ai-service/models/</code></td>
+<td>— boş —</td>
+<td>Fine-tuned weights</td>
+</tr>
+<tr>
+<td><code>ai-service/test-data/earbuds/</code></td>
+<td>sadece README + data.yaml</td>
+<td>~150 etiketli görsel</td>
+</tr>
+<tr>
+<td><code>ai-service/test-data/phone_benchmark/</code></td>
+<td>sadece README + örnek JSON</td>
+<td>150 etiketli benchmark frame</td>
+</tr>
+<tr>
+<td><code>ai-service/data/</code></td>
+<td>klasör yok</td>
+<td>Tüm dataset pipeline’ının kalbi</td>
+</tr>
+</tbody>
+</table>
+<h3 data-number="2.4.3" id="eksik-tespit-sınıfları"><span
+class="header-section-number">2.4.3</span> Eksik Tespit Sınıfları</h3>
+<p>PRD-013 §7.2 “Phase B’de açılacak” diye geçen ama henüz veri yok:</p>
+<ul>
+<li><code>earbuds_detected</code> (custom dataset gerekir)</li>
+<li><code>paper_notes</code> / kopya kağıdı (custom annotation
+gerekir)</li>
+<li><code>unauthorized_material</code> (kitap, ek kağıt)</li>
+<li><code>body_lean_neighbor</code> (MediaPipe Pose gerekir — Pose henüz
+entegre değil)</li>
+<li><code>hand_in_lap_extended</code> (MediaPipe Pose + gaze down)</li>
+<li><code>object_passing</code> (multi-track el yakınlaşması)</li>
+<li><code>synchronized_behavior</code> (çoklu öğrenci korelasyonu)</li>
+</ul>
+<div class="page-break">
+
+</div>
+<h1 data-number="3" id="faz-uyum-tasarım-kararları"><span
+class="header-section-number">3</span> Faz Uyum &amp; Tasarım
+Kararları</h1>
+<p>Bu plan; Faz 0-1 (Foundation), Faz 2 (AI Pipeline, Sprint 12 ile
+live), Faz 4 (Camera AI, PRD-013/019/020 ile aktif) altyapılarına
+<strong>eklemler yapar, yeniden inşa etmez</strong>. Aşağıdaki uyum
+kararları planın her sprint’inde geçerlidir.</p>
+<h2 data-number="3.1" id="faz-0-1-uyumu-foundation"><span
+class="header-section-number">3.1</span> Faz 0-1 Uyumu (Foundation)</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Konu</th>
+<th>Mevcut</th>
+<th>Plan Davranışı</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RBAC</td>
+<td><code>admin / supervisor / assistant</code> rolleri,
+<code>is_admin()</code> SQL fn, middleware pattern</td>
+<td>Tüm <code>/api/ai/datasets/*</code> admin-only;
+<code>is_admin()</code> re-use</td>
+</tr>
+<tr>
+<td>File storage</td>
+<td><code>incident-evidence</code>, <code>ai-model-weights</code>
+bucket’ları +
+<code>getPublicUrl</code>/<code>createSignedUrl</code></td>
+<td>Yeni bucket <code>anonymized-training-frames</code> aynı
+pattern</td>
+</tr>
+<tr>
+<td>Audit logging</td>
+<td><code>audit_logs</code> tablosu, event_type taxonomy
+(<code>auth.login</code>, <code>incident_decision</code>,
+<code>evidence_export</code>…)</td>
+<td>Yeni event_type’lar:
+<code>dataset.import / merge / validate / deploy</code></td>
+</tr>
+<tr>
+<td>Dashboard charts</td>
+<td>recharts AreaChart pattern
+(<code>SuspicionAreaChart.tsx</code>)</td>
+<td><code>/admin/datasets</code> training metric chart’ı
+<strong>aynı</strong> pattern</td>
+</tr>
+<tr>
+<td>Routes</td>
+<td><code>portal/constants/routes.ts:51-56</code>
+<code>ADMIN_ONLY_ROUTES</code> listesi</td>
+<td><code>routes.datasets: '/datasets'</code> eklenir ve listeye
+girer</td>
+</tr>
+<tr>
+<td>Sidebar</td>
+<td><code>portal/components/layout/Sidebar.tsx:53-84</code> role
+filter</td>
+<td>“Exam Module” group altına Datasets entry</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="3.2" id="faz-2-uyumu-sprint-12-live"><span
+class="header-section-number">3.2</span> Faz 2 Uyumu (Sprint 12
+live)</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Konu</th>
+<th>Mevcut</th>
+<th>Plan Davranışı</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Evidence ZIP + SHA-256 manifest</td>
+<td><code>portal/app/api/exams/[id]/evidence-export/route.ts:98-108</code></td>
+<td>Plan bu manifest’e <strong>dokunmaz</strong>; orijinal evidence
+frame’leri olduğu yerde kalır</td>
+</tr>
+<tr>
+<td>Anonimize eğitim kopyaları</td>
+<td>Yok</td>
+<td><strong>Ayrı bucket + tablo</strong> — manifest integrity
+korunur</td>
+</tr>
+<tr>
+<td>PDF üretimi</td>
+<td><code>@react-pdf/renderer</code>
+(<code>portal/lib/reports/incident-report-pdf.tsx</code>)</td>
+<td>Dataset training raporu da <strong>aynı tool</strong>’la; puppeteer
+eklenmez</td>
+</tr>
+<tr>
+<td>Audit-trail testleri</td>
+<td><code>portal/tests/unit/lib/incident-decision-audit.test.ts</code></td>
+<td>Yeni dataset event_type’ları <strong>aynı test pattern</strong> ile
+kapsanır</td>
+</tr>
+<tr>
+<td>Analytics dashboard</td>
+<td><code>/exams/analytics</code> page</td>
+<td><code>/admin/datasets</code> ondan ayrı; dataset metrik trendleri
+orada</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="3.3" id="faz-4-uyumu-prd-013-019-020"><span
+class="header-section-number">3.3</span> Faz 4 Uyumu (PRD-013 / 019 /
+020)</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Konu</th>
+<th>Mevcut</th>
+<th>Plan Davranışı</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ai_models</code> tablosu</td>
+<td><code>portal/supabase/migrations/20260505120341_create_ai_models.sql</code></td>
+<td><code>datasets</code> tablosu FK:
+<code>datasets.ai_model_id → ai_models.id</code></td>
+</tr>
+<tr>
+<td><code>ai-model-weights</code> bucket</td>
+<td><code>20260505121046_create_ai_model_weights_bucket.sql</code></td>
+<td>Re-use; <code>finetune_yolo.py</code> zaten kullanıyor</td>
+</tr>
+<tr>
+<td>Multi-cam DB</td>
+<td><code>cameras</code>, <code>session_cameras</code>,
+<code>camera_health_events</code> tabloları (PRD-019)</td>
+<td>Sprint 18 bunları kullanır; yeni multi-cam tablosu
+<strong>eklenmez</strong></td>
+</tr>
+<tr>
+<td>LiveMonitor</td>
+<td><code>portal/components/exams/LiveMonitor.tsx:42</code>
+<code>framesByCamera: Map</code> var, <strong>“single-session
+demo”</strong> modunda</td>
+<td>Sprint 18 sıfırdan <strong>inşa etmez</strong> — demo flag kaldırma
++ grid layout</td>
+</tr>
+<tr>
+<td>Camera pairing</td>
+<td><code>cam-pair/page.tsx</code> + token redeem flow canlı</td>
+<td>Sprint 17 multi-cam capture için ekibin telefonları
+<strong>re-use</strong> edilir</td>
+</tr>
+<tr>
+<td>Fargate config</td>
+<td><code>infra/bin/infra.ts:60-73</code> — 2048 CPU / 6144 MB (ArcFace
+için)</td>
+<td>Sprint 17’de 7168 MB (Pose ek yükü); pattern aynı</td>
+</tr>
+</tbody>
+</table>
+<div class="page-break">
+
+</div>
+<h2 data-number="3.4" id="tasarım-kararları-v2.0-sabit"><span
+class="header-section-number">3.4</span> Tasarım Kararları (v2.0 —
+sabit)</h2>
+<p>Aşağıdaki kararlar plan boyunca <strong>değişmez</strong>. Her biri
+gerekçesiyle.</p>
+<h3 data-number="3.4.1"
+id="karar-1-anonimize-frame-storage-tablo-bucket"><span
+class="header-section-number">3.4.1</span> Karar 1 — Anonimize Frame
+Storage: Tablo + Bucket</h3>
+<p><strong>Karar:</strong> Anonimize eğitim frame’leri için (a) yeni
+private bucket <code>anonymized-training-frames</code> ve (b)
+<code>internal_training_samples</code> tablosu oluşturulur.</p>
+<p><strong>Tablo şeması:</strong></p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="kw">public</span>.internal_training_samples (</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">id</span>                   UUID <span class="kw">PRIMARY</span> <span class="kw">KEY</span> <span class="kw">DEFAULT</span> gen_random_uuid(),</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  original_incident_id UUID <span class="kw">REFERENCES</span> <span class="kw">public</span>.incidents(<span class="kw">id</span>) <span class="kw">ON</span> <span class="kw">DELETE</span> <span class="kw">SET</span> <span class="kw">NULL</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  anonymized_path      TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,    <span class="co">-- &quot;anonymized/{session}/{frame}.jpg&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  sha256               TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>,    <span class="co">-- bu kopyanın hash&#39;i</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  class_id             <span class="dt">INTEGER</span>,          <span class="co">-- annotated sınıf (NULL = unlabeled)</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  bbox_yolo            <span class="dt">FLOAT</span>[<span class="dv">4</span>],         <span class="co">-- [xc, yc, w, h] normalized (NULL = unlabeled)</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  dataset_id           UUID <span class="kw">REFERENCES</span> <span class="kw">public</span>.datasets(<span class="kw">id</span>),  <span class="co">-- üye olduğu dataset</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  annotation_status    TEXT <span class="kw">DEFAULT</span> <span class="st">&#39;pending&#39;</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>                       <span class="kw">CHECK</span> (annotation_status <span class="kw">IN</span> (<span class="st">&#39;pending&#39;</span>,<span class="st">&#39;annotated&#39;</span>,<span class="st">&#39;skipped&#39;</span>,<span class="st">&#39;disputed&#39;</span>)),</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  proctor_decision     TEXT,             <span class="co">-- snapshot: &#39;clean&#39;|&#39;violation&#39;|&#39;suspicious&#39;</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  created_at           TIMESTAMPTZ <span class="kw">DEFAULT</span> NOW()</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> idx_its_dataset    <span class="kw">ON</span> <span class="kw">public</span>.internal_training_samples (dataset_id);</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> idx_its_status     <span class="kw">ON</span> <span class="kw">public</span>.internal_training_samples (annotation_status);</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">INDEX</span> idx_its_class      <span class="kw">ON</span> <span class="kw">public</span>.internal_training_samples (class_id);</span></code></pre></div>
+<p><strong>Neden tablo + bucket (path konvansiyonu değil)?</strong></p>
+<ul>
+<li>“Hangi frame hangi dataset versiyonuna girdi?” sorgusu O(1)
+olur</li>
+<li>Annotation pipeline (Sprint 16’da paper_notes ~600 frame) status
+takibi için tablo zorunlu</li>
+<li>Sprint 12 evidence manifest’in SHA-256’sından <strong>ayrı bir
+hash</strong> — manifest integrity bozulmaz; KVKK silme talebi
+geldiğinde <code>original_incident_id</code> üzerinden cascade silme
+yapılabilir</li>
+</ul>
+<h3 data-number="3.4.2" id="karar-2-bucket-konfigürasyonu"><span
+class="header-section-number">3.4.2</span> Karar 2 — Bucket
+Konfigürasyonu</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> <span class="kw">storage</span>.buckets (<span class="kw">id</span>, name, <span class="kw">public</span>, file_size_limit, allowed_mime_types)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">VALUES</span> (</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;anonymized-training-frames&#39;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">&#39;anonymized-training-frames&#39;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">false</span>,                          <span class="co">-- private</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="dv">52428800</span>,                       <span class="co">-- 50 MB</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">ARRAY</span>[<span class="st">&#39;image/jpeg&#39;</span>,<span class="st">&#39;image/png&#39;</span>,<span class="st">&#39;image/webp&#39;</span>]</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>);</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="co">-- RLS: yalnızca service-role ve admin</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> POLICY <span class="ot">&quot;admin read training frames&quot;</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">ON</span> <span class="kw">storage</span>.objects <span class="cf">FOR</span> <span class="kw">SELECT</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">USING</span> (bucket_id <span class="op">=</span> <span class="st">&#39;anonymized-training-frames&#39;</span> <span class="kw">AND</span> is_admin());</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> POLICY <span class="ot">&quot;admin write training frames&quot;</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">ON</span> <span class="kw">storage</span>.objects <span class="cf">FOR</span> <span class="kw">INSERT</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">WITH</span> <span class="kw">CHECK</span> (bucket_id <span class="op">=</span> <span class="st">&#39;anonymized-training-frames&#39;</span> <span class="kw">AND</span> is_admin());</span></code></pre></div>
+<h3 data-number="3.4.3" id="karar-3-audit-event-type-genişleme"><span
+class="header-section-number">3.4.3</span> Karar 3 — Audit Event Type
+Genişleme</h3>
+<p>Mevcut <code>audit_logs.event_type</code> taksonomisine eklenecek
+değerler:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>event_type</th>
+<th>Tetikleyici</th>
+<th>Metadata örneği</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dataset.import</code></td>
+<td>Harici/iç-kaynak dataset import edildi</td>
+<td><code>{source, count, license}</code></td>
+</tr>
+<tr>
+<td><code>dataset.merge</code></td>
+<td>İki+ dataset birleştirildi → yeni versiyon</td>
+<td><code>{parent_ids, target_id, classes}</code></td>
+</tr>
+<tr>
+<td><code>dataset.validate</code></td>
+<td>Kalite raporu üretildi</td>
+<td><code>{dataset_id, passed, issues}</code></td>
+</tr>
+<tr>
+<td><code>dataset.deploy</code></td>
+<td>ai_models row aktive edildi</td>
+<td><code>{model_id, dataset_id, benchmark}</code></td>
+</tr>
+<tr>
+<td><code>dataset.annotation_complete</code></td>
+<td>Bir frame annotate edildi</td>
+<td><code>{sample_id, class_id, annotator}</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>portal/lib/audit/dataset.ts</code> modülü
+<code>portal/lib/audit/incident-decision.ts</code> pattern’ini birebir
+takip eder.</p>
+<h3 data-number="3.4.4" id="karar-4-tarihler-relative"><span
+class="header-section-number">3.4.4</span> Karar 4 — Tarihler
+Relative</h3>
+<p>PRD-020 takvimi (2026-08-17 Sprint 12 sonu) gerçek hıza göre kaymış —
+Sprint 11+12 Mayıs’ta kapandı. Plan <strong>mutlak tarih
+kullanmaz</strong>:</p>
+<ul>
+<li>“Sprint 13 başlangıcı: 2026-08-18” → <strong>silindi</strong></li>
+<li>Her sprint için sadece <strong>sıra ve tema</strong> verilir</li>
+<li>Gerçek tarihler PRD-018 sprint board UI’sından set edilir (admin
+/sprints sayfası)</li>
+</ul>
+<h3 data-number="3.4.5"
+id="karar-5-detection-worker-pool-p2-sprint-13te-stretch"><span
+class="header-section-number">3.4.5</span> Karar 5 — Detection Worker
+Pool (P2) Sprint 13’te Stretch</h3>
+<p>Camera pair drop kök neden listesinde “P2 — Mimari: detection
+pipeline ayrı worker’a taşı” maddesi var. Plan kararı: Sprint 13’te
+<strong>stretch BL</strong> olarak yer alır (BL-13-10). P0/P1
+düzeltmeleri zamanında biterse alınır, yoksa Sprint 18’e (Multi-cam)
+eklenir — Cross-cam fusion zaten ayrı worker queue ister.</p>
+<h3 data-number="3.4.6" id="karar-6-bl-numaralandırma"><span
+class="header-section-number">3.4.6</span> Karar 6 — BL
+Numaralandırma</h3>
+<p>PRD-020 konvansiyonu: <code>{sprint}-{idx}</code>. Plan’daki tüm
+BL’ler bu konvansiyona uyar: Sprint 13 → <code>13-01..13-12</code>,
+Sprint 14 → <code>14-01..14-16</code>, vb.</p>
+<div class="page-break">
+
+</div>
+<h1 data-number="4" id="genişletilmiş-tespit-hedefleri"><span
+class="header-section-number">4</span> Genişletilmiş Tespit
+Hedefleri</h1>
+<p>Sistem üç kategoride sinyal üretmelidir. Hiçbir kategori tek başına
+“kopya çekti” kararı vermez; <strong>şüphe skoru</strong> üretir ve
+gözetmen onayına gider (PRD-013 §7.2 tasarım prensibi).</p>
+<h2 data-number="4.1" id="kategori-a-nesne-tespiti-yolo-fine-tune"><span
+class="header-section-number">4.1</span> Kategori A — Nesne Tespiti
+(YOLO fine-tune)</h2>
+<div class="tier1">
+<p><strong>TIER 1 — Yüksek Güven</strong> Tek başına alert üretebilir;
+yanlış pozitif oranı düşük olmalı.</p>
+</div>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Sınıf</th>
+<th>Kullanım Senaryosu</th>
+<th>Mevcut COCO?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>phone</code></td>
+<td>Telefonun masada / elde / kucakta görünmesi</td>
+<td>Var (zayıf domain)</td>
+</tr>
+<tr>
+<td><code>earbuds_wireless</code></td>
+<td>AirPods, Galaxy Buds tarzı kablosuz kulak içi</td>
+<td><strong>Yok</strong></td>
+</tr>
+<tr>
+<td><code>earbuds_wired</code></td>
+<td>Kablolu kulaklık (kablo da sinyal)</td>
+<td><strong>Yok</strong></td>
+</tr>
+<tr>
+<td><code>smart_watch</code></td>
+<td>Akıllı saat — mesaj/kopya notu görüntüleyebilir</td>
+<td><strong>Yok</strong></td>
+</tr>
+<tr>
+<td><code>paper_notes</code></td>
+<td>Avuç içi kopya kağıdı, sleeve’e gizlenmiş not</td>
+<td><strong>Yok</strong></td>
+</tr>
+<tr>
+<td><code>pencil_case</code></td>
+<td>Kalemlik (içinde gizli not olabilir)</td>
+<td><strong>Yok</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="tier2">
+<p><strong>TIER 2 — Orta Güven</strong> Bağlamla birlikte
+değerlendirilir; başka bir sinyalle birleşince severity yükselir.</p>
+</div>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Sınıf</th>
+<th>Kullanım Senaryosu</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>calculator</code></td>
+<td>Programlanabilir hesap makinesi (sınav kuralına bağlı)</td>
+</tr>
+<tr>
+<td><code>book</code></td>
+<td>Yasak kitap masada (kuralla beraber)</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="4.2" id="kategori-b-vücut-pozisyonu-hareket"><span
+class="header-section-number">4.2</span> Kategori B — Vücut Pozisyonu /
+Hareket</h2>
+<div class="accent-box">
+<p><strong>Pose Sinyalleri</strong> MediaPipe Pose (33 keypoint) + zaman
+serisi analizi.</p>
+</div>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Davranış</th>
+<th>Sinyal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>body_lean_neighbor</code></td>
+<td>Torso açısı &gt; 20° komşu koltuk yönüne, sustained 3s</td>
+</tr>
+<tr>
+<td><code>standing_up</code></td>
+<td>Omuz/kalça y-koord %30+ delta, sustained 2s</td>
+</tr>
+<tr>
+<td><code>hand_under_desk</code></td>
+<td>El keypoint y &gt; masa segment y, sustained 5s</td>
+</tr>
+<tr>
+<td><code>hand_to_ear_mouth</code></td>
+<td>El-yüz mesafesi &lt; 50px, sustained 2s</td>
+</tr>
+<tr>
+<td><code>object_passing</code></td>
+<td>İki track el yakınlaşması, sustained 1–3s</td>
+</tr>
+<tr>
+<td><code>gaze_at_neighbor</code></td>
+<td>Mevcut head-pose + komşu yön kalibrasyonu</td>
+</tr>
+<tr>
+<td><code>gaze_at_lap</code></td>
+<td>Pitch açısı aşağı (kucağa) + sustained 5s</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="4.3" id="kategori-c-kimlik-yüz"><span
+class="header-section-number">4.3</span> Kategori C — Kimlik &amp;
+Yüz</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>Davranış</th>
+<th>Sinyal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>face_covering</code></td>
+<td>Maske / cap ile yüz örtme — kimlik doğrulanamaz</td>
+</tr>
+<tr>
+<td><code>identity_swap</code></td>
+<td>Aynı koltukta farklı kişi (face embedding mismatch)</td>
+</tr>
+<tr>
+<td><code>unauthorized_person</code></td>
+<td>Enrolled olmayan yüz, sustained 30s+</td>
+</tr>
+</tbody>
+</table>
+<div class="page-break">
+
+</div>
+<h1 data-number="5" id="dataset-kaynak-kataloğu"><span
+class="header-section-number">5</span> Dataset Kaynak Kataloğu</h1>
+<p>Bu bölüm her kaynak için <strong>lisansı, içeriği, erişim yöntemini,
+projedeki kullanımını</strong> dokümante eder. Tüm linkler
+tıklanabilirdir.</p>
+<h2 data-number="5.1" id="nesne-tespit-datasetleri"><span
+class="header-section-number">5.1</span> Nesne Tespit Datasetleri</h2>
+<h3 data-number="5.1.1" id="coco-2017-common-objects-in-context"><span
+class="header-section-number">5.1.1</span> COCO 2017 (Common Objects in
+Context)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://cocodataset.org/">cocodataset.org</a></li>
+<li><strong>İçerik:</strong> 80 sınıf, 330K görsel, 1.5M nesne
+bbox’u</li>
+<li><strong>Lisans:</strong> CC-BY 4.0 (görsel) / Creative Commons
+(annotations)</li>
+<li><strong>Bizim için yararlı sınıflar:</strong> <code>person</code>,
+<code>cell phone</code>, <code>book</code></li>
+<li><strong>Erişim:</strong> FiftyOne kütüphanesi üzerinden subset</li>
+<li><strong>Komut:</strong></li>
+</ul>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-c</span> <span class="st">&quot;</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="st">import fiftyone.zoo as foz</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="st">ds = foz.load_zoo_dataset(</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="st">    &#39;coco-2017&#39;, split=&#39;train&#39;,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="st">    label_types=[&#39;detections&#39;],</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="st">    classes=[&#39;cell phone&#39;, &#39;book&#39;],</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="st">    max_samples=2000)</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;</span></span></code></pre></div>
+<ul>
+<li><strong>Sınırlama:</strong> COCO’daki <code>cell phone</code>
+ofis/sokak ortamından — sınıf domain’ine adaptasyon (fine-tune)
+gerekir</li>
+</ul>
+<h3 data-number="5.1.2" id="open-images-v7-google"><span
+class="header-section-number">5.1.2</span> Open Images V7 (Google)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://storage.googleapis.com/openimages/web/index.html">storage.googleapis.com/openimages</a></li>
+<li><strong>İçerik:</strong> 600+ sınıf, ~9M görsel, ~16M bbox</li>
+<li><strong>Lisans:</strong> Görseller CC-BY 2.0 (Flickr), annotation
+CC-BY 4.0</li>
+<li><strong>Bizim için yararlı sınıflar ve mevcut görsel sayıları
+(yaklaşık):</strong></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Open Images Sınıfı</th>
+<th>Görsel Sayısı</th>
+<th>Bizim Hedefimiz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mobile phone</td>
+<td>~10000</td>
+<td><code>phone</code> augmentation</td>
+</tr>
+<tr>
+<td>Headphones</td>
+<td>~5000</td>
+<td><code>earbuds_wired</code> (filtreli)</td>
+</tr>
+<tr>
+<td>Watch</td>
+<td>~3000</td>
+<td><code>smart_watch</code> (filtreli)</td>
+</tr>
+<tr>
+<td>Pencil case</td>
+<td>~500</td>
+<td><code>pencil_case</code></td>
+</tr>
+<tr>
+<td>Calculator</td>
+<td>~1500</td>
+<td><code>calculator</code></td>
+</tr>
+<tr>
+<td>Pen</td>
+<td>~2000</td>
+<td>Yardımcı augmentation</td>
+</tr>
+<tr>
+<td>Book</td>
+<td>~8000</td>
+<td><code>book</code></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Erişim:</strong> FiftyOne
+<code>foz.load_zoo_dataset('open-images-v7', ...)</code></li>
+<li><strong>Önemli:</strong> “Headphones” sınıfı over-ear büyük
+kulaklığı da içerir — bizim hedefimiz in-ear; <strong>manuel filtreleme
+zorunlu</strong></li>
+</ul>
+<h3 data-number="5.1.3" id="roboflow-universe"><span
+class="header-section-number">5.1.3</span> Roboflow Universe</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://universe.roboflow.com/">universe.roboflow.com</a></li>
+<li><strong>İçerik:</strong> Topluluk tarafından paylaşılan binlerce
+dataset; kalite değişken</li>
+<li><strong>Lisans:</strong> Her dataset’in kendi lisansı — CC-BY-4.0
+veya daha açık filtrele</li>
+<li><strong>Önerilen arama terimleri:</strong></li>
+</ul>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Arama</th>
+<th>Beklenen</th>
+<th>Hedef Sınıfımız</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"earbuds detection"</code></td>
+<td>5–15 dataset, 500–5000 görsel</td>
+<td><code>earbuds_wireless</code></td>
+</tr>
+<tr>
+<td><code>"airpods detection"</code></td>
+<td>3–10 dataset</td>
+<td><code>earbuds_wireless</code></td>
+</tr>
+<tr>
+<td><code>"smartwatch detection"</code></td>
+<td>2–5 dataset</td>
+<td><code>smart_watch</code></td>
+</tr>
+<tr>
+<td><code>"phone detection classroom"</code></td>
+<td>1–3 dataset (varsa altın)</td>
+<td><code>phone</code> domain</td>
+</tr>
+<tr>
+<td><code>"cheat sheet detection"</code></td>
+<td>nadir</td>
+<td><code>paper_notes</code> (varsa)</td>
+</tr>
+<tr>
+<td><code>"exam cheating detection"</code></td>
+<td>3–8 dataset</td>
+<td>mixed</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Erişim:</strong> Web UI export (YOLOv8 format) veya
+CLI:</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install roboflow</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ex">roboflow</span> download <span class="at">--workspace</span> WORKSPACE <span class="at">--project</span> PROJECT <span class="dt">\</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--version</span> VERSION <span class="at">--format</span> yolov8</span></code></pre></div>
+<ul>
+<li><strong>Kalite filtre kriterleri (PRD-017 §4.2):</strong>
+<ul>
+<li>Health Check ≥ %70</li>
+<li>Toplam görsel ≥ 500</li>
+<li>Lisans CC-BY veya daha açık</li>
+<li>Class başına minimum 200 görsel</li>
+</ul></li>
+</ul>
+<h3 data-number="5.1.4" id="objects365-v2"><span
+class="header-section-number">5.1.4</span> Objects365 V2</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.objects365.org/">objects365.org</a></li>
+<li><strong>İçerik:</strong> 365 sınıf, 600K+ görsel, 10M+ bbox</li>
+<li><strong>Lisans:</strong> CC-BY 4.0</li>
+<li><strong>Kullanım:</strong> Daha çeşitli arka plan; augmentation
+kaynağı olarak COCO’yu tamamlar</li>
+</ul>
+<h3 data-number="5.1.5"
+id="lvis-v1-large-vocabulary-instance-segmentation"><span
+class="header-section-number">5.1.5</span> LVIS v1 (Large Vocabulary
+Instance Segmentation)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.lvisdataset.org/">lvisdataset.org</a></li>
+<li><strong>İçerik:</strong> COCO görselleri + 1200 long-tail sınıf</li>
+<li><strong>Lisans:</strong> CC-BY 4.0</li>
+<li><strong>Yararlı sınıflar:</strong> <code>earbuds</code>,
+<code>eraser</code>, <code>pen</code>, <code>pencil</code>,
+<code>wristwatch</code></li>
+<li><strong>Sınırlama:</strong> Long-tail — bazı sınıflarda 50’den az
+örnek</li>
+</ul>
+<h2 data-number="5.2" id="pose-action-recognition-datasetleri"><span
+class="header-section-number">5.2</span> Pose / Action Recognition
+Datasetleri</h2>
+<h3 data-number="5.2.1" id="coco-keypoints"><span
+class="header-section-number">5.2.1</span> COCO Keypoints</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://cocodataset.org/">cocodataset.org</a> (annotations alt
+seti)</li>
+<li><strong>İçerik:</strong> 17 vücut keypoint’i, 200K kişi</li>
+<li><strong>Kullanım:</strong> MediaPipe Pose zaten dahili modele sahip;
+gerekirse YOLOv8-pose fine-tune için referans</li>
+</ul>
+<h3 data-number="5.2.2"
+id="ava-actions-v2.2-atomic-visual-actions"><span
+class="header-section-number">5.2.2</span> AVA Actions v2.2 (Atomic
+Visual Actions)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://research.google.com/ava/">research.google.com/ava</a></li>
+<li><strong>İçerik:</strong> 80 atomic action, ~430 film, ~1.6M action
+label</li>
+<li><strong>Lisans:</strong> CC-BY 4.0</li>
+<li><strong>Yararlı sınıflar:</strong> <code>stand</code>,
+<code>bend/bow</code>, <code>hand pass object</code>,
+<code>lift person</code>, <code>give/serve object</code></li>
+<li><strong>Sınırlama:</strong> Film sahneleri — sınıf ortamına direk
+uygulanmaz; ön eğitim (pretrain) için iyi</li>
+</ul>
+<h3 data-number="5.2.3" id="kinetics-700-2020"><span
+class="header-section-number">5.2.3</span> Kinetics-700-2020</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.deepmind.com/open-source/kinetics">deepmind.com/kinetics</a></li>
+<li><strong>İçerik:</strong> 700 sınıf, 650K YouTube klibi, 10s her
+biri</li>
+<li><strong>Lisans:</strong> CC-BY 4.0 (annotation), video YouTube
+ToU</li>
+<li><strong>Kullanım:</strong> Action classifier (SlowFast, X3D)
+pretrain için</li>
+</ul>
+<h3 data-number="5.2.4" id="ntu-rgbd-120"><span
+class="header-section-number">5.2.4</span> NTU RGB+D 120</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://rose1.ntu.edu.sg/dataset/actionRecognition/">rose1.ntu.edu.sg</a></li>
+<li><strong>İçerik:</strong> 120 sınıf, 114K klip, skeleton + RGB +
+depth</li>
+<li><strong>Lisans:</strong> Akademik kullanım (form imzalama)</li>
+<li><strong>Kullanım:</strong> Skeleton-based action recognition
+(ST-GCN, MS-G3D) — pose-based body_lean/object_pass modeli için doğal
+taban</li>
+</ul>
+<h3 data-number="5.2.5"
+id="hagrid-hand-gesture-recognition-image-dataset"><span
+class="header-section-number">5.2.5</span> HaGRID (HAnd Gesture
+Recognition Image Dataset)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://github.com/hukenovs/hagrid">github.com/hukenovs/hagrid</a></li>
+<li><strong>İçerik:</strong> 552K görsel, 18 el jesti, 34K kişi</li>
+<li><strong>Lisans:</strong> CC-BY-SA 4.0</li>
+<li><strong>Yararlı sınıflar:</strong> <code>call</code> (kulağa el),
+<code>mute</code>, <code>ok</code>, <code>stop</code></li>
+<li><strong>Kullanım:</strong> <code>hand_to_ear_mouth</code> ve
+<code>hand_under_desk</code> detector pretrain</li>
+</ul>
+<h2 data-number="5.3" id="gaze-datasetleri"><span
+class="header-section-number">5.3</span> Gaze Datasetleri</h2>
+<h3 data-number="5.3.1" id="gaze360"><span
+class="header-section-number">5.3.1</span> Gaze360</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="http://gaze360.csail.mit.edu/">gaze360.csail.mit.edu</a></li>
+<li><strong>İçerik:</strong> 238 subject, 360° gaze, indoor/outdoor</li>
+<li><strong>Lisans:</strong> Akademik</li>
+<li><strong>Kullanım:</strong> Sınıf gibi geniş açılı sahnelerde
+benchmark</li>
+</ul>
+<h3 data-number="5.3.2" id="eth-xgaze"><span
+class="header-section-number">5.3.2</span> ETH-XGaze</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://ait.ethz.ch/projects/2020/ETH-XGaze/">ait.ethz.ch/xgaze</a></li>
+<li><strong>İçerik:</strong> 1.1M görsel, 110 subject, geniş aydınlatma
+çeşitliliği</li>
+<li><strong>Lisans:</strong> Akademik (registration)</li>
+<li><strong>Kullanım:</strong> Aydınlatma varyasyonuna dayanıklı gaze
+modeli</li>
+</ul>
+<h3 data-number="5.3.3" id="mpiigaze-mpiifacegaze"><span
+class="header-section-number">5.3.3</span> MPIIGaze / MPIIFaceGaze</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.perceptualui.org/research/datasets/MPIIGaze/">perceptualui.org</a></li>
+<li><strong>İçerik:</strong> 213K görsel, 15 subject, laptop ön
+kamerası</li>
+<li><strong>Lisans:</strong> Araştırma kullanımı</li>
+<li><strong>Kullanım:</strong> Klasik baseline</li>
+</ul>
+<h3 data-number="5.3.4" id="l2cs-net-pretrained-model"><span
+class="header-section-number">5.3.4</span> L2CS-Net (Pretrained
+Model)</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://github.com/Ahmednull/L2CS-Net">github.com/Ahmednull/L2CS-Net</a></li>
+<li><strong>İçerik:</strong> Gaze360 üzerinde eğitilmiş drop-in
+inference modeli</li>
+<li><strong>Lisans:</strong> MIT</li>
+<li><strong>Kullanım:</strong> MediaPipe Face Mesh yetmezse direkt gaze
+çıkışı</li>
+</ul>
+<h2 data-number="5.4" id="yüz-maske-datasetleri"><span
+class="header-section-number">5.4</span> Yüz &amp; Maske
+Datasetleri</h2>
+<h3 data-number="5.4.1" id="maskedface-net"><span
+class="header-section-number">5.4.1</span> MaskedFace-Net</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://github.com/cabani/MaskedFace-Net">github.com/cabani/MaskedFace-Net</a></li>
+<li><strong>İçerik:</strong> 137K masked yüz (sentetik), FFHQ
+tabanlı</li>
+<li><strong>Lisans:</strong> CC-BY-NC-SA 4.0 (<strong>ticari kullanımda
+dikkat</strong>)</li>
+<li><strong>Kullanım:</strong> <code>face_covering</code> detector</li>
+</ul>
+<h3 data-number="5.4.2" id="wider-face"><span
+class="header-section-number">5.4.2</span> WIDER FACE</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="http://shuoyang1213.me/WIDERFACE/">shuoyang1213.me/WIDERFACE</a></li>
+<li><strong>İçerik:</strong> 32K görsel, 393K yüz, geniş çeşitlilik</li>
+<li><strong>Lisans:</strong> Araştırma</li>
+<li><strong>Kullanım:</strong> InsightFace RetinaFace zaten bu üzerinde
+eğitilmiş</li>
+</ul>
+<h2 data-number="5.5" id="person-re-identification-çoklu-kamera"><span
+class="header-section-number">5.5</span> Person Re-Identification (Çoklu
+Kamera)</h2>
+<h3 data-number="5.5.1" id="market-1501"><span
+class="header-section-number">5.5.1</span> Market-1501</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.kaggle.com/datasets/pengcw1/market-1501">zheng-lab.cecs.anu.edu.au</a></li>
+<li><strong>İçerik:</strong> 32K görsel, 1501 kişi, 6 kamera (üniversite
+ortamı)</li>
+<li><strong>Lisans:</strong> Akademik</li>
+<li><strong>Kullanım:</strong> Cross-camera person matching
+baseline</li>
+</ul>
+<h3 data-number="5.5.2" id="msmt17"><span
+class="header-section-number">5.5.2</span> MSMT17</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="https://www.pkuvmc.com/dataset.html">pkuvmc.com</a></li>
+<li><strong>İçerik:</strong> 126K görsel, 4101 kişi, 15 kamera, 4 zaman
+dilimi</li>
+<li><strong>Lisans:</strong> Akademik</li>
+<li><strong>Kullanım:</strong> Daha modern, geniş kapsamlı Re-ID</li>
+</ul>
+<h3 data-number="5.5.3" id="cuhk03"><span
+class="header-section-number">5.5.3</span> CUHK03</h3>
+<ul>
+<li><strong>Kaynak:</strong> <a
+href="http://www.ee.cuhk.edu.hk/~xgwang/CUHK_identification.html">www.ee.cuhk.edu.hk</a></li>
+<li><strong>İçerik:</strong> 14K görsel, 1467 kişi, 5 kamera çifti</li>
+<li><strong>Lisans:</strong> Akademik</li>
+<li><strong>Kullanım:</strong> Ek pretrain verisi</li>
+</ul>
+<blockquote>
+<p><strong>Önemli not:</strong> DukeMTMC-ReID dataset’i 2019’da gizlilik
+gerekçesiyle orijinal yazarları tarafından geri çekildi. Bu plan onu
+<strong>kullanmaz</strong>.</p>
+</blockquote>
+<h2 data-number="5.6" id="cheating-specific-akademik-topluluk"><span
+class="header-section-number">5.6</span> Cheating-Specific (Akademik /
+Topluluk)</h2>
+<p>Sınava özel kapsamlı bir public dataset <strong>YOKTUR</strong>.
+Mevcut kaynaklar:</p>
+<ul>
+<li><strong>Roboflow</strong> topluluğunda “student cheating” / “exam
+cheating” başlıklı ~3–8 dataset; kalite değişken, çoğu 500 görselin
+altında</li>
+<li>Akademik makaleler ekinde küçük (50–200 görsel) datasetler —
+referans olarak değer; eğitime kafi değil</li>
+</ul>
+<p><strong>Sonuç:</strong> Sınav-spesifik sinyaller (kopya kağıdı, komşu
+kağıdına bakma, kalemlik içi gizli not) için <strong>kontrollü iç-veri
+toplama zorunludur</strong>.</p>
+<div class="page-break">
+
+</div>
+<h1 data-number="6" id="veri-toplama-metodolojisi"><span
+class="header-section-number">6</span> Veri Toplama Metodolojisi</h1>
+<h2 data-number="6.1" id="pipeline-genel-akışı"><span
+class="header-section-number">6.1</span> Pipeline Genel Akışı</h2>
+<pre><code>┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│  HARİCİ      │    │  KONTROLLÜ   │    │  CANLI       │
+│  Kaynaklar   │    │  İç-Veri     │    │  Sınav (KVKK)│
+│ (COCO, OID,  │    │ (gönüllüler) │    │ (anonimize)  │
+│  Roboflow)   │    │              │    │              │
+└──────┬───────┘    └──────┬───────┘    └──────┬───────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+   ┌───────────────────────────────────────────────┐
+   │       data/raw  (orijinal format)              │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       data/converted  (YOLO format)            │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       Quality validation (PRD-017 §6)          │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       data/merged  (versiyonlu)                │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       Train / Val / Test split (0.7/0.2/0.1)   │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       YOLOv8 fine-tune (Colab T4)              │
+   └─────────────────────┬─────────────────────────┘
+                         ▼
+   ┌───────────────────────────────────────────────┐
+   │       Benchmark + A/B + Deploy                 │
+   └────────────────────────────────────────────────┘</code></pre>
+<h2 data-number="6.2" id="kontrollü-veri-toplama-protokolü"><span
+class="header-section-number">6.2</span> Kontrollü Veri Toplama
+Protokolü</h2>
+<p>Off-the-shelf dataset olmayan sınıflar (<code>paper_notes</code>,
+<code>pencil_case</code> içi, <code>body_lean</code>,
+<code>hand_under_desk</code>) için <strong>kontrollü
+senaryolar</strong>.</p>
+<h3 data-number="6.2.1" id="genel-kurallar"><span
+class="header-section-number">6.2.1</span> Genel Kurallar</h3>
+<ul>
+<li><strong>Ortam:</strong> Gerçek sınıf, gerçek kamera setup’ı, gerçek
+koltuk konfigürasyonu</li>
+<li><strong>Katılımcılar:</strong> Gönüllü ekip üyeleri (yazılı rıza
+alınmış — PRD-017 §18.4)</li>
+<li><strong>Aydınlatma:</strong> En az 3 koşul (sabah pencere, öğle
+dengesi, akşam floresan)</li>
+<li><strong>Açı:</strong> En az 2 kamera (önden + yandan üst)</li>
+<li><strong>Çözünürlük:</strong> 720p minimum, 1080p önerilen</li>
+<li><strong>Frame rate:</strong> 5 FPS yakalama (ürün ile aynı)</li>
+</ul>
+<h3 data-number="6.2.2" id="senaryo-şablonları"><span
+class="header-section-number">6.2.2</span> Senaryo Şablonları</h3>
+<h4 data-number="6.2.2.1" id="s1-kopya-kağıdı-paper_notes"><span
+class="header-section-number">6.2.2.1</span> S1 — Kopya Kağıdı
+(paper_notes)</h4>
+<p>6 alt-senaryo, her biri 3 kişi × 3 aydınlatma = 9 clip × 6 =
+<strong>54 clip</strong></p>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+<th>Süre</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S1.1</td>
+<td>Kopya kağıdı avuç içinde</td>
+<td>8s</td>
+</tr>
+<tr>
+<td>S1.2</td>
+<td>Kalemlik içinde, açıp bakma</td>
+<td>10s</td>
+</tr>
+<tr>
+<td>S1.3</td>
+<td>Sıranın altında kucakta</td>
+<td>10s</td>
+</tr>
+<tr>
+<td>S1.4</td>
+<td>Manşet/kol içinde gizli</td>
+<td>8s</td>
+</tr>
+<tr>
+<td>S1.5</td>
+<td>Su şişesi etiketine yazılı</td>
+<td>12s</td>
+</tr>
+<tr>
+<td>S1.6</td>
+<td>Sıra altına yapıştırılmış</td>
+<td>10s</td>
+</tr>
+</tbody>
+</table>
+<h4 data-number="6.2.2.2"
+id="s2-telefon-kullanımı-phone-domain-adaptasyon"><span
+class="header-section-number">6.2.2.2</span> S2 — Telefon Kullanımı
+(phone — domain adaptasyon)</h4>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S2.1</td>
+<td>Telefon masa üstünde 5s</td>
+</tr>
+<tr>
+<td>S2.2</td>
+<td>Kucakta ekrana bakma 10s</td>
+</tr>
+<tr>
+<td>S2.3</td>
+<td>Sıra altında gizli kullanım 5s</td>
+</tr>
+<tr>
+<td>S2.4</td>
+<td>Cep’ten hızlıca çıkarıp bakma 3s</td>
+</tr>
+</tbody>
+</table>
+<h4 data-number="6.2.2.3" id="s3-kulaklık-earbuds"><span
+class="header-section-number">6.2.2.3</span> S3 — Kulaklık
+(earbuds)</h4>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S3.1</td>
+<td>İki kulakta wireless, otururken</td>
+</tr>
+<tr>
+<td>S3.2</td>
+<td>Saç ile gizlenmiş tek kulaklık</td>
+</tr>
+<tr>
+<td>S3.3</td>
+<td>Wired, kablo görünür</td>
+</tr>
+<tr>
+<td>S3.4</td>
+<td>Masaya bırakılmış kulaklık</td>
+</tr>
+</tbody>
+</table>
+<h4 data-number="6.2.2.4" id="s4-akıllı-saat-smart_watch"><span
+class="header-section-number">6.2.2.4</span> S4 — Akıllı Saat
+(smart_watch)</h4>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S4.1</td>
+<td>Saate hızlı bakma</td>
+</tr>
+<tr>
+<td>S4.2</td>
+<td>Sağ kola gizleme (kola dönüşle)</td>
+</tr>
+<tr>
+<td>S4.3</td>
+<td>Saati uzun süre kontrol (10s+)</td>
+</tr>
+</tbody>
+</table>
+<h4 data-number="6.2.2.5"
+id="s5-vücut-pozisyonu-body_lean-standing-hand-under-desk"><span
+class="header-section-number">6.2.2.5</span> S5 — Vücut Pozisyonu
+(body_lean / standing / hand-under-desk)</h4>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S5.1</td>
+<td>Yan komşuya gövde eğme (5s)</td>
+</tr>
+<tr>
+<td>S5.2</td>
+<td>Ayağa kalkma + oturma</td>
+</tr>
+<tr>
+<td>S5.3</td>
+<td>Masa altına el sokma 8s</td>
+</tr>
+<tr>
+<td>S5.4</td>
+<td>İki öğrenci arası eşya alışverişi (3s)</td>
+</tr>
+<tr>
+<td>S5.5</td>
+<td>El kulağa götürme (whisper simülasyonu)</td>
+</tr>
+</tbody>
+</table>
+<h4 data-number="6.2.2.6"
+id="s6-negatif-örnekler-meşru-davranışlar-fp-önleme"><span
+class="header-section-number">6.2.2.6</span> S6 — Negatif Örnekler
+(meşru davranışlar, FP önleme)</h4>
+<p>Pozitiflerle eşit sayıda yakalanmalı — model “yanlış pozitif”
+sürmenin neye benzediğini öğrenmeli.</p>
+<table>
+<thead>
+<tr>
+<th>Alt-senaryo</th>
+<th>Açıklama</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S6.1</td>
+<td>Normal sınav çözme, baş eğik</td>
+</tr>
+<tr>
+<td>S6.2</td>
+<td>Düşünme — yukarı bakma, geriye yaslanma</td>
+</tr>
+<tr>
+<td>S6.3</td>
+<td>Kalem düşürme + eğilme + alma</td>
+</tr>
+<tr>
+<td>S6.4</td>
+<td>Saat (kol saati) kontrol, normal</td>
+</tr>
+<tr>
+<td>S6.5</td>
+<td>Gergi — boyun, omuz hareketleri</td>
+</tr>
+<tr>
+<td>S6.6</td>
+<td>Yanındaki öğrenciye normal yan-bakış (kısa &lt; 1s)</td>
+</tr>
+</tbody>
+</table>
+<h3 data-number="6.2.3" id="annotation"><span
+class="header-section-number">6.2.3</span> Annotation</h3>
+<ul>
+<li><strong>Tool:</strong> <a href="https://www.cvat.ai/">CVAT</a>
+(self-hosted, açık kaynak) veya <a
+href="https://roboflow.com/annotate">Roboflow Annotate</a> (web,
+ücretsiz 10K görsel/ay)</li>
+<li><strong>Yarı-otomatik:</strong> YOLOv8 stock ile pre-label →
+annotator düzeltir (%70 hız kazancı)</li>
+<li><strong>Çift-pass kalite kontrol:</strong> Rastgele 50 örnek için 2
+ayrı annotator → IoU ≥ %95 agreement gerekli</li>
+</ul>
+<h3 data-number="6.2.4" id="privacy-kvkk"><span
+class="header-section-number">6.2.4</span> Privacy / KVKK</h3>
+<ul>
+<li>Tüm “internal” frame’ler <code>anonymize_frame.py</code> üzerinden
+geçer (Gaussian blur yüz, PRD-017 §18.3)</li>
+<li>Yüz tespitiyle ilgili sınıflar (<code>face_covering</code>,
+<code>identity</code>) için ayrı rıza protokolü</li>
+<li>Eğitim hedefi bbox-tabanlı ise yüz blur model performansını
+etkilemez (PRD-017 §18.3 notu)</li>
+</ul>
+<div class="page-break">
+
+</div>
+<h1 data-number="7" id="sprint-1318-detaylı-planlama"><span
+class="header-section-number">7</span> Sprint 13–18 Detaylı
+Planlama</h1>
+<p>Phase B (Sprint 7–12) live. Sonrası <strong>Phase C — Reliability +
+Data Excellence</strong> olarak konumlanır. Sprint 13 reliability
+foundation; 14–18 dataset eksenidir.</p>
+<h2 data-number="7.1" id="sprint-13-live-pipeline-reliability"><span
+class="header-section-number">7.1</span> Sprint 13 — Live Pipeline
+Reliability</h2>
+<p><strong>Tema:</strong> Mobile camera pair drop kök nedenleri ortadan
+kaldırılır; gözlemlenebilirlik artırılır</p>
+<p>Bu sprint dataset toplamadan ÖNCEKİ ön-koşuldur. Mobile WebSocket’in
+kararsız olduğu bir sistemde kontrollü senaryo çekimleri yarıda kopar ve
+canlı sınavdan anonimize frame çıkarma pipeline’ı çalışmaz.</p>
+<div class="tier1">
+<p><strong>Hızlı Kazanç — En Önce Yapılacaklar (~7 saat)</strong></p>
+<ul>
+<li><strong>BL-13-01 (3h)</strong> + <strong>BL-13-02 (4h)</strong>
+birlikte: YOLO eager init + publish loop safe except. 7 saatlik iş,
+<strong>ilk inference 5–15s → &lt; 100ms</strong> düşüş ve sessiz WS
+ölümlerinin <strong>anında</strong> sonu. Sprint 13’ün diğer BL’lerinden
+bağımsız, paralel başlatılabilir.</li>
+</ul>
+</div>
+<h3 data-number="7.1.1" id="hedef-metrikler"><span
+class="header-section-number">7.1.1</span> Hedef Metrikler</h3>
+<div class="tier1">
+<ul>
+<li>Mobile pair drop oranı <strong>&lt; %0.5 / saat</strong> (mevcut:
+~%80 / 30 sn)</li>
+<li>WS close code stack trace coverage <strong>%100</strong> (mevcut:
+stack trace yok)</li>
+<li>YOLO ilk inference süresi <strong>&lt; 100 ms</strong> (mevcut: 5–15
+sn)</li>
+<li>30 dakika sustained mobile stream başarısı <strong>%100</strong>
+(ekran kapalı + network anahtarlama altında)</li>
+</ul>
+</div>
+<h3 data-number="7.1.2" id="backlog"><span
+class="header-section-number">7.1.2</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>dev_role</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13-01</td>
+<td><strong>YOLO eager init</strong> — FastAPI startup event’inde
+<code>_get_yolo()</code>; ilk frame beklemiyor
+(<code>publish_handler.py:149-176</code>)</td>
+<td>ai_backend</td>
+<td>3</td>
+</tr>
+<tr>
+<td>13-02</td>
+<td><strong>Publish loop safe except</strong> —
+<code>except Exception:</code> ekle, per-frame error log, loop
+kapanmasın (<code>publish_handler.py:388-486</code>)</td>
+<td>ai_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>13-03</td>
+<td><strong>write_incident decouple</strong> —
+<code>asyncio.Queue</code> + background worker; receive loop
+bekletme</td>
+<td>ai_backend</td>
+<td>10</td>
+</tr>
+<tr>
+<td>13-04</td>
+<td><strong>WS close code/reason structured logging</strong> — publish
+&amp; detections endpoint’leri; CloudWatch’a stack trace</td>
+<td>ai_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>13-05</td>
+<td>CloudWatch metric filters: <code>publish_idle_timeout</code>,
+<code>publish_exception</code>, <code>yolo_init_duration_ms</code></td>
+<td>ai_backend</td>
+<td>3</td>
+</tr>
+<tr>
+<td>13-06</td>
+<td><strong>Frontend bufferedAmount backpressure</strong> —
+<code>if (ws.bufferedAmount &gt; 250_000) return;</code>
+(<code>CamPairCapture.tsx:235-254</code>)</td>
+<td>portal_frontend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>13-07</td>
+<td><strong>Visibility pause/resume</strong> —
+<code>document.visibilityState === 'hidden'</code> →
+setStreaming(false); <code>setInterval</code> guard</td>
+<td>portal_frontend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>13-08</td>
+<td><strong>Auto-reconnect</strong> — <code>ws.onclose</code> →
+exponential backoff (3 attempt: 1s/2s/4s), telemetri</td>
+<td>portal_frontend</td>
+<td>6</td>
+</tr>
+<tr>
+<td>13-09</td>
+<td>CamPairCapture debug overlay — framesSent, bufferedAmount,
+lastCloseCode (dev-only)</td>
+<td>portal_frontend</td>
+<td>3</td>
+</tr>
+<tr>
+<td>13-10</td>
+<td><strong>Stretch</strong> — Detection worker pool (asyncio.Queue +
+N=2 workers); P2 madde, zaman kalırsa</td>
+<td>ai_backend</td>
+<td>12</td>
+</tr>
+<tr>
+<td>13-11</td>
+<td>E2E reliability test: 30 dk sustained mobile stream + screen-off +
+4G/5G/WiFi switching</td>
+<td>project_coordinator</td>
+<td>8</td>
+</tr>
+<tr>
+<td>13-12</td>
+<td>Runbook: “Camera Pair Drop Postmortem” — kök neden + fix listesi +
+monitoring runbook</td>
+<td>project_coordinator</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam (baseline):</strong> ~53 saat \ <strong>Toplam
+(stretch dahil):</strong> ~65 saat</p>
+<h3 data-number="7.1.3" id="kabul-kriterleri"><span
+class="header-section-number">7.1.3</span> Kabul Kriterleri</h3>
+<div class="tier1">
+<ul>
+<li>30 dakika sustained mobile stream <strong>kopmadan</strong>
+tamamlanır (Android Chrome + iOS Safari)</li>
+<li>Telefon ekranı kapalı → ekran açık döngüsünde stream
+<strong>otomatik resume</strong></li>
+<li>WS close olayları CloudWatch’ta close_code + reason ile
+<strong>stack trace eşliğinde</strong> görünür</li>
+<li>YOLO ilk inference &lt; 100 ms (eager init)</li>
+<li>Receive loop’ta exception fırlatan frame <strong>skip</strong>
+edilir, sonraki frame işlenir</li>
+</ul>
+</div>
+<h3 data-number="7.1.4" id="risk-notu"><span
+class="header-section-number">7.1.4</span> Risk Notu</h3>
+<ul>
+<li>Visibility pause iOS Safari’de tutarsız olabilir — fallback olarak
+<code>freeze</code>/<code>resume</code> page lifecycle event’leri de
+bağla</li>
+<li>Detection worker pool (13-10) Sprint 18’de zaten gerekecek; burada
+öteleyebiliriz, kritik değil</li>
+</ul>
+<hr />
+<h2 data-number="7.2" id="sprint-14-dataset-pipeline-foundation"><span
+class="header-section-number">7.2</span> Sprint 14 — Dataset Pipeline
+Foundation</h2>
+<p><strong>Tema:</strong> Boru hattını gerçekten kur + Faz uyumu
+altyapısı</p>
+<p>PRD-017 yazıldı ama gerçek implementation yok. Bu sprint dokümandan
+koda geçişi sağlar; ayrıca Faz 0-1/2/4 uyum BL’lerini ekler.</p>
+<div class="tier1">
+<p><strong>Hızlı Kazanç — En Önce Yapılacaklar (~2 saat)</strong></p>
+<ul>
+<li><strong>BL-14-08 (2h):</strong> <code>config.yaml</code> cleanup —
+<code>keyboard</code> (76) ve <code>laptop</code>
+<ol start="63" type="1">
+<li>sınıflarını <code>classes_of_interest</code>’ten
+<strong>çıkar</strong>, <code>paper_detected</code> mapping’ini düzelt.
+Sınav masasında klavye/laptop olmaz; sistemin bu iki sınıfı her frame’de
+tarayıp gürültü üretmesine gerek yok. Mevcut FP’leri
+<strong>anında</strong> düşürür ve YOLO inference süresini
+kısaltır.</li>
+</ol></li>
+</ul>
+<p><strong>Etkilenen kod:</strong></p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ai-service/config.yaml — SONRA:</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">classes_of_interest</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="dv">0</span><span class="kw">,</span><span class="at"> </span><span class="dv">67</span><span class="kw">,</span><span class="at"> </span><span class="dv">73</span><span class="kw">]</span><span class="co">  # person, cell phone, book</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">incident_class_map</span><span class="kw">:</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;cell phone&#39;</span><span class="kw">:</span><span class="at"> phone_detected</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">&#39;book&#39;</span><span class="kw">:</span><span class="at">       book_detected</span><span class="co">     # paper_detected DEĞİL — kitap yasak</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="co">                                  # materyal kuralı varsa burada eşleşir</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># paper_notes class&#39;ı Sprint 16&#39;da custom model ile gelir</span></span></code></pre></div>
+</div>
+<h3 data-number="7.2.1" id="backlog-1"><span
+class="header-section-number">7.2.1</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>dev_role</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>14-01</td>
+<td><code>datasets</code> tablosu migration + RLS politikaları (PRD-017
+§10)</td>
+<td>portal_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>14-02</td>
+<td><code>scripts/import_dataset.py</code> — Roboflow CLI + FiftyOne
+wrapper</td>
+<td>ai_backend</td>
+<td>8</td>
+</tr>
+<tr>
+<td>14-03</td>
+<td><code>scripts/convert_dataset.py</code> — COCO/VOC/OID → YOLO</td>
+<td>ai_backend</td>
+<td>8</td>
+</tr>
+<tr>
+<td>14-04</td>
+<td><code>scripts/validate_dataset.py</code> — quality_report.json
+(PRD-017 §6.3)</td>
+<td>ai_backend</td>
+<td>8</td>
+</tr>
+<tr>
+<td>14-05</td>
+<td><code>scripts/merge_datasets.py</code> — class mapping + stratified
+split</td>
+<td>ai_backend</td>
+<td>8</td>
+</tr>
+<tr>
+<td>14-06</td>
+<td><code>scripts/anonymize_frame.py</code> — Gaussian blur yüzler</td>
+<td>ai_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td>14-07</td>
+<td><code>data/</code> klasör hierarchy + <code>.gitignore</code> +
+Supabase Storage bucket</td>
+<td>ai_backend</td>
+<td>2</td>
+</tr>
+<tr>
+<td>14-08</td>
+<td><strong><code>config.yaml</code> cleanup</strong> — keyboard/laptop
+çıkar, <code>paper_detected</code> mapping düzelt</td>
+<td>ai_backend</td>
+<td>2</td>
+</tr>
+<tr>
+<td>14-09</td>
+<td><code>/api/ai/datasets</code> CRUD endpoint’leri (admin-only
+RBAC)</td>
+<td>portal_backend</td>
+<td>8</td>
+</tr>
+<tr>
+<td>14-10</td>
+<td><code>/admin/datasets</code> UI — liste, kalite raporu, merge
+sihirbazı</td>
+<td>portal_frontend</td>
+<td>12</td>
+</tr>
+<tr>
+<td>14-11</td>
+<td>E2E test: 100-frame dummy → import → validate → merge → export</td>
+<td>project_coordinator</td>
+<td>6</td>
+</tr>
+<tr>
+<td><strong>14-12</strong></td>
+<td><strong><code>anonymized-training-frames</code> bucket migration +
+RLS</strong> (Tasarım Kararı §2)</td>
+<td>portal_backend</td>
+<td>3</td>
+</tr>
+<tr>
+<td><strong>14-13</strong></td>
+<td><strong><code>internal_training_samples</code> tablo
+migration</strong> (<code>original_incident_id</code> FK + indexler —
+Karar §1)</td>
+<td>portal_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>14-14</strong></td>
+<td><strong>Audit event_type taxonomy:</strong>
+<code>dataset.{import,merge,validate,deploy,annotation_complete}</code>
++ <code>portal/lib/audit/dataset.ts</code></td>
+<td>portal_backend</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>14-15</strong></td>
+<td><strong><code>routes.ts</code></strong> +
+<strong><code>ADMIN_ONLY_ROUTES</code></strong> +
+<strong><code>Sidebar.tsx</code></strong> “Exam Module” → Datasets
+entry</td>
+<td>portal_frontend</td>
+<td>3</td>
+</tr>
+<tr>
+<td><strong>14-16</strong></td>
+<td><strong>RBAC sözleşmesi</strong>: planın her yerinde “chief proctor”
+→ <code>supervisor</code>, dataset endpoint’leri <code>is_admin()</code>
+guard</td>
+<td>full_stack</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam:</strong> ~85 saat</p>
+<h3 data-number="7.2.2" id="çıktı"><span
+class="header-section-number">7.2.2</span> Çıktı</h3>
+<ul>
+<li>Dataset boru hattı <strong>gerçekten</strong> çalışır</li>
+<li>BL-14-08: keyboard/laptop yanlış mapping’i kaldırılmış</li>
+<li>Admin UI’dan dataset durumu izlenebilir</li>
+<li>Faz 0-1/2/4 uyum altyapısı (bucket, tablo, audit, route, RBAC)
+yerinde</li>
+</ul>
+<h3 data-number="7.2.3" id="kabul-kriterleri-1"><span
+class="header-section-number">7.2.3</span> Kabul Kriterleri</h3>
+<ul>
+<li>100-frame test dataset import → <code>quality_report.json</code>
+oluşur</li>
+<li>Merged dataset YOLOv8 <code>data.yaml</code> ile valid (ultralytics
+yükleyebilir)</li>
+<li>Anonymize edilmiş frame’de yüz Gaussian blur uygulanmış (visual
+doğrulama)</li>
+<li><code>internal_training_samples</code> row’u oluşturulduğunda
+<code>audit_logs</code>’da <code>dataset.annotation_complete</code>
+event’i görünür</li>
+<li><code>/admin/datasets</code> sayfası <strong>admin olmayan
+kullanıcıya 403</strong> döner</li>
+</ul>
+<hr />
+<h2 data-number="7.3"
+id="sprint-15-phone-earbuds-smartwatch-eğitimi"><span
+class="header-section-number">7.3</span> Sprint 15 — Phone &amp; Earbuds
+&amp; Smartwatch Eğitimi</h2>
+<p><strong>Tema:</strong> Domain adapte v1.0</p>
+<h3 data-number="7.3.1" id="backlog-2"><span
+class="header-section-number">7.3.1</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>15-01</td>
+<td>COCO subset fetch: <code>cell phone</code> 2000, <code>book</code>
+1000</td>
+<td>3</td>
+</tr>
+<tr>
+<td>15-02</td>
+<td>Open Images V7 fetch: <code>Mobile phone</code> 5000,
+<code>Headphones</code> 3000, <code>Watch</code> 3000</td>
+<td>6</td>
+</tr>
+<tr>
+<td>15-03</td>
+<td>Roboflow scout + indir: 3 earbuds + 2 smartwatch dataset</td>
+<td>8</td>
+</tr>
+<tr>
+<td>15-04</td>
+<td>Open Images “Headphones” → in-ear filter (over-ear’ı çıkar)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>15-05</td>
+<td>İç-controlled capture: S2 (12 clip) + S3 (6) + S4 (3) → 250–400
+frame</td>
+<td>12</td>
+</tr>
+<tr>
+<td>15-06</td>
+<td>CVAT annotation server kur + ekibe brief</td>
+<td>4</td>
+</tr>
+<tr>
+<td>15-07</td>
+<td>Annotation: ~700 frame, 4 sınıf</td>
+<td>16</td>
+</tr>
+<tr>
+<td>15-08</td>
+<td>150-frame phone benchmark (gerçek sınıf, 3 aydınlatma)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>15-09</td>
+<td>Merge <code>datasets v1.0</code> → YOLOv8n fine-tune (Colab T4, 50
+epoch)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>15-10</td>
+<td>Benchmark + <code>ai_models</code> registry yaz; başarılıysa
+staged</td>
+<td>4</td>
+</tr>
+<tr>
+<td>15-11</td>
+<td>A/B test: stock vs v1.0 — 48h shadow inference</td>
+<td>4</td>
+</tr>
+<tr>
+<td>15-12</td>
+<td><strong>Fallback augmentation kaynağı</strong> (yetersiz
+çeşitlilikte tetiklenir): Objects365 V2 + LVIS v1 subset (wristwatch,
+eraser, pen)</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam:</strong> ~79 saat</p>
+<h3 data-number="7.3.2" id="kabul-kriterleri-2"><span
+class="header-section-number">7.3.2</span> Kabul Kriterleri</h3>
+<div class="tier1">
+<ul>
+<li>Phone precision ≥ %85, recall ≥ %80</li>
+<li>Earbuds precision ≥ %70, recall ≥ %65</li>
+<li>Smart watch precision ≥ %75 (lab + sınıf benchmark)</li>
+<li>Person recall ≥ %95 (regresyon yok)</li>
+<li>Shadow inference: yeni model FP/saat oranı eski modelin altında</li>
+</ul>
+</div>
+<hr />
+<h2 data-number="7.4"
+id="sprint-16-paper-notes-kalemlik-hesap-makinesi"><span
+class="header-section-number">7.4</span> Sprint 16 — Paper Notes &amp;
+Kalemlik &amp; Hesap Makinesi</h2>
+<p><strong>Tema:</strong> Off-the-shelf olmayanlar</p>
+<div class="tier3">
+<p><strong>Bu Sprint Riskli</strong> Off-the-shelf veri yok. Tamamen
+kontrollü iç-veri toplanır. Senaryo çeşitliliği yetersizse FP
+patlar.</p>
+</div>
+<h3 data-number="7.4.1" id="backlog-3"><span
+class="header-section-number">7.4.1</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>16-01</td>
+<td>Senaryo şartnamesi: S1 6 alt-senaryo + S6 6 negatif</td>
+<td>4</td>
+</tr>
+<tr>
+<td>16-02</td>
+<td>Capture: 3 kişi × 6 senaryo × 3 aydınlatma × 2 kamera = 108
+clip</td>
+<td>16</td>
+</tr>
+<tr>
+<td>16-03</td>
+<td>Frame extraction (2 FPS) → ~600 ham frame + pre-label</td>
+<td>14</td>
+</tr>
+<tr>
+<td>16-04</td>
+<td>Pencil case için Open Images V7 (~1500) + iç-veri 200 frame</td>
+<td>4</td>
+</tr>
+<tr>
+<td>16-05</td>
+<td>Calculator için Open Images V7 + Roboflow + iç-veri</td>
+<td>4</td>
+</tr>
+<tr>
+<td>16-06</td>
+<td>Negative mining: meşru “kağıt üzerinde yazma” frame’leri (FP)</td>
+<td>8</td>
+</tr>
+<tr>
+<td>16-07</td>
+<td>Roboflow scout: “cheat sheet”, “hidden notes” varsa indir</td>
+<td>4</td>
+</tr>
+<tr>
+<td>16-08</td>
+<td>Merge <code>datasets v2.0</code> (+ 3 yeni sınıf)</td>
+<td>4</td>
+</tr>
+<tr>
+<td>16-09</td>
+<td>Fine-tune v2.0; v1.0 ile A/B</td>
+<td>6</td>
+</tr>
+<tr>
+<td>16-10</td>
+<td>Benchmark + admin onayı + staged deploy</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam:</strong> ~70 saat</p>
+<h3 data-number="7.4.2" id="kabul-kriterleri-3"><span
+class="header-section-number">7.4.2</span> Kabul Kriterleri</h3>
+<ul>
+<li><code>paper_notes</code> precision ≥ %75 (kontrollü), ≥ %65 (canlı
+sınıf)</li>
+<li><code>pencil_case</code> FP rate &lt; %5 (kalemlikteki normal
+kalemleri yanlış pozitif saymamalı)</li>
+<li><code>calculator</code> precision ≥ %80 (programlanabilir vs basit
+ayrımı bonus)</li>
+</ul>
+<hr />
+<h2 data-number="7.5" id="sprint-17-pose-davranış-gaze-refinement"><span
+class="header-section-number">7.5</span> Sprint 17 — Pose &amp; Davranış
+&amp; Gaze Refinement</h2>
+<p><strong>Tema:</strong> Bbox’tan davranışa; gaze sinyallerini sınıf
+geometrisine bağla</p>
+<h3 data-number="7.5.1" id="backlog-4"><span
+class="header-section-number">7.5.1</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>17-01</td>
+<td>MediaPipe Pose extractor (33 keypoint per track)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>17-02</td>
+<td><code>body_lean_neighbor</code> kuralı: torso &gt; 20° + komşu yön
+kalibrasyonu</td>
+<td>8</td>
+</tr>
+<tr>
+<td>17-03</td>
+<td><code>standing_up</code> kuralı: omuz/kalça y-koord %30+ delta</td>
+<td>6</td>
+</tr>
+<tr>
+<td>17-04</td>
+<td><code>hand_under_desk</code>: el y &gt; masa segment y, sustained
+5s</td>
+<td>8</td>
+</tr>
+<tr>
+<td>17-05</td>
+<td><code>hand_to_ear_mouth</code>: el-yüz dist &lt; 50px, sustained
+2s</td>
+<td>6</td>
+</tr>
+<tr>
+<td>17-06</td>
+<td>İç-controlled capture S5: 5 davranış × 3 kişi × 2 koltuk = ~30
+clip</td>
+<td>10</td>
+</tr>
+<tr>
+<td>17-07</td>
+<td>Annotation (frame-level action labels)</td>
+<td>8</td>
+</tr>
+<tr>
+<td>17-08</td>
+<td>Opsiyonel: AVA Actions subset (<code>hand_pass_object</code>) — pose
+rule yetmezse. <strong>Alternatif:</strong> NTU RGB+D 120
+skeleton-action (ST-GCN baseline) veya Kinetics-700 (SlowFast
+pretrain)</td>
+<td>6</td>
+</tr>
+<tr>
+<td>17-09</td>
+<td><code>object_passing</code>: iki track el yakınlaşması + sustained
+1–3s</td>
+<td>6</td>
+</tr>
+<tr>
+<td>17-10</td>
+<td>Fargate resource bump 2048→3072 CPU, 6144→7168 MB + benchmark</td>
+<td>6</td>
+</tr>
+<tr>
+<td><strong>17-11</strong></td>
+<td><strong><code>gaze_at_lap</code></strong> — pitch açısı aşağı
+(kucağa) + sustained 5s + bbox lap region (phone/notes lap’ta görünmüşse
+severity boost)</td>
+<td>4</td>
+</tr>
+<tr>
+<td><strong>17-12</strong></td>
+<td><strong><code>gaze_at_neighbor</code> direction calibration</strong>
+— Sprint 8 generic gaze diversion’u PRD-013 §3.6 koltuk geometrisine
+bağla; sol/sağ komşu yönüne göre filtre</td>
+<td>6</td>
+</tr>
+<tr>
+<td><strong>17-13</strong></td>
+<td><strong><code>synchronized_behavior</code></strong> — multi-track
+temporal correlation: iki komşu öğrenci 2s içinde aynı yöne, tekrarlı
+(5dk içinde 3+ kez)</td>
+<td>6</td>
+</tr>
+<tr>
+<td><strong>17-14</strong></td>
+<td><strong>Stretch — L2CS-Net gaze fallback</strong> — MediaPipe Face
+Mesh pitch’i kucağa-bakma için yetersizse drop-in inference (Gaze360
+pretrained)</td>
+<td>4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam (baseline):</strong> ~90 saat \ <strong>Toplam
+(stretch dahil):</strong> ~94 saat</p>
+<h3 data-number="7.5.2" id="kabul-kriterleri-4"><span
+class="header-section-number">7.5.2</span> Kabul Kriterleri</h3>
+<ul>
+<li><code>body_lean_neighbor</code> precision ≥ %75</li>
+<li><code>standing_up</code> recall ≥ %90 (kolay sinyal)</li>
+<li><code>hand_under_desk</code> FP &lt; %15 (kalem düşürme/eğilme ile
+karışmamalı)</li>
+<li><code>object_passing</code> precision ≥ %70 (zor sinyal)</li>
+<li><code>gaze_at_lap</code> precision ≥ %75 (sustained 5s, lap region
+overlap)</li>
+<li><code>gaze_at_neighbor</code> calibrated FP rate kalibrasyondan
+önceki <strong>yarıya düşmüş</strong> olmalı</li>
+<li><code>synchronized_behavior</code> precision ≥ %70 (3+ kez 5dk
+içinde tekrarlanma)</li>
+</ul>
+<hr />
+<h2 data-number="7.6"
+id="sprint-18-multi-camera-fusion-livemonitor-refactor"><span
+class="header-section-number">7.6</span> Sprint 18 — Multi-Camera Fusion
++ LiveMonitor Refactor</h2>
+<p><strong>Tema:</strong> Çoklu kamera ile precision kilidi</p>
+<p><strong>Hedef:</strong> Aynı incident farklı kameralarda görünürse
+severity boost; tek kameranın gördüğü ama diğerinin görmediği → güven
+düşür. Mevcut LiveMonitor “single-session demo” modundan <strong>gerçek
+multi-cam grid</strong>’e geçer.</p>
+<p><strong>Faz 4 uyum notu:</strong> <code>cameras</code>,
+<code>session_cameras</code>, <code>camera_health_events</code>
+tabloları (PRD-019) <strong>zaten canlı</strong>. Yeni multi-cam tablo
+eklenmez — sadece UI ve fusion logic eklenir. LiveMonitor sıfırdan
+yazılmaz; <code>framesByCamera: Map</code> ve
+<code>sessionCameras: SessionCameraRow[]</code> zaten mevcut
+(<code>portal/components/exams/LiveMonitor.tsx:42,45</code>); demo flag
+kaldırılıp grid layout aktive edilir.</p>
+<h3 data-number="7.6.1" id="backlog-5"><span
+class="header-section-number">7.6.1</span> Backlog</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>BL</th>
+<th>İş</th>
+<th>Saat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>18-01</td>
+<td>PRD-013 §3.8 multi-cam coordinator gerçek implementation</td>
+<td>10</td>
+</tr>
+<tr>
+<td>18-02</td>
+<td>Cross-camera Re-ID: Market-1501 üzerinde OSNet/TransReID pretrained.
+<strong>Cross-domain düşerse fallback:</strong> MSMT17 (15-cam) veya
+CUHK03 (5-cam çift) ile ek fine-tune</td>
+<td>6</td>
+</tr>
+<tr>
+<td>18-03</td>
+<td>Person re-id embedder service (track_id × camera × embedding)</td>
+<td>8</td>
+</tr>
+<tr>
+<td>18-04</td>
+<td>Multi-camera person matcher: cosine sim &gt; 0.7 → unified
+person_id</td>
+<td>8</td>
+</tr>
+<tr>
+<td>18-05</td>
+<td>İç multi-cam capture: cam-pair token ile 2 telefon, 3 senaryo × 4
+kişi = test seti</td>
+<td>8</td>
+</tr>
+<tr>
+<td>18-06</td>
+<td>Severity fusion: tek = original; 2+ onay = +1 severity tier</td>
+<td>4</td>
+</tr>
+<tr>
+<td>18-07</td>
+<td>Kalibrasyon: kamera çakışma bölgesi (overlap zone) UI</td>
+<td>12</td>
+</tr>
+<tr>
+<td>18-08</td>
+<td><strong>LiveMonitor refactor</strong>: “Pick first session” demo
+flag kaldır, <code>framesByCamera</code> Map’i unlock et, grid
+layout</td>
+<td>6</td>
+</tr>
+<tr>
+<td>18-09</td>
+<td>Çapraz-doğrulama benchmark: tek-cam vs 2-cam</td>
+<td>7</td>
+</tr>
+<tr>
+<td>18-10</td>
+<td>Detection worker pool (Sprint 13’ten ötelenmişse) — cross-cam fusion
+zaten queue ister</td>
+<td>8</td>
+</tr>
+<tr>
+<td><strong>18-11</strong></td>
+<td><strong><code>face_covering</code> (maske/cap ile kimlik
+gizleme)</strong> — MaskedFace-Net (sentetik, CC-BY-NC:
+<strong>production’da iç-veri ile değiştir</strong>, geliştirmede OK) +
+WIDER FACE fine-tune; sustained 30s+ kuralı</td>
+<td>8</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Toplam:</strong> ~77 saat (worker pool 18-10 dahil;
+çıkarılırsa ~69)</p>
+<h3 data-number="7.6.2" id="kabul-kriterleri-5"><span
+class="header-section-number">7.6.2</span> Kabul Kriterleri</h3>
+<ul>
+<li>Multi-cam onaylı incident precision ≥ %92</li>
+<li>Tek-cam vs multi-cam fark ≥ %10 precision artışı</li>
+<li>Person re-id cross-camera accuracy ≥ %85 (Market-1501 benchmark +
+iç-veri)</li>
+<li><code>face_covering</code> precision ≥ %80, recall ≥ %70 (sustained
+30s+)</li>
+</ul>
+<div class="page-break">
+
+</div>
+<h1 data-number="8" id="doğrulama-kapıları"><span
+class="header-section-number">8</span> Doğrulama Kapıları</h1>
+<p>PRD-017 §13’teki acceptance kriterleri sıkılaştırılmıştır.</p>
+<h2 data-number="8.1" id="sprint-sonu-zorunlu-kontroller"><span
+class="header-section-number">8.1</span> Sprint Sonu Zorunlu
+Kontroller</h2>
+<div class="accent-box">
+<p><strong>Her Sprint’in Son Commit’inde</strong></p>
+<ol type="1">
+<li>Annotation kalitesi: rastgele 50 örnek, 2 annotator ≥ %95 IoU
+agreement</li>
+<li>Domain gap testi: harici test metric’i ≥ iç-test metric × 0.85</li>
+<li>A/B shadow inference: 48h, FP/saat oranı eski modelden yüksekse
+<strong>promote etme</strong></li>
+<li>KVKK gate: <code>internal/positives</code>’a giren her frame
+anonymized (CI lint)</li>
+<li>Lisans gate: <code>datasets</code> row’unda lisans NULL veya
+CC-BY-NC ise prod deploy bloklu</li>
+</ol>
+</div>
+<h2 data-number="8.2" id="class-bazlı-kpi-tablosu"><span
+class="header-section-number">8.2</span> Class-Bazlı KPI Tablosu</h2>
+<table>
+<thead>
+<tr>
+<th>Sınıf</th>
+<th>Phase A.1 Min</th>
+<th>Phase B Hedef</th>
+<th>Phase C Olgun</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>phone precision</td>
+<td>%75</td>
+<td>%85</td>
+<td>%90</td>
+</tr>
+<tr>
+<td>phone recall</td>
+<td>%70</td>
+<td>%80</td>
+<td>%85</td>
+</tr>
+<tr>
+<td>earbuds precision</td>
+<td>—</td>
+<td>%70</td>
+<td>%80</td>
+</tr>
+<tr>
+<td>earbuds recall</td>
+<td>—</td>
+<td>%65</td>
+<td>%75</td>
+</tr>
+<tr>
+<td>smart_watch precision</td>
+<td>—</td>
+<td>%75</td>
+<td>%85</td>
+</tr>
+<tr>
+<td>paper_notes precision</td>
+<td>—</td>
+<td>%75</td>
+<td>%85</td>
+</tr>
+<tr>
+<td>paper_notes recall</td>
+<td>—</td>
+<td>%65</td>
+<td>%75</td>
+</tr>
+<tr>
+<td>body_lean precision</td>
+<td>—</td>
+<td>%75</td>
+<td>%85</td>
+</tr>
+<tr>
+<td>standing_up recall</td>
+<td>—</td>
+<td>%90</td>
+<td>%95</td>
+</tr>
+<tr>
+<td>person recall</td>
+<td>%95</td>
+<td>%95</td>
+<td>%98</td>
+</tr>
+<tr>
+<td>mAP@0.5 toplam</td>
+<td>0.65</td>
+<td>0.75</td>
+<td>0.85</td>
+</tr>
+<tr>
+<td>FP/saat</td>
+<td>&lt; 6</td>
+<td>&lt; 3</td>
+<td>&lt; 1</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="8.3" id="benchmark-set-yapısı"><span
+class="header-section-number">8.3</span> Benchmark Set Yapısı</h2>
+<p>Her sınıf için iki ayrı test seti tutulur:</p>
+<ol type="1">
+<li><strong>Lab test set</strong> — kontrollü, ideal koşul (model
+overfit miydi kontrolü)</li>
+<li><strong>Field test set</strong> — gerçek sınıf, anonimize, çok
+kameralı (gerçek precision)</li>
+</ol>
+<p><strong>Promote kuralı:</strong> Yeni model <strong>her iki test
+setinde</strong> önceki versiyonu geçmelidir.</p>
+<div class="page-break">
+
+</div>
+<h1 data-number="9" id="risk-register"><span
+class="header-section-number">9</span> Risk Register</h1>
+<h2 data-number="9.1" id="reliability-riskleri-sprint-13-kapsamı"><span
+class="header-section-number">9.1</span> Reliability Riskleri (Sprint 13
+Kapsamı)</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Olasılık</th>
+<th>Etki</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>YOLO eager init başlangıç süresini Fargate health-check’in altına
+itmez</td>
+<td>Düşük</td>
+<td>Orta</td>
+<td>health-check <code>start-period</code> 10s → 30s; cold-start
+telemetri</td>
+</tr>
+<tr>
+<td>Visibility pause iOS Safari’de tutarsız</td>
+<td>Yüksek</td>
+<td>Orta</td>
+<td><code>freeze</code>/<code>resume</code> page lifecycle event
+fallback; manual reconnect butonu</td>
+</tr>
+<tr>
+<td>Auto-reconnect backoff sırasında frame kaybı</td>
+<td>Orta</td>
+<td>Düşük</td>
+<td>Reconnect sırasında lokal frame buffer (max 5 frame); recovery
+sonrası flush</td>
+</tr>
+<tr>
+<td>Detection worker pool latency artırır</td>
+<td>Orta</td>
+<td>Orta</td>
+<td>Sprint 13’te stretch; metric karşılaştırmadan promote etme</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="9.2" id="dataset-riskleri-sprint-1418-kapsamı"><span
+class="header-section-number">9.2</span> Dataset Riskleri (Sprint 14–18
+Kapsamı)</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Olasılık</th>
+<th>Etki</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Roboflow datasetleri kalitesiz çıkar</td>
+<td>Orta</td>
+<td>Orta</td>
+<td>PRD-017 §4.2 katı filtre; ilk 3-5 sonucu manuel önizle</td>
+</tr>
+<tr>
+<td>İç-controlled capture’de senaryo çeşitliliği az</td>
+<td>Yüksek</td>
+<td>Yüksek</td>
+<td>En az 3 kişi × 3 aydınlatma × 2 açı zorunlu; negatif örnek
+pozitiflerle eşit</td>
+</tr>
+<tr>
+<td><code>paper_notes</code> için yeterli FP-negatif yok → FP
+patlar</td>
+<td>Yüksek</td>
+<td>Yüksek</td>
+<td>S6 negatif senaryolar; canlı shadow 48h öncesi promote etme</td>
+</tr>
+<tr>
+<td>Open Images Headphones over-ear’ı kapsar</td>
+<td>Yüksek</td>
+<td>Orta</td>
+<td>Manuel filtre; in-ear only</td>
+</tr>
+<tr>
+<td>MaskedFace-Net CC-BY-NC → ticari deploy riski</td>
+<td>Orta</td>
+<td>Yüksek</td>
+<td>Sadece <code>face_covering</code> için kullan; production’da iç-veri
+ile değiştir</td>
+</tr>
+<tr>
+<td>Annotation maliyeti budget’i aşar</td>
+<td>Orta</td>
+<td>Orta</td>
+<td>Pre-label + manuel düzelt (%70 hız); CVAT batch UI</td>
+</tr>
+<tr>
+<td>Multi-cam kalibrasyon başarısız</td>
+<td>Orta</td>
+<td>Yüksek</td>
+<td>Sprint 18’de overlap zone UI; manuel marker pin</td>
+</tr>
+<tr>
+<td>Person Re-ID cross-domain düşer</td>
+<td>Yüksek</td>
+<td>Orta</td>
+<td>Market-1501 + iç-veri fine-tune; sınıf ortamı pretrain</td>
+</tr>
+<tr>
+<td>Fargate CPU yetmez (Pose ek yükü)</td>
+<td>Orta</td>
+<td>Orta</td>
+<td>Sprint 17’de 2048→3072 bump; pose sampling Nth frame</td>
+</tr>
+<tr>
+<td>Anonymize copies tablo şişer (her sınav 100+ row)</td>
+<td>Orta</td>
+<td>Düşük</td>
+<td>Auto-archive (12 ay sonra status=‘archived’); query indexes</td>
+</tr>
+<tr>
+<td>Sprint 12 evidence manifest’ine yanlışlıkla dokunma</td>
+<td>Düşük</td>
+<td>Yüksek</td>
+<td>Anonymize copies <strong>ayrı bucket + ayrı sha256</strong>; CI
+test: manifest hash regression check</td>
+</tr>
+<tr>
+<td>KVKK denetimi öğrenci verisi ile eğitimi reddeder</td>
+<td>Düşük</td>
+<td>Kritik</td>
+<td>Anonimizasyon zorunlu; rıza formu; opt-out path</td>
+</tr>
+</tbody>
+</table>
+<div class="page-break">
+
+</div>
+<h1 data-number="10" id="sözlük-öğrenme-için"><span
+class="header-section-number">10</span> Sözlük (Öğrenme için)</h1>
+<dl>
+<dt>mAP (mean Average Precision)</dt>
+<dd>
+Object detection metriği. mAP@0.5 = IoU eşiği 0.5 iken ortalama AP.
+mAP@0.5:0.95 = 10 farklı IoU eşiğinde ortalama (daha sıkı).
+</dd>
+<dt>IoU (Intersection over Union)</dt>
+<dd>
+İki bbox’un örtüşme oranı. Doğru tespit kabul için genelde ≥ 0.5.
+</dd>
+<dt>Precision</dt>
+<dd>
+Tespit edilenlerin kaçı gerçekten doğru. TP / (TP + FP).
+</dd>
+<dt>Recall</dt>
+<dd>
+Gerçek nesnelerin kaçı yakalandı. TP / (TP + FN).
+</dd>
+<dt>F1</dt>
+<dd>
+Precision ve recall’un harmonik ortalaması. 2PR / (P + R).
+</dd>
+<dt>Fine-tune</dt>
+<dd>
+Önceden eğitilmiş modeli (pretrained), kendi dataset’inle daha az
+epoch’la özelleştirme.
+</dd>
+<dt>Domain gap / Domain bias</dt>
+<dd>
+Eğitim verisi ile production verisi farklı dağılımdan geliyorsa oluşan
+performans düşüşü. Sokak/ofis ortamında eğitilmiş COCO modelinin sınıfta
+daha kötü çalışması bunun örneği.
+</dd>
+<dt>Pretrain</dt>
+<dd>
+Büyük genel dataset üzerinde modeli baştan eğitmek (örn: ImageNet,
+COCO). Fine-tune’un başlangıç noktası.
+</dd>
+<dt>Stratified split</dt>
+<dd>
+Train/val/test ayrımında her split’te sınıf dağılımının orijinal ile
+aynı kalmasını sağlama.
+</dd>
+<dt>Hard negative mining</dt>
+<dd>
+Modelin yanlış pozitif ürettiği örnekleri özellikle yeni eğitim turuna
+ekleme — FP’yi azaltır.
+</dd>
+<dt>Pose estimation</dt>
+<dd>
+Bir kişinin vücut keypoint’lerini (omuz, dirsek, diz, kalça, vs.) tespit
+etme. MediaPipe Pose 33 keypoint çıkarır.
+</dd>
+<dt>Re-Identification (Re-ID)</dt>
+<dd>
+Bir kişiyi farklı kameralarda veya farklı zamanlarda aynı kişi olarak
+tanıma — yüz tanımadan farklı (giysi, boy, yürüyüş kullanır).
+</dd>
+<dt>Confidence threshold</dt>
+<dd>
+Modelin tespit kabul ettiği minimum güven skoru. Düşürürsen recall artar
+(daha çok yakalar) ama FP artar; yükseltirsen tersi.
+</dd>
+<dt>Confusion matrix</dt>
+<dd>
+Doğru/yanlış pozitif/negatif sayılarını gösteren tablo. Her hata türünü
+görmek için temel.
+</dd>
+<dt>Sustained detection</dt>
+<dd>
+Bir sinyalin belirli süre boyunca devam etmesi gerekliliği. “1 frame’lik
+yanlışı” filtrelemek için kullanılır.
+</dd>
+<dt>Shadow inference</dt>
+<dd>
+Yeni modeli production trafiği üzerinde çalıştır ama kararları kullanma
+— sadece logla. A/B’ye geçmeden önce güvenlik kontrolü.
+</dd>
+</dl>
+<div class="page-break">
+
+</div>
+<h1 data-number="11" id="ekler"><span
+class="header-section-number">11</span> Ekler</h1>
+<h2 data-number="11.1" id="ek-a-yararlı-komutlar"><span
+class="header-section-number">11.1</span> Ek A — Yararlı Komutlar</h2>
+<h3 data-number="11.1.1" id="fiftyone-ile-coco-subset"><span
+class="header-section-number">11.1.1</span> FiftyOne ile COCO
+subset</h3>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install fiftyone</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-c</span> <span class="st">&quot;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="st">import fiftyone.zoo as foz</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="st">import fiftyone as fo</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="st">ds = foz.load_zoo_dataset(&#39;coco-2017&#39;,</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="st">    split=&#39;train&#39;,</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="st">    label_types=[&#39;detections&#39;],</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="st">    classes=[&#39;cell phone&#39;, &#39;book&#39;],</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="st">    max_samples=2000,</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="st">    dataset_name=&#39;coco_phone_book&#39;)</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="st">ds.export(export_dir=&#39;./data/raw/coco_subset/&#39;,</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="st">    dataset_type=fo.types.YOLOv5Dataset)</span></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;</span></span></code></pre></div>
+<h3 data-number="11.1.2" id="open-images-v7-selective-download"><span
+class="header-section-number">11.1.2</span> Open Images V7 selective
+download</h3>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-c</span> <span class="st">&quot;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="st">import fiftyone.zoo as foz</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="st">import fiftyone as fo</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="st">ds = foz.load_zoo_dataset(&#39;open-images-v7&#39;,</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="st">    split=&#39;train&#39;,</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="st">    label_types=[&#39;detections&#39;],</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="st">    classes=[&#39;Mobile phone&#39;, &#39;Headphones&#39;, &#39;Watch&#39;, &#39;Pencil case&#39;],</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a><span class="st">    max_samples=5000)</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a><span class="st">ds.export(export_dir=&#39;./data/raw/oid_v7/&#39;,</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="st">    dataset_type=fo.types.YOLOv5Dataset)</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;</span></span></code></pre></div>
+<h3 data-number="11.1.3" id="roboflow-cli-ile-dataset-indirme"><span
+class="header-section-number">11.1.3</span> Roboflow CLI ile dataset
+indirme</h3>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install roboflow</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-c</span> <span class="st">&quot;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="st">from roboflow import Roboflow</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="st">rf = Roboflow(api_key=&#39;YOUR_KEY&#39;)</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="st">proj = rf.workspace(&#39;WORKSPACE&#39;).project(&#39;PROJECT&#39;)</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="st">ds = proj.version(1).download(&#39;yolov8&#39;)</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="st">&quot;</span></span></code></pre></div>
+<h3 data-number="11.1.4" id="yolov8-fine-tune"><span
+class="header-section-number">11.1.4</span> YOLOv8 fine-tune</h3>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> ai-service</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python</span> <span class="at">-m</span> scripts.finetune_yolo <span class="dt">\</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">--data</span> data/merged/v1_phone_earbuds/data.yaml <span class="dt">\</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">--weights</span> yolov8n.pt <span class="dt">\</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">--epochs</span> 50 <span class="dt">\</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">--imgsz</span> 640 <span class="dt">\</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">--batch</span> 16 <span class="dt">\</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">--output</span> runs/v1-001 <span class="dt">\</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">--register</span> <span class="dt">\</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">--model-name</span> yolov8n-horuseye <span class="dt">\</span></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">--model-version</span> v1.0</span></code></pre></div>
+<h3 data-number="11.1.5" id="cvat-self-hosted-docker"><span
+class="header-section-number">11.1.5</span> CVAT self-hosted
+(Docker)</h3>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/opencv/cvat</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> cvat</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose up <span class="at">-d</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># http://localhost:8080</span></span></code></pre></div>
+<h2 data-number="11.2" id="ek-b-lisans-hızlı-bakış"><span
+class="header-section-number">11.2</span> Ek B — Lisans Hızlı Bakış</h2>
+<table>
+<thead>
+<tr>
+<th>Lisans</th>
+<th>Kullanılabilir mi?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CC0 (Public Domain)</td>
+<td>✓ Sınırsız</td>
+</tr>
+<tr>
+<td>CC-BY 4.0</td>
+<td>✓ Kaynak göstererek</td>
+</tr>
+<tr>
+<td>CC-BY-SA 4.0</td>
+<td>⚠ Türetilen aynı lisansla paylaşılmalı</td>
+</tr>
+<tr>
+<td>CC-BY-NC</td>
+<td>⚠ Üniversite projesi gri; ticari deploy bloklu</td>
+</tr>
+<tr>
+<td>Apache 2.0 / MIT</td>
+<td>✓</td>
+</tr>
+<tr>
+<td>GPL / AGPL</td>
+<td>⚠ Modeli paylaşıyorsan source paylaşımı gerekebilir</td>
+</tr>
+<tr>
+<td>Belirsiz / Yok</td>
+<td>✗ Kullanma</td>
+</tr>
+</tbody>
+</table>
+<h2 data-number="11.3"
+id="ek-c-referans-kodları-prd-ve-sprint-backlogu"><span
+class="header-section-number">11.3</span> Ek C — Referans Kodları (PRD
+ve Sprint backlogu)</h2>
+<ul>
+<li><a href="../../PRD/PRD-013-camera-ai-analysis.md">PRD-013</a> —
+Camera AI Analysis (WHAT)</li>
+<li><a href="../../PRD/PRD-017-dataset-training-pipeline.md">PRD-017</a>
+— Dataset &amp; Training Pipeline (HOW)</li>
+<li><a href="../../PRD/PRD-018-sprint-backlog.md">PRD-018</a> — Sprint
+Backlog System</li>
+<li><a href="../../PRD/PRD-020-phase-b-ai-pipeline.md">PRD-020</a> —
+Phase B Roadmap</li>
+</ul>
+<h2 data-number="11.4" id="ek-d-versiyon-geçmişi"><span
+class="header-section-number">11.4</span> Ek D — Versiyon Geçmişi</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Versiyon</th>
+<th>Tarih</th>
+<th>Değişiklik</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>2026-05-13</td>
+<td>İlk versiyon — Sprint 13-17 planlama, dataset kaynak kataloğu,
+kontrollü veri toplama protokolü</td>
+</tr>
+<tr>
+<td>2.0</td>
+<td>2026-05-13</td>
+<td>Sprint 11/12 live; Sprint 13 olarak Live Pipeline Reliability
+eklendi (camera pair drop fix); eski sprintler 14-18’e kaydı; Faz
+0-1/2/4 uyum bölümü; 6 Tasarım Kararı; Sprint 14’e 5 alignment BL;
+Sprint 18 LiveMonitor refactor olarak revize; reliability risk
+satırları</td>
+</tr>
+<tr>
+<td><strong>2.1 (final)</strong></td>
+<td><strong>2026-05-13</strong></td>
+<td><strong>Coverage kapatma: Sprint 17’ye 4 BL (17-11 gaze_at_lap,
+17-12 neighbor calibration, 17-13 synchronized_behavior, 17-14 L2CS-Net
+stretch); Sprint 18’e BL-18-11 face_covering (MaskedFace-Net+WIDER
+FACE); Sprint 15’e 15-12 fallback augmentation (Objects365+LVIS);
+BL-17-08’e NTU RGB+D / Kinetics alternative notu; BL-18-02’ye
+MSMT17/CUHK03 fallback notu; Sprint 13/14’e Hızlı Kazanç callout’ları;
+water_bottle_with_label catalog’dan çıkarıldı; toplam saat ~445 →
+~470</strong></td>
+</tr>
+</tbody>
+</table>
+<p><br><br></p>
+<div style="text-align:center; color:#94a3b8; margin-top: 2cm;">
+<p>HorusEye Team • 2026</p>
+</div>
+</body>
+</html>

@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const { data: exam, error: examErr } = await supabase
     .from('exams')
-    .select('id, title, scheduled_at')
+    .select('id, name, scheduled_date')
     .eq('id', examId)
     .maybeSingle();
   if (examErr) return new Response(examErr.message, { status: 500 });
@@ -120,7 +120,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const fname = [
     'horuseye',
-    exam.title.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
+    exam.name.replace(/[^a-z0-9-_]+/gi, '-').slice(0, 40).toLowerCase(),
     scope,
     scope === 'session' ? sessionId?.slice(0, 8) : scope === 'student' ? studentId : null,
     new Date().toISOString().slice(0, 10),
