@@ -39,6 +39,7 @@ from src.api.protocol import (
     status_message,
 )
 from src.detection.face_mesh import get_face_mesh_extractor
+from src.detection.pose import PoseSignal, get_pose_extractor
 from src.detection.yolo_detector import YoloDetector, DetectorConfig
 from src.identity.student_matcher import match_track
 from src.scoring.behavior_patterns import evaluate_after_incident
@@ -50,13 +51,22 @@ from src.scoring.config import (
     PHONE_IN_HAND_CONFIG,
 )
 from src.scoring.rules import IncidentCandidate
+from src.scoring.rules.body_lean_neighbor import evaluate as body_lean_eval
 from src.scoring.rules.empty_seat import evaluate as empty_seat_eval
+from src.scoring.rules.face_covering import evaluate as face_covering_eval
+from src.scoring.rules.gaze_at_lap import evaluate as gaze_at_lap_eval
+from src.scoring.rules.gaze_at_neighbor import evaluate as gaze_at_neighbor_eval
 from src.scoring.rules.gaze_diversion import evaluate as gaze_diversion_eval
 from src.scoring.rules.gaze_diversion import update_signal as gaze_update_signal
+from src.scoring.rules.hand_to_ear_mouth import evaluate as hand_to_ear_eval
+from src.scoring.rules.hand_under_desk import evaluate as hand_under_desk_eval
 from src.scoring.rules.head_turn import evaluate as head_turn_eval
+from src.scoring.rules.object_passing import evaluate as object_passing_eval
 from src.scoring.rules.paper_detected import evaluate as paper_detected_eval
 from src.scoring.rules.phone_in_hand import evaluate as phone_in_hand_eval
 from src.scoring.rules.phone_in_hand import update_overlap as phone_in_hand_update
+from src.scoring.rules.standing_up import evaluate as standing_up_eval
+from src.scoring.rules.synchronized_behavior import evaluate as synchronized_eval
 from src.scoring.rules.unauthorized_person import evaluate as unauthorized_person_eval
 from src.scoring.rules.unauthorized_person import evaluate_phase_b as unauthorized_person_phase_b_eval
 from src.scoring.session_state import drop_session_state, get_session_state
@@ -77,6 +87,18 @@ _IDLE_TIMEOUT_SECONDS = 15.0
 _FACE_MESH_FRAME_SKIP = max(1, int(os.getenv("FACE_MESH_FRAME_SKIP", "2")))
 _MAX_FACES_PER_FRAME = max(1, int(os.getenv("FACE_MESH_MAX_FACES", "3")))
 
+# Sprint 17 BL-296 — Pose sampling cap. Pose is heavier than face mesh
+# (~80ms/ROI on CPU). Default skip is more aggressive than face mesh
+# and the max-poses cap independent so a 4-person classroom still gets
+# everyone covered every Nth frame.
+_POSE_FRAME_SKIP = max(1, int(os.getenv("POSE_FRAME_SKIP", "3")))
+_MAX_POSES_PER_FRAME = max(1, int(os.getenv("POSE_MAX_TRACKS", "4")))
+
+# BL-320 — face_covering class name as emitted by the v3.0 YOLO model.
+# Stock COCO weights never produce this class, so the rule stays silent
+# until v3.0 is the active ai_model.
+_FACE_COVERING_CLASS = "face_covering"
+
 
 def _with_student(
     candidate: IncidentCandidate, student_id: str | None,
@@ -85,6 +107,26 @@ def _with_student(
     if student_id is None or candidate.student_id is not None:
         return candidate
     return dataclasses.replace(candidate, student_id=student_id)
+
+
+def _face_covering_overlap(
+    person_bbox: tuple[float, float, float, float],
+    other_dets: list[Any],
+) -> Any | None:
+    """Return the first non-person detection of class `face_covering`
+    whose bbox is contained within the person bbox. Sprint 18 BL-320.
+    Silent when the active YOLO model doesn't emit this class."""
+    px1, py1, px2, py2 = person_bbox
+    for d in other_dets:
+        if getattr(d, "class_name", None) != _FACE_COVERING_CLASS:
+            continue
+        dx1, dy1, dx2, dy2 = d.bbox
+        # Center of the face_covering bbox inside the person bbox.
+        cx = (dx1 + dx2) / 2.0
+        cy = (dy1 + dy2) / 2.0
+        if px1 <= cx <= px2 and py1 <= cy <= py2:
+            return d
+    return None
 
 # Geçici cv2 import — opencv-python-headless yoksa decode atlanır
 try:
@@ -439,6 +481,7 @@ def _detect_track_score_sync(
 
     # BL-202 — face-mesh + gaze + head_turn rules.
     # Sample every Nth frame, max ``_MAX_FACES_PER_FRAME`` people per frame.
+    face_signals: dict[int, Any] = {}
     if frame_seq % _FACE_MESH_FRAME_SKIP == 0 and person_tracks:
         extractor = get_face_mesh_extractor()
         for t in person_tracks[:_MAX_FACES_PER_FRAME]:
@@ -446,6 +489,7 @@ def _detect_track_score_sync(
             signal = extractor.extract_for_track(bgr, t.detection.bbox)
             if signal is None:
                 continue
+            face_signals[t.track_id] = signal
             gaze_update_signal(state, ts, signal)
             gaze_cand = gaze_diversion_eval(
                 state, ts=ts, person_bbox=t.detection.bbox,
@@ -459,6 +503,78 @@ def _detect_track_score_sync(
             )
             if head_cand is not None:
                 candidates.append(_with_student(head_cand, state.matched_student_id))
+
+    # Sprint 17 BL-296..308 — pose extractor + 8 pose-driven rules.
+    # Same per-Nth-frame sampling so we don't pay the Pose tax on every
+    # frame. We collect every track's PoseSignal first so the
+    # multi-track rules (body_lean_neighbor, gaze_at_neighbor,
+    # object_passing, synchronized_behavior) have full neighbor lists.
+    pose_signals_by_track: dict[int, PoseSignal] = {}
+    if frame_seq % _POSE_FRAME_SKIP == 0 and person_tracks:
+        pose_extractor = get_pose_extractor()
+        for t in person_tracks[:_MAX_POSES_PER_FRAME]:
+            sig = pose_extractor.extract_for_track(bgr, t.detection.bbox)
+            if sig is not None:
+                pose_signals_by_track[t.track_id] = sig
+
+        all_poses = list(pose_signals_by_track.values())
+        for t in person_tracks[:_MAX_POSES_PER_FRAME]:
+            pose = pose_signals_by_track.get(t.track_id)
+            if pose is None:
+                continue
+            state = track_store.get_or_create(session_id, camera_id, t.track_id)
+            neighbors = [p for p in all_poses if p is not pose]
+
+            # Per-track (no neighbor dep)
+            for rule_eval in (
+                lambda: standing_up_eval(state, ts, t.detection.bbox, pose),
+                lambda: hand_under_desk_eval(state, ts, t.detection.bbox, pose),
+                lambda: hand_to_ear_eval(state, ts, t.detection.bbox, pose),
+                lambda: gaze_at_lap_eval(state, ts, t.detection.bbox, pose),
+            ):
+                cand = rule_eval()
+                if cand is not None:
+                    candidates.append(_with_student(cand, state.matched_student_id))
+
+            # Multi-track / neighbor-dep
+            for rule_eval in (
+                lambda: body_lean_eval(state, ts, t.detection.bbox, pose, neighbors),
+                lambda: object_passing_eval(state, ts, t.detection.bbox, pose, neighbors),
+                lambda: synchronized_eval(state, ts, t.detection.bbox, pose, neighbors),
+            ):
+                cand = rule_eval()
+                if cand is not None:
+                    candidates.append(_with_student(cand, state.matched_student_id))
+
+            # gaze_at_neighbor needs both pose AND face signal
+            face_sig = face_signals.get(t.track_id)
+            if face_sig is not None:
+                cand = gaze_at_neighbor_eval(
+                    state, ts, t.detection.bbox, pose, face_sig, neighbors,
+                )
+                if cand is not None:
+                    candidates.append(_with_student(cand, state.matched_student_id))
+
+    # Sprint 18 BL-320 — face_covering. Only fires when the v3.0 model
+    # is active AND a 'face_covering' class detection lands on a track's
+    # person bbox. With stock COCO weights this branch stays silent
+    # (no face_covering class).
+    for t in person_tracks:
+        state = track_store.get_or_create(session_id, camera_id, t.track_id)
+        fc_overlap = (
+            (locals().get("overlap") or {}).get("face_covering")
+            if "overlap" in locals() else None
+        )
+        # PRD-021 §3 Sprint 18: model emits face_covering as an "other"
+        # detection. Look for it among other_dets within the person bbox.
+        fc_det = _face_covering_overlap(t.detection.bbox, other_dets)
+        cand = face_covering_eval(
+            state, ts, t.detection.bbox,
+            face_covering_detected=fc_det is not None,
+            detection_confidence=float(fc_det.confidence) if fc_det else 0.0,
+        )
+        if cand is not None:
+            candidates.append(_with_student(cand, state.matched_student_id))
 
     out: list[dict[str, Any]] = [
         {
