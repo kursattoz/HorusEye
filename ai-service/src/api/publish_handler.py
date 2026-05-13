@@ -401,102 +401,120 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
             if mtype == "websocket.disconnect":
                 break
 
-            if "bytes" in msg and msg["bytes"] is not None:
-                buf: bytes = msg["bytes"]
-                bgr, w, h = _decode_jpeg(buf)
-                frame_store.put(
-                    PublishedFrame(
-                        session_id=session_id,
-                        camera_id=camera_id,
-                        raw_jpeg=buf,
-                        bgr=bgr,
-                        received_at=datetime.now(timezone.utc),
-                        width=w,
-                        height=h,
-                    )
-                )
-                frames_received += 1
-
-                # Fan out to detection subscribers — only if anyone is watching.
-                if broadcaster.subscriber_count(session_id) > 0:
-                    if bgr is not None:
-                        ts_epoch = datetime.now(timezone.utc).timestamp()
-                        detections, candidates = await asyncio.to_thread(
-                            _detect_track_score_sync,
-                            bgr,
-                            session_id,
-                            camera_id,
-                            ts_epoch,
-                            frames_received,
-                        )
-                    else:
-                        detections, candidates = [], []
-                    frame_msg = {
-                        "type": "frame",
-                        "protocol_version": PROTOCOL_VERSION,
-                        "session_id": session_id,
-                        "camera_id": camera_id,
-                        "width": w or 0,
-                        "height": h or 0,
-                        "jpeg_base64": base64.b64encode(buf).decode("ascii"),
-                        "timestamp": _now_iso(),
-                        "detections": detections,
-                    }
-                    broadcaster.broadcast(session_id, frame_msg)
-
-                    # Persist + broadcast incidents (off the event loop —
-                    # write_incident hits Storage + Postgres).
-                    # BL-228: after each rule-fired candidate, run pattern
-                    # detection on the student's session-wide window and
-                    # persist any synthetic pattern incidents that emerge.
-                    pending = list(candidates)
-                    while pending:
-                        cand = pending.pop(0)
-                        row = await asyncio.to_thread(
-                            write_incident,
-                            cand,
+            # BL-247: per-frame safety net — any non-disconnect exception
+            # from detection, write_incident, broadcast or send_json is
+            # logged with traceback and the loop continues with the next
+            # frame. Without this, a single rogue frame killed the WS
+            # silently and mobile clients dropped with 1006 after ~10
+            # frames (publish_handler.py:388-486 root cause).
+            try:
+                if "bytes" in msg and msg["bytes"] is not None:
+                    buf: bytes = msg["bytes"]
+                    bgr, w, h = _decode_jpeg(buf)
+                    frame_store.put(
+                        PublishedFrame(
                             session_id=session_id,
                             camera_id=camera_id,
-                            frame_jpeg=buf,
+                            raw_jpeg=buf,
+                            bgr=bgr,
+                            received_at=datetime.now(timezone.utc),
+                            width=w,
+                            height=h,
                         )
-                        if row is not None:
-                            broadcaster.broadcast(
-                                session_id, incident_message(row, session_id)
-                            )
-                            log.info(
-                                "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
-                                session_id, camera_id, cand.track_id,
-                                cand.incident_type, cand.severity,
-                            )
-                            pattern_candidates = evaluate_after_incident(cand, session_id)
-                            if pattern_candidates:
-                                log.info(
-                                    "behavior pattern fired: session=%s student=%s patterns=%s",
-                                    session_id, cand.student_id,
-                                    [p.triggered_rules for p in pattern_candidates],
-                                )
-                                pending.extend(pattern_candidates)
-                continue
+                    )
+                    frames_received += 1
 
-            if "text" in msg and msg["text"] is not None:
-                try:
-                    payload = json.loads(msg["text"])
-                except json.JSONDecodeError:
-                    await websocket.send_json(error_message("invalid_payload", "non-JSON text", session_id))
+                    # Fan out to detection subscribers — only if anyone is watching.
+                    if broadcaster.subscriber_count(session_id) > 0:
+                        if bgr is not None:
+                            ts_epoch = datetime.now(timezone.utc).timestamp()
+                            detections, candidates = await asyncio.to_thread(
+                                _detect_track_score_sync,
+                                bgr,
+                                session_id,
+                                camera_id,
+                                ts_epoch,
+                                frames_received,
+                            )
+                        else:
+                            detections, candidates = [], []
+                        frame_msg = {
+                            "type": "frame",
+                            "protocol_version": PROTOCOL_VERSION,
+                            "session_id": session_id,
+                            "camera_id": camera_id,
+                            "width": w or 0,
+                            "height": h or 0,
+                            "jpeg_base64": base64.b64encode(buf).decode("ascii"),
+                            "timestamp": _now_iso(),
+                            "detections": detections,
+                        }
+                        broadcaster.broadcast(session_id, frame_msg)
+
+                        # Persist + broadcast incidents (off the event loop —
+                        # write_incident hits Storage + Postgres).
+                        # BL-228: after each rule-fired candidate, run pattern
+                        # detection on the student's session-wide window and
+                        # persist any synthetic pattern incidents that emerge.
+                        pending = list(candidates)
+                        while pending:
+                            cand = pending.pop(0)
+                            row = await asyncio.to_thread(
+                                write_incident,
+                                cand,
+                                session_id=session_id,
+                                camera_id=camera_id,
+                                frame_jpeg=buf,
+                            )
+                            if row is not None:
+                                broadcaster.broadcast(
+                                    session_id, incident_message(row, session_id)
+                                )
+                                log.info(
+                                    "incident broadcast: session=%s camera=%s track=%s type=%s severity=%s",
+                                    session_id, camera_id, cand.track_id,
+                                    cand.incident_type, cand.severity,
+                                )
+                                pattern_candidates = evaluate_after_incident(cand, session_id)
+                                if pattern_candidates:
+                                    log.info(
+                                        "behavior pattern fired: session=%s student=%s patterns=%s",
+                                        session_id, cand.student_id,
+                                        [p.triggered_rules for p in pattern_candidates],
+                                    )
+                                    pending.extend(pattern_candidates)
                     continue
-                ptype = payload.get("type") if isinstance(payload, dict) else None
-                if ptype == "ping":
-                    await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
-                elif ptype == "unsubscribe":
-                    await websocket.send_json(
-                        status_message(session_id, "stream_ended", "publish closed by client", _now_iso())
-                    )
-                    await websocket.close()
-                    return
-                else:
-                    await websocket.send_json(
-                        error_message("invalid_payload", f"unknown control type: {ptype}", session_id)
-                    )
+
+                if "text" in msg and msg["text"] is not None:
+                    try:
+                        payload = json.loads(msg["text"])
+                    except json.JSONDecodeError:
+                        await websocket.send_json(error_message("invalid_payload", "non-JSON text", session_id))
+                        continue
+                    ptype = payload.get("type") if isinstance(payload, dict) else None
+                    if ptype == "ping":
+                        await websocket.send_json({"type": "pong", "timestamp": _now_iso()})
+                    elif ptype == "unsubscribe":
+                        await websocket.send_json(
+                            status_message(session_id, "stream_ended", "publish closed by client", _now_iso())
+                        )
+                        await websocket.close()
+                        return
+                    else:
+                        await websocket.send_json(
+                            error_message("invalid_payload", f"unknown control type: {ptype}", session_id)
+                        )
+            except WebSocketDisconnect:
+                # Clean disconnect — let the outer handler do cleanup.
+                raise
+            except Exception:  # noqa: BLE001 — intentional safety net
+                log.exception(
+                    "publish frame processing failed publish_exception=1 "
+                    "session=%s camera=%s frames=%d",
+                    session_id, camera_id, frames_received,
+                )
+                # Skip this frame and keep the loop alive.
+                continue
     except WebSocketDisconnect:
         log.debug("publish WS disconnected: session=%s camera=%s frames=%d",
                   session_id, camera_id, frames_received)
