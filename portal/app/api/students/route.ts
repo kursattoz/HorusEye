@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('students')
-    .select('id, student_id, full_name, email, department, is_active, created_at, updated_at')
+    .select('id, student_id, full_name, email, department, is_active, risk_score, risk_level, risk_trend, incident_count, risk_updated_at, created_at, updated_at')
     .is('deleted_at', null)
     .order('student_id', { ascending: true });
 
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   const { data, error: dbError } = await supabase
     .from('students')
     .insert({ student_id, full_name, email, department })
-    .select('id, student_id, full_name, email, department, is_active, created_at, updated_at')
+    .select('id, student_id, full_name, email, department, is_active, risk_score, risk_level, risk_trend, incident_count, risk_updated_at, created_at, updated_at')
     .single();
 
   if (dbError) {

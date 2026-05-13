@@ -41,6 +41,22 @@ def severity_to_risk_score(severity: str) -> float:
     return SEVERITY_RISK_SCORE.get(severity, 0.0)
 
 
+# Severity ladder for the bump operator below.
+_SEVERITY_LADDER: tuple[str, ...] = ("low", "medium", "high", "critical")
+
+
+def apply_severity_bump(severity: str, bump: int) -> str:
+    """Shift ``severity`` up (positive) or down (negative) the ladder.
+
+    Clamps at the ends — bumping ``critical`` up stays ``critical``,
+    bumping ``low`` down stays ``low``. Used by per-student calibration
+    overrides (BL-232).
+    """
+    idx = _SEVERITY_LADDER.index(severity) if severity in _SEVERITY_LADDER else 1
+    new_idx = max(0, min(len(_SEVERITY_LADDER) - 1, idx + bump))
+    return _SEVERITY_LADDER[new_idx]
+
+
 def aggregate_risk_score(severities: Iterable[str]) -> float:
     """Phase A: composite risk score is the max single-incident value.
 
