@@ -133,9 +133,22 @@ async def session_detections(websocket: WebSocket, session_id: str) -> None:
         for t in done:
             exc = t.exception()
             if isinstance(exc, WebSocketDisconnect):
-                log.debug("detections WS closed: session_id=%s", session_id)
+                # BL-249: structured close logging with RFC 6455 code +
+                # reason so CloudWatch metric filter (BL-250) can tally
+                # drop signatures (1006 abnormal, 1000 normal, etc.).
+                log.info(
+                    "detections WS closed: session_id=%s ws_close_code=%s ws_close_reason=%r",
+                    session_id,
+                    getattr(exc, "code", "unknown"),
+                    getattr(exc, "reason", ""),
+                )
             elif exc is not None:
-                log.warning("detections WS task error: %s", exc)
+                # BL-249: full traceback for unknown task failures.
+                log.error(
+                    "detections WS task error: session_id=%s detections_exception=1",
+                    session_id,
+                    exc_info=exc,
+                )
     finally:
         broadcaster.unsubscribe(session_id, queue)
         try:

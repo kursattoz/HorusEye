@@ -627,9 +627,26 @@ async def session_publish(websocket: WebSocket, session_id: str) -> None:
                 )
                 # Skip this frame and keep the loop alive.
                 continue
-    except WebSocketDisconnect:
-        log.debug("publish WS disconnected: session=%s camera=%s frames=%d",
-                  session_id, camera_id, frames_received)
+    except WebSocketDisconnect as e:
+        # BL-249: structured close logging. e.code follows RFC 6455
+        # (1000 normal, 1001 going away, 1006 abnormal — the mobile drop
+        # signature, etc.). e.reason is empty for most browser closes.
+        log.info(
+            "publish WS disconnected: session=%s camera=%s frames=%d "
+            "ws_close_code=%s ws_close_reason=%r",
+            session_id, camera_id, frames_received,
+            getattr(e, "code", "unknown"),
+            getattr(e, "reason", ""),
+        )
+    except Exception:  # noqa: BLE001 — unexpected closure path
+        # BL-249: capture full traceback for non-disconnect failures.
+        # Without this the WS dies and CloudWatch shows nothing at INFO
+        # level — exactly the pattern we saw before BL-247.
+        log.exception(
+            "publish WS aborted unexpectedly publish_exception=1 "
+            "session=%s camera=%s frames=%d",
+            session_id, camera_id, frames_received,
+        )
     finally:
         frame_store.drop(session_id, camera_id)
         drop_tracker(session_id, camera_id)
