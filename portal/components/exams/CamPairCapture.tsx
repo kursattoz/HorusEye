@@ -38,6 +38,9 @@ export function CamPairCapture({ token, redeem }: Props) {
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // BL-251: backpressure-skipped frame counter (BL-254 surfaces in debug overlay)
   const framesSkippedRef = useRef<number>(0);
+  // BL-252: tracks whether streaming was active before tab went hidden so
+  // resume on foreground doesn't override a user-initiated Pause.
+  const wasStreamingBeforeHideRef = useRef<boolean>(false);
 
   const [facing, setFacing]       = useState<FacingMode>('environment');
   const [streaming, setStreaming] = useState(true);
@@ -95,16 +98,40 @@ export function CamPairCapture({ token, redeem }: Props) {
   }, [redeem.camera_id, redeem.session_id, token]);
 
   // ───── browser sağlık API'leri (PRD-019 §7) ─────────────────────
-  // Page Visibility: arkaplana atılma
+  // BL-252: Page Visibility + Page Lifecycle (freeze/resume on iOS Safari)
+  // — pause capture when the tab is hidden so we don't leak frames into
+  //   a frozen MediaStream and trip server idle timeout (15s).
   useEffect(() => {
+    const onHide = () => {
+      void postHealthEvent('app_backgrounded', { ts: Date.now() });
+      setStreaming((prev) => {
+        wasStreamingBeforeHideRef.current = prev;
+        return false;
+      });
+    };
+    const onShow = () => {
+      void postHealthEvent('app_foregrounded', { ts: Date.now() });
+      // Resume only if we paused due to hide — respect user-pressed Pause.
+      if (wasStreamingBeforeHideRef.current) {
+        setStreaming(true);
+        wasStreamingBeforeHideRef.current = false;
+      }
+    };
     const onVis = () => {
-      void postHealthEvent(
-        document.visibilityState === 'hidden' ? 'app_backgrounded' : 'app_foregrounded',
-        { ts: Date.now() },
-      );
+      if (document.visibilityState === 'hidden') onHide();
+      else onShow();
     };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    // iOS Safari aggressively freezes background tabs; freeze/resume
+    // are more reliable signals than visibilitychange there. Cast is
+    // needed because they're not in the standard DocumentEventMap yet.
+    document.addEventListener('freeze', onHide as EventListener);
+    document.addEventListener('resume', onShow as EventListener);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('freeze', onHide as EventListener);
+      document.removeEventListener('resume', onShow as EventListener);
+    };
   }, [postHealthEvent]);
 
   // Battery API (Chrome/Safari, opsiyonel — Firefox'ta yok)
@@ -240,6 +267,12 @@ export function CamPairCapture({ token, redeem }: Props) {
       const ws = wsRef.current;
       if (!video || !canvas || !ws || ws.readyState !== WebSocket.OPEN) return;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      // BL-252: setInterval guard — if the tab went hidden between when
+      // this tick was scheduled and when it fired, skip. The useEffect
+      // teardown will clear the interval shortly; this avoids any
+      // intervening frame from leaking to a frozen MediaStream.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
 
       // BL-251: bufferedAmount backpressure. Mobile WS send quota is
       // small (~256KB on iOS Safari / Chrome). Once exceeded the socket
