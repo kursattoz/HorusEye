@@ -271,13 +271,15 @@ export interface SessionCamera {
   added_by: string | null;
 }
 
-// @interface CameraHealthEvent @version 1.0 — PRD-019
+// @interface CameraHealthEvent @version 1.1 — PRD-019 + BL-253 telemetry
 export type CameraHealthEventType =
   | 'connected' | 'disconnected' | 'reconnected'
   | 'low_battery' | 'critical_battery' | 'charging'
   | 'app_backgrounded' | 'app_foregrounded'
   | 'overheat' | 'orientation_changed' | 'preview_offscreen'
-  | 'permission_revoked';
+  | 'permission_revoked'
+  // BL-253 reconnect telemetry
+  | 'reconnect_scheduled' | 'reconnect_gave_up' | 'reconnect_manual';
 
 export interface CameraHealthEvent {
   id: string;

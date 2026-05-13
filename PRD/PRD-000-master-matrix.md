@@ -440,17 +440,19 @@ interface SessionCamera {
 }
 ```
 
-### 3.14b CameraHealthEvent `@1.0`
+### 3.14b CameraHealthEvent `@1.1`
 **Kanal:** PRD-019 (owner)
 
 ```typescript
-// @interface CameraHealthEvent @version 1.0
+// @interface CameraHealthEvent @version 1.1
 type CameraHealthEventType =
   | 'connected' | 'disconnected' | 'reconnected'
   | 'low_battery' | 'critical_battery' | 'charging'
   | 'app_backgrounded' | 'app_foregrounded'
   | 'overheat' | 'orientation_changed' | 'preview_offscreen'
-  | 'permission_revoked';
+  | 'permission_revoked'
+  // BL-253 reconnect telemetry
+  | 'reconnect_scheduled' | 'reconnect_gave_up' | 'reconnect_manual';
 
 interface CameraHealthEvent {
   id:         string;
@@ -592,6 +594,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | Camera | 1.2 | 2026 | `is_fixed`, `owner_user_id`, `device_id`, `last_seen_at` eklendi; `room_id` nullable yapıldı (taşınabilir telefonlar için). `fixed_cameras_have_home_room` CHECK constraint | PRD-019 |
 | SessionCamera | 1.0 | 2026 | İlk tanım — oturum ↔ kamera M:N junction (PRD-019) | PRD-019 |
 | CameraHealthEvent | 1.0 | 2026 | İlk tanım — telefon sağlık event tipleri (battery/visibility/permission/orientation) | PRD-019 |
+| CameraHealthEvent | 1.1 | 2026 | `CameraHealthEventType`'a BL-253 reconnect telemetry eklendi (`reconnect_scheduled`, `reconnect_gave_up`, `reconnect_manual`) — auto-reconnect güvenilirlik sinyalleri | PRD-019 |
 
 ---
 
