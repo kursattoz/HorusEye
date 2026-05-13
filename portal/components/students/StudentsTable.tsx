@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { Plus, Upload, Search, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { routes } from '@/constants/routes';
 import type { Student } from '@/types';
 
 interface ImportResult {
@@ -216,8 +218,12 @@ export function StudentsTable() {
             <tbody>
               {students.map(s => (
                 <tr key={s.id} className="border-t hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono text-xs">{s.student_id}</td>
-                  <td className="px-3 py-2">{s.full_name}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    <Link href={routes.studentDetail(s.id)} className="hover:underline">{s.student_id}</Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link href={routes.studentDetail(s.id)} className="hover:underline">{s.full_name}</Link>
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">{s.email ?? '—'}</td>
                   <td className="px-3 py-2 text-muted-foreground">{s.department ?? '—'}</td>
                   <td className="px-3 py-2 text-right">

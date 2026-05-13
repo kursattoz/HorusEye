@@ -21,6 +21,7 @@ export const routes = {
   examLive:        (id: string) => `/exams/${id}/live`,
   examRooms:       '/exam-rooms',
   students:        '/students',
+  studentDetail:   (id: string) => `/students/${id}`,
   settings:        '/settings',
   notifications:   '/notifications',
   monitor:         '/dev/monitor',
