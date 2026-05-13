@@ -17,24 +17,29 @@ if [ -z "${ROBOFLOW_API_KEY:-}" ]; then
   exit 1
 fi
 
-# Each row: workspace project version → output dir.
+# Workspace defaults to our own HorusEye workspace. Override only when
+# importing from someone else's public Universe workspace.
+WORKSPACE="${ROBOFLOW_WORKSPACE:-horuseye}"
+
+# Each row: project version → output dir. Workspace is shared (above).
 # Bump the version field whenever Roboflow publishes a new revision and
-# the scout-doc gates pass on the new bundle.
+# the scout-doc gates pass on the new bundle. Project slugs MUST match
+# the project names you create in the Roboflow workspace.
 ROBOFLOW_BUNDLES=(
-  "proctoring-systems phone-on-desk    3 roboflow_phone_on_desk"
-  "wearables-lab      earbuds-detection 2 roboflow_earbuds"
-  "wearables-lab      smartwatch-detect 4 roboflow_smartwatch"
-  "exam-cv            cheat-paper-notes 1 roboflow_paper_notes"
+  "phone-on-desk     1 roboflow_phone_on_desk"
+  "earbuds-detection 1 roboflow_earbuds"
+  "smartwatch-detect 1 roboflow_smartwatch"
+  "cheat-paper-notes 1 roboflow_paper_notes"
 )
 
 for row in "${ROBOFLOW_BUNDLES[@]}"; do
   # shellcheck disable=SC2086
   set -- $row
-  workspace="$1" project="$2" version="$3" outdir="$4"
-  echo "→ Roboflow ${workspace}/${project} v${version} → data/raw/${outdir}"
+  project="$1" version="$2" outdir="$3"
+  echo "→ Roboflow ${WORKSPACE}/${project} v${version} → data/raw/${outdir}"
   python -m scripts.import_dataset \
     --source     roboflow \
-    --workspace  "${workspace}" \
+    --workspace  "${WORKSPACE}" \
     --project    "${project}" \
     --version    "${version}" \
     --format     yolov8 \
