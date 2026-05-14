@@ -65,3 +65,78 @@ source_mappings:
     "notes":       3
     "cheat_sheet": 3
     "paper_notes": 3
+
+
+# Sprint 19 — YOLO-World (zero-shot) prompt list.
+#
+# `prompts` is fed straight to `model.set_classes(...)` so each entry
+# becomes a queryable class. Multiple prompts per target are fine — the
+# `aliases` block below maps every raw prompt string back to the canonical
+# target name the scoring rules look for (`earbuds`, `paper_notes`, …).
+#
+# Keep one canonical name per target. To add a new class, append a target
+# block + alias entries. No retraining required.
+world_prompts:
+  targets:
+    - canonical: person
+      prompts:
+        - "person"
+    - canonical: cell phone
+      prompts:
+        - "cell phone"
+        - "smartphone"
+        - "mobile phone in hand"
+    - canonical: book
+      prompts:
+        - "book"
+        - "open book on desk"
+    - canonical: earbuds
+      prompts:
+        - "earbuds in ear"
+        - "wireless earphone in ear"
+        - "airpods in ear"
+    - canonical: paper_notes
+      prompts:
+        - "paper sheet with handwritten notes"
+        - "handwritten cheat sheet on desk"
+        - "folded note in hand"
+    - canonical: smart_watch
+      prompts:
+        - "smart watch on wrist"
+        - "wristwatch on wrist"
+    - canonical: pencil_case
+      prompts:
+        - "pencil case on desk"
+    - canonical: calculator
+      prompts:
+        - "calculator"
+        - "scientific calculator on desk"
+    - canonical: face_covering
+      prompts:
+        - "face mask covering mouth and nose"
+        - "surgical mask on face"
+
+  # Raw prompt string → canonical name. Filled automatically from the
+  # targets[] list above by the loader (every prompt under a canonical
+  # block aliases back to that canonical name). Listed here explicitly
+  # so the YAML is the single source of truth — no Python-side magic.
+  aliases:
+    "person":                              person
+    "cell phone":                          cell phone
+    "smartphone":                          cell phone
+    "mobile phone in hand":                cell phone
+    "book":                                book
+    "open book on desk":                   book
+    "earbuds in ear":                      earbuds
+    "wireless earphone in ear":            earbuds
+    "airpods in ear":                      earbuds
+    "paper sheet with handwritten notes":  paper_notes
+    "handwritten cheat sheet on desk":     paper_notes
+    "folded note in hand":                 paper_notes
+    "smart watch on wrist":                smart_watch
+    "wristwatch on wrist":                 smart_watch
+    "pencil case on desk":                 pencil_case
+    "calculator":                          calculator
+    "scientific calculator on desk":       calculator
+    "face mask covering mouth and nose":   face_covering
+    "surgical mask on face":               face_covering

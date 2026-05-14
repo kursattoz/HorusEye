@@ -27,6 +27,14 @@ RUN mkdir -p models \
  && (mv yolov8n.pt models/ 2>/dev/null || true) \
  && ls -lh models/
 
+# Sprint 19 — pre-bake YOLOv8s-WorldV2 (~25 MB) for open-vocabulary mode.
+# Activated at runtime by setting DETECTOR_MODE=world; this RUN keeps the
+# weight in the image so cold-start doesn't pay the ultralytics download
+# tax (~10s on CPU tasks).
+RUN python -c "from ultralytics import YOLO; YOLO('yolov8s-worldv2.pt')" \
+ && (mv yolov8s-worldv2.pt models/ 2>/dev/null || true) \
+ && ls -lh models/
+
 # BL-216 (Sprint 10) — pre-bake insightface buffalo_l (ArcFace + RetinaFace).
 # ~280 MB download skipped on first request; insightface looks for models
 # under <root>/models/<pack_name>, so we point root=/app/models/insightface.
