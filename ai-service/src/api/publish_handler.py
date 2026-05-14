@@ -189,9 +189,41 @@ _yolo: YoloDetector | None = None
 _yolo_lock = Lock()
 
 
+def _load_world_config() -> tuple[tuple[str, ...], dict[str, str]]:
+    """Read prompts + alias map from configs/class_mapping.yaml.
+
+    Returns ``([], {})`` on any read/parse failure so the caller can fall
+    back to COCO mode instead of crash-looping the container.
+    """
+    cfg_path = os.getenv(
+        "WORLD_PROMPTS_PATH", "configs/class_mapping.yaml"
+    )
+    try:
+        import yaml  # type: ignore[import-untyped]
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        wp = data.get("world_prompts") or {}
+        prompts: list[str] = []
+        for tgt in wp.get("targets") or []:
+            for p in tgt.get("prompts") or []:
+                if isinstance(p, str) and p:
+                    prompts.append(p)
+        aliases_raw = wp.get("aliases") or {}
+        aliases = {str(k): str(v) for k, v in aliases_raw.items() if v}
+        return tuple(prompts), aliases
+    except Exception as e:  # noqa: BLE001
+        log.warning("failed to load world_prompts from %s: %s", cfg_path, e)
+        return (), {}
+
+
 def _get_yolo() -> YoloDetector | None:
     """Return the process-wide YoloDetector. None if YOLO is disabled or
-    fails to load (we still want to broadcast bare frames)."""
+    fails to load (we still want to broadcast bare frames).
+
+    ``DETECTOR_MODE`` env var picks the model:
+    - ``coco`` (default) — yolov8n.pt, 3 COCO classes (person/phone/book).
+    - ``world`` — yolov8s-worldv2.pt + prompts from class_mapping.yaml.
+    """
     global _yolo
     if os.getenv("DISABLE_YOLO") == "1":
         return None
@@ -201,18 +233,44 @@ def _get_yolo() -> YoloDetector | None:
         if _yolo is not None:
             return _yolo
         try:
+            mode = os.getenv("DETECTOR_MODE", "coco").strip().lower()
             # Default 0.30 (vs ultralytics 0.45) — partial faces / low-light
             # exam rooms drop below 0.45. False positives here are harmless;
             # they still must clear the scoring tier in Phase B.
-            conf = float(os.getenv("YOLO_CONF_THRESHOLD", "0.30"))
+            # World mode benefits from a lower default — CLIP-aligned scores
+            # are calibrated differently than the COCO head.
+            conf_default = "0.20" if mode == "world" else "0.30"
+            conf = float(os.getenv("YOLO_CONF_THRESHOLD", conf_default))
             iou = float(os.getenv("YOLO_IOU_THRESHOLD", "0.50"))
-            det = YoloDetector(DetectorConfig(
-                confidence_threshold=conf,
-                iou_threshold=iou,
-            ))
+
+            if mode == "world":
+                prompts, aliases = _load_world_config()
+                if not prompts:
+                    log.warning("world mode requested but no prompts loaded — falling back to coco")
+                    mode = "coco"
+
+            if mode == "world":
+                world_path = os.getenv("YOLO_WORLD_MODEL_PATH", "models/yolov8s-worldv2.pt")
+                cfg = DetectorConfig(
+                    model_path=world_path,
+                    confidence_threshold=conf,
+                    iou_threshold=iou,
+                    class_prompts=prompts,
+                    class_alias=aliases,
+                )
+            else:
+                cfg = DetectorConfig(
+                    confidence_threshold=conf,
+                    iou_threshold=iou,
+                )
+
+            det = YoloDetector(cfg)
             det.load()
             _yolo = det
-            log.info("YOLO loaded for broadcast inference (conf=%.2f iou=%.2f)", conf, iou)
+            log.info(
+                "YOLO loaded for broadcast inference mode=%s conf=%.2f iou=%.2f",
+                mode, conf, iou,
+            )
         except Exception as e:  # noqa: BLE001
             log.warning("YOLO load failed (%s) — frames will broadcast without detections", e)
             _yolo = None

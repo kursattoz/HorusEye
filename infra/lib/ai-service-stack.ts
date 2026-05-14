@@ -62,6 +62,13 @@ export class AiServiceStack extends cdk.Stack {
     // BL-185 — Supabase service-role client for incident persistence.
     const supabaseUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_URL`);
     const supabaseServiceRoleKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_SERVICE_ROLE_KEY`);
+    // Sprint 19 — detector mode + confidence override. Stored as plain
+    // String params (NOT SecureString — CDK valueFromLookup can't resolve
+    // SecureString and would pass a KMS blob to the container).
+    //   DETECTOR_MODE:        "world" | "coco"   (default "coco")
+    //   YOLO_CONF_THRESHOLD:  decimal string     (default 0.20 in world mode)
+    const detectorMode = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/DETECTOR_MODE`);
+    const yoloConfThreshold = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/YOLO_CONF_THRESHOLD`);
 
     // BL-250 — explicit LogGroup so we can attach metric filters below.
     const logGroup = new logs.LogGroup(this, 'LogGroup', {
@@ -86,6 +93,8 @@ export class AiServiceStack extends cdk.Stack {
           ? 'https://horuseye.app'
           : 'https://staging.horuseye.app,https://horuseye.app',
         PYTHONUNBUFFERED: '1',
+        DETECTOR_MODE: detectorMode,
+        YOLO_CONF_THRESHOLD: yoloConfThreshold,
       },
       portMappings: [{ containerPort: 8000 }],
     });
