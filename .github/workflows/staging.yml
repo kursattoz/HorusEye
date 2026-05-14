@@ -80,6 +80,17 @@ jobs:
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
           CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
 
+      # Sprint 19 — keep the AI service stack in lock-step with develop so
+      # task-definition env changes (DETECTOR_MODE, YOLO_CONF_THRESHOLD…)
+      # actually reach the container instead of stalling at the SSM layer.
+      # Docker image is built and ECS force-deployed by ai-service-build.yml.
+      - name: CDK deploy AI service staging stack
+        working-directory: infra
+        run: npx cdk deploy HorusEye-AiService-Staging --require-approval never --exclusively
+        env:
+          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
+          CDK_DEFAULT_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+
       # ── ECS deploy ─────────────────────────────────────────────
       - name: Resolve ECS names from CDK stack outputs
         id: ecs
