@@ -46,6 +46,12 @@ fa.prepare(ctx_id=-1, det_size=(640, 640))" \
  && du -sh "$INSIGHTFACE_HOME"
 
 COPY config.yaml .
+# Sprint 19 — runtime YAML for YOLO-World prompts + class aliases.
+# publish_handler._load_world_config reads configs/class_mapping.yaml at
+# startup; without this COPY the file is missing from the image, the
+# loader returns empty prompts, and DETECTOR_MODE=world silently falls
+# back to COCO (person/phone/book only).
+COPY configs/ ./configs/
 COPY src/ ./src/
 
 EXPOSE 8000
