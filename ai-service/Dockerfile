@@ -13,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
+# git: required for the `clip @ git+https://github.com/ultralytics/CLIP.git`
+# entry in requirements.txt (Sprint 19, YOLO-World CLIP encoder).
 
 WORKDIR /app
 

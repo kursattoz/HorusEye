@@ -12,6 +12,11 @@ pytest-asyncio>=0.23.0
 
 # BL-42 — YOLOv8n COCO pre-trained inference (PRD-013 §4.1)
 ultralytics>=8.3.0
+# Sprint 19 — YOLO-World open-vocab variant needs the CLIP text-image
+# encoder. ultralytics' lazy autoupdate fails inside Fargate (no git in
+# the base image, pip cache disabled), so we pin the dependency
+# explicitly and let the Dockerfile install git for the pip git+ URL.
+clip @ git+https://github.com/ultralytics/CLIP.git
 
 # BL-182 (Sprint 7) — BoT-SORT multi-object tracker (PRD-013 §4.2)
 boxmot>=11.0.0
