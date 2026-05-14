@@ -142,18 +142,18 @@ export class AiServiceStack extends cdk.Stack {
       filterPattern: logs.FilterPattern.literal('"incident_queue_drop=1"'),
     });
 
-    // YOLO eager-init duration — extracts the numeric ms value so we can
-    // dashboard cold-start latency. publish_handler logs:
-    //   "YOLO eager init complete yolo_init_duration_ms=1234"
+    // YOLO eager-init occurrence counter. We used to also extract the
+    // numeric duration via space-delimited filter pattern, but CloudWatch
+    // rejects the trailing `*` glob ("Invalid character(s) in term '*'")
+    // so we fall back to a presence count. Cold-start ms can be read
+    // directly from log lines via Logs Insights when needed.
     new logs.MetricFilter(this, 'YoloInitDurationFilter', {
       logGroup,
       metricNamespace,
       metricName: 'yolo_init_duration_ms',
-      metricValue: '$dur',
+      metricValue: '1',
       defaultValue: 0,
-      filterPattern: logs.FilterPattern.literal(
-        '[..., key=yolo_init_duration_ms*, dur]',
-      ),
+      filterPattern: logs.FilterPattern.literal('"yolo_init_duration_ms="'),
     });
 
     // Abnormal WS close (1006 = pre-BL-246 drop signature). The
