@@ -82,10 +82,18 @@ class ServerStatus(TypedDict):
 
 
 IncidentSeverity = Literal["low", "medium", "high", "critical"]
+# Mirror of portal/types/index.ts IncidentType — must stay in lock-step.
 IncidentType = Literal[
+    # Phase A / Sprint 7-13
     "phone_detected", "earbuds_detected", "paper_detected",
     "gaze_diversion", "head_turn", "empty_seat",
     "whispering", "unauthorized_communication", "position_uncertainty",
+    # Sprint 17 — pose / behavior / gaze refinements
+    "body_lean_neighbor", "standing_up", "hand_under_desk",
+    "hand_to_ear_mouth", "object_passing", "gaze_at_lap",
+    "gaze_at_neighbor", "synchronized_behavior",
+    # Sprint 18 — face covering
+    "face_covering",
 ]
 
 

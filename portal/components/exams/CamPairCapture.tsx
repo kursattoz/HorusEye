@@ -24,7 +24,9 @@ interface Props {
   redeem: RedeemPayload;
 }
 
-const FRAME_INTERVAL_MS = 200;     // 5 FPS
+const FRAME_INTERVAL_MS = 100;     // 10 FPS — short-lived gestures (gaze flicks,
+                                   // head turns, hand-to-lap) need denser sampling
+                                   // to clear pose/face-mesh rule windows.
 const JPEG_QUALITY = 0.7;
 // BL-253: exponential backoff schedule for auto-reconnect after WS close.
 // 3 attempts at 1s / 2s / 4s; beyond that we leave the connection 'closed'
@@ -71,7 +73,10 @@ export function CamPairCapture({ token, redeem }: Props) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } },
+        // 720p ideal — earbuds / paper_notes / smart_watch are ~30-80 px wide
+        // on a desk-distance shot, unresolvable at 480p. Phones that can't
+        // hit 720p fall back automatically via `ideal` semantics.
+        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;

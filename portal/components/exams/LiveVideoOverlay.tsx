@@ -79,6 +79,17 @@ const INCIDENT_LABELS: Partial<Record<IncidentType, string>> = {
   position_uncertainty:  'pos?',
 };
 
+// Behavioral incidents have no dedicated object bbox (pose / gaze /
+// face-mesh signals attach to the person bbox). When one fires, fill
+// the person's bbox with a semi-transparent severity tint so the
+// proctor doesn't have to spot a 6px ring on a 320×240 tile.
+const BEHAVIORAL_INCIDENT_TYPES: ReadonlySet<IncidentType> = new Set<IncidentType>([
+  'body_lean_neighbor', 'standing_up', 'hand_under_desk', 'hand_to_ear_mouth',
+  'object_passing', 'gaze_at_lap', 'gaze_at_neighbor', 'synchronized_behavior',
+  'gaze_diversion', 'head_turn', 'whispering', 'unauthorized_communication',
+  'position_uncertainty', 'empty_seat',
+]);
+
 function LiveVideoOverlayImpl({
   frame,
   showBbox = true,
@@ -125,9 +136,6 @@ function LiveVideoOverlayImpl({
           const color = CLASS_COLORS[det.detection_class] ?? DEFAULT_COLOR;
           const w = Math.max(0, x2 - x1);
           const h = Math.max(0, y2 - y1);
-          // Sprint 14-18 — if this detection is a person AND has an
-          // active incident on its track, wrap the bbox in a pulsing
-          // ring whose color matches the highest-severity firing rule.
           const trackIncidents = det.track_id != null
             ? incidentsByTrack.get(det.track_id) ?? []
             : [];
@@ -136,19 +144,27 @@ function LiveVideoOverlayImpl({
             null,
           );
           const ringColor = topSeverity ? SEVERITY_RING[topSeverity] : null;
+          // Behavioral incidents (pose / gaze / face-mesh) don't have
+          // their own bbox — fill the person bbox with a tint so the
+          // proctor can spot it without squinting at a thin ring.
+          const hasBehavioral = trackIncidents.some(inc =>
+            BEHAVIORAL_INCIDENT_TYPES.has(inc.incident_type)
+          );
+          const pulse = topSeverity === 'high' || topSeverity === 'critical';
           return (
             <div
               key={`box-${i}`}
-              className="absolute border-2 rounded-sm pointer-events-none"
+              className={`absolute border-2 rounded-sm pointer-events-none${pulse ? ' animate-pulse' : ''}`}
               style={{
                 left:    `${x1 * 100}%`,
                 top:     `${y1 * 100}%`,
                 width:   `${w * 100}%`,
                 height:  `${h * 100}%`,
                 borderColor: color,
-                // Severity ring: 4px outer glow around the bbox.
+                backgroundColor: hasBehavioral && ringColor ? `${ringColor}26` : 'transparent',  // 26 = ~15% alpha
+                // Severity ring: 6px outer glow around the bbox.
                 boxShadow: ringColor
-                  ? `0 0 0 1px rgba(0,0,0,0.4), 0 0 0 4px ${ringColor}, 0 0 12px 4px ${ringColor}66`
+                  ? `0 0 0 1px rgba(0,0,0,0.5), 0 0 0 6px ${ringColor}, 0 0 20px 6px ${ringColor}88`
                   : `0 0 0 1px rgba(0,0,0,0.4)`,
               }}
             />
@@ -165,7 +181,7 @@ function LiveVideoOverlayImpl({
             <div key={`lbl-${i}`} className="absolute pointer-events-none"
                  style={{ left: `${x1 * 100}%`, top: `${y1 * 100}%`, transform: 'translateY(-100%)' }}>
               <div
-                className="text-[10px] font-mono font-semibold text-white px-1 py-0.5 rounded-sm whitespace-nowrap"
+                className="text-[11px] font-mono font-semibold text-white px-1.5 py-0.5 rounded-sm whitespace-nowrap shadow-md"
                 style={{ background: color }}
               >
                 {det.detection_class} {(det.confidence * 100).toFixed(0)}%
@@ -173,21 +189,45 @@ function LiveVideoOverlayImpl({
               {/* Active-incident chips: one per firing rule, severity-coded. */}
               {trackIncidents.length > 0 && (
                 <div className="mt-0.5 flex flex-col gap-0.5">
-                  {trackIncidents.slice(0, 3).map((inc, j) => (
-                    <span
-                      key={j}
-                      className="self-start text-[9px] font-mono font-semibold text-white px-1 py-0.5 rounded-sm whitespace-nowrap"
-                      style={{ background: SEVERITY_RING[inc.severity] }}
-                      title={`${inc.incident_type} (${inc.severity}, conf ${(inc.confidence * 100).toFixed(0)}%)`}
-                    >
-                      {INCIDENT_LABELS[inc.incident_type] ?? inc.incident_type}
-                    </span>
-                  ))}
+                  {trackIncidents.slice(0, 3).map((inc, j) => {
+                    const pulse = inc.severity === 'high' || inc.severity === 'critical';
+                    return (
+                      <span
+                        key={j}
+                        className={`self-start text-[11px] font-mono font-bold text-white px-1.5 py-0.5 rounded whitespace-nowrap shadow-md${pulse ? ' animate-pulse' : ''}`}
+                        style={{ background: SEVERITY_RING[inc.severity] }}
+                        title={`${inc.incident_type} (${inc.severity}, conf ${(inc.confidence * 100).toFixed(0)}%)`}
+                      >
+                        {INCIDENT_LABELS[inc.incident_type] ?? inc.incident_type}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </div>
           );
         })}
+
+        {/* Top banner — every active incident on this camera, fully
+            spelled out. Catches the proctor's eye even when the bbox
+            ring is small on a multi-tile grid. */}
+        {activeIncidents.length > 0 && (
+          <div className="absolute top-1.5 left-1.5 right-1.5 flex flex-wrap gap-1 justify-end pointer-events-none">
+            {activeIncidents.slice(0, 6).map((inc) => {
+              const pulse = inc.severity === 'high' || inc.severity === 'critical';
+              return (
+                <span
+                  key={`top-${inc.incident_id}`}
+                  className={`text-[11px] font-mono font-bold text-white px-2 py-1 rounded shadow-lg whitespace-nowrap${pulse ? ' animate-pulse' : ''}`}
+                  style={{ background: SEVERITY_RING[inc.severity] }}
+                  title={`${inc.incident_type} · severity ${inc.severity} · conf ${(inc.confidence * 100).toFixed(0)}%`}
+                >
+                  {inc.track_id != null ? `T${inc.track_id}` : '—'} · {INCIDENT_LABELS[inc.incident_type] ?? inc.incident_type}
+                </span>
+              );
+            })}
+          </div>
+        )}
 
         <div className="absolute bottom-1.5 left-1.5 text-[10px] font-mono text-white/80 bg-black/50 px-1.5 py-0.5 rounded">
           {label ?? `cam ${frame.camera_id.slice(0, 8)}`} · {frame.width}×{frame.height} · {frame.detections.length} det
