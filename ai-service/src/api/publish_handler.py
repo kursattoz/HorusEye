@@ -91,7 +91,7 @@ _MAX_FACES_PER_FRAME = max(1, int(os.getenv("FACE_MESH_MAX_FACES", "3")))
 # (~80ms/ROI on CPU). Default skip is more aggressive than face mesh
 # and the max-poses cap independent so a 4-person classroom still gets
 # everyone covered every Nth frame.
-_POSE_FRAME_SKIP = max(1, int(os.getenv("POSE_FRAME_SKIP", "3")))
+_POSE_FRAME_SKIP = max(1, int(os.getenv("POSE_FRAME_SKIP", "2")))
 _MAX_POSES_PER_FRAME = max(1, int(os.getenv("POSE_MAX_TRACKS", "4")))
 
 # BL-320 — face_covering class name as emitted by the v3.0 YOLO model.
