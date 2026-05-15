@@ -23,6 +23,7 @@ import {
   Trash2,
   BarChart3,
   Database,
+  ChevronDown,
 } from 'lucide-react';
 import { routes } from '@/constants/routes';
 import { switchTheme } from '@/lib/utils/switchTheme';
@@ -48,8 +49,10 @@ interface ComingSoonItem {
 }
 
 interface NavGroup {
-  label?: string;
-  items: NavItem[];
+  label?:       string;
+  key?:         string;   // when set, group is collapsible & state persisted under this key
+  defaultOpen?: boolean;  // default expansion when no localStorage value
+  items:        NavItem[];
 }
 
 const NAV_GROUPS: NavGroup[] = [
@@ -59,7 +62,22 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Project Management',
+    label:       'Exam Module',
+    key:         'exam',
+    defaultOpen: true,
+    items: [
+      { label: 'Exams',     href: routes.exams,         icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Analytics', href: routes.examAnalytics, icon: BarChart3,       roles: ['admin','supervisor','assistant'] },
+      { label: 'Students',  href: routes.students,      icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
+      { label: 'Rooms',     href: routes.examRooms,     icon: Laptop,          roles: ['admin'] },
+      { label: 'Datasets',  href: routes.datasets,      icon: Database,        roles: ['admin'] },
+      { label: 'Cam Overlap', href: routes.cameraOverlap, icon: Laptop,        roles: ['admin'] },
+    ],
+  },
+  {
+    label:       'Project Management',
+    key:         'pm',
+    defaultOpen: false,
     items: [
       { label: 'Sprints',   href: routes.sprints,   icon: Kanban,          roles: ['admin','supervisor','assistant'] },
       { label: 'Calendar',  href: routes.calendar,  icon: CalendarDays,    roles: ['admin','supervisor','assistant'] },
@@ -71,22 +89,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'Exam Module',
-    items: [
-      { label: 'Exams',     href: routes.exams,         icon: ClipboardList,   roles: ['admin','supervisor','assistant'] },
-      { label: 'Analytics', href: routes.examAnalytics, icon: BarChart3,       roles: ['admin','supervisor','assistant'] },
-      { label: 'Students',  href: routes.students,      icon: GraduationCap,   roles: ['admin','supervisor','assistant'] },
-      { label: 'Rooms',     href: routes.examRooms,     icon: Laptop,          roles: ['admin'] },
-      { label: 'Datasets',  href: routes.datasets,      icon: Database,        roles: ['admin'] },
-      { label: 'Cam Overlap', href: routes.cameraOverlap, icon: Laptop,        roles: ['admin'] },
-    ],
-  },
-  {
     items: [
       { label: 'Monitor',   href: routes.monitor,   icon: Activity,        roles: ['admin'] },
     ],
   },
 ];
+
+const SIDEBAR_GROUPS_LS_KEY = 'horuseye.sidebar.groups';
 
 const COMING_SOON: ComingSoonItem[] = [
   { label: 'Live Monitoring', icon: Monitor },
@@ -102,8 +111,31 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
   const pathname             = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard: must detect client mount
-  useEffect(() => { setMounted(true); }, []);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration guard: must detect client mount
+    setMounted(true);
+    try {
+      const raw = window.localStorage.getItem(SIDEBAR_GROUPS_LS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate persisted accordion state
+      if (raw) setOpenGroups(JSON.parse(raw) as Record<string, boolean>);
+    } catch { /* ignore corrupted localStorage */ }
+  }, []);
+
+  function toggleGroup(key: string, defaultOpen: boolean) {
+    setOpenGroups(prev => {
+      const current = prev[key] ?? defaultOpen;
+      const next = { ...prev, [key]: !current };
+      try { window.localStorage.setItem(SIDEBAR_GROUPS_LS_KEY, JSON.stringify(next)); } catch { /* quota or disabled */ }
+      return next;
+    });
+  }
+
+  function isGroupOpen(group: NavGroup): boolean {
+    if (!group.key) return true;
+    if (!mounted)   return group.defaultOpen ?? true;
+    return openGroups[group.key] ?? group.defaultOpen ?? true;
+  }
 
   const visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
@@ -201,19 +233,58 @@ export function Sidebar({ role, collapsed }: SidebarProps) {
       >
         {/* Main nav */}
         <nav className="flex-1 px-2 py-3 overflow-y-auto">
-          {visibleGroups.map((group, gi) => (
-            <div key={gi} className="space-y-0.5">
-              {group.label && !collapsed && (
-                <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
-                  {group.label}
-                </p>
-              )}
-              {group.label && collapsed && gi > 0 && (
-                <div className="my-2 border-t border-border/40" />
-              )}
-              {group.items.map(item => <NavLink key={item.href} item={item} />)}
-            </div>
-          ))}
+          {visibleGroups.map((group, gi) => {
+            const collapsible = !!(group.key && group.label && !collapsed);
+            const open        = isGroupOpen(group);
+            const panelId     = group.key ? `sidebar-group-${group.key}` : undefined;
+
+            return (
+              <div key={gi} className="space-y-0.5">
+                {group.label && !collapsed && (
+                  collapsible ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.key!, group.defaultOpen ?? true)}
+                      aria-expanded={open}
+                      aria-controls={panelId}
+                      className="w-full flex items-center justify-between px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    >
+                      <span>{group.label}</span>
+                      <ChevronDown
+                        size={12}
+                        className={cn(
+                          'shrink-0 transition-transform duration-200',
+                          !open && '-rotate-90'
+                        )}
+                      />
+                    </button>
+                  ) : (
+                    <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+                      {group.label}
+                    </p>
+                  )
+                )}
+                {group.label && collapsed && gi > 0 && (
+                  <div className="my-2 border-t border-border/40" />
+                )}
+                {collapsible ? (
+                  <div
+                    id={panelId}
+                    className={cn(
+                      'grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none',
+                      open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                    )}
+                  >
+                    <div className="overflow-hidden space-y-0.5">
+                      {group.items.map(item => <NavLink key={item.href} item={item} />)}
+                    </div>
+                  </div>
+                ) : (
+                  group.items.map(item => <NavLink key={item.href} item={item} />)
+                )}
+              </div>
+            );
+          })}
 
           {/* Coming Soon */}
           {!collapsed && (
