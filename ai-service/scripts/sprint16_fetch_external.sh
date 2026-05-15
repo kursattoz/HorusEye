@@ -36,20 +36,21 @@ python -m scripts.import_dataset \
 # Requires ROBOFLOW_API_KEY. The bundles list below is editable; see
 # docs/sprint16-cheat-sheet-scout.md for the acceptance gates.
 if [ -n "${ROBOFLOW_API_KEY:-}" ]; then
+  WORKSPACE="${ROBOFLOW_WORKSPACE:-horuseye}"
   ROBOFLOW_BUNDLES=(
-    "exam-cv  pencil-case-detection  1 roboflow_pencil_case"
-    "exam-cv  calculator-detection   1 roboflow_calculator"
-    "exam-cv  cheat-sheets           2 roboflow_cheat_sheets"
-    "exam-cv  hidden-notes           1 roboflow_hidden_notes"
+    "pencil-case-detection 1 roboflow_pencil_case"
+    "calculator-detection  1 roboflow_calculator"
+    "cheat-sheets          1 roboflow_cheat_sheets"
+    "hidden-notes          1 roboflow_hidden_notes"
   )
   for row in "${ROBOFLOW_BUNDLES[@]}"; do
     # shellcheck disable=SC2086
     set -- $row
-    workspace="$1" project="$2" version="$3" outdir="$4"
-    echo "→ Roboflow ${workspace}/${project} v${version}"
+    project="$1" version="$2" outdir="$3"
+    echo "→ Roboflow ${WORKSPACE}/${project} v${version}"
     python -m scripts.import_dataset \
       --source     roboflow \
-      --workspace  "${workspace}" \
+      --workspace  "${WORKSPACE}" \
       --project    "${project}" \
       --version    "${version}" \
       --format     yolov8 \
