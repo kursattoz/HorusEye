@@ -110,7 +110,19 @@ export function ExamAnalytics() {
                   <CartesianGrid strokeDasharray="2 4" opacity={0.3} />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Tooltip
+                  cursor={{ fill: 'var(--accent)', opacity: 0.3 }}
+                  contentStyle={{
+                    fontSize:        11,
+                    background:      'var(--popover)',
+                    color:           'var(--popover-foreground)',
+                    border:          '1px solid var(--border)',
+                    borderRadius:    '0.5rem',
+                    boxShadow:       '0 4px 12px rgb(0 0 0 / 0.10)',
+                  }}
+                  labelStyle={{ color: 'var(--popover-foreground)' }}
+                  itemStyle={{ color: 'var(--popover-foreground)' }}
+                />
                   <Bar dataKey="violation"  stackId="d" fill={DECISION_COLORS.violation}  radius={[0,0,0,0]} />
                   <Bar dataKey="suspicious" stackId="d" fill={DECISION_COLORS.suspicious} radius={[0,0,0,0]} />
                   <Bar dataKey="clean"      stackId="d" fill={DECISION_COLORS.clean}      radius={[0,0,0,0]} />
@@ -134,7 +146,19 @@ export function ExamAnalytics() {
                   <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10 }} />
                   <YAxis type="category" dataKey="type" tick={{ fontSize: 10 }} width={120}
                     tickFormatter={(v: string) => v.replace(/_/g, ' ')} />
-                  <Tooltip contentStyle={{ fontSize: 11 }} />
+                  <Tooltip
+                  cursor={{ fill: 'var(--accent)', opacity: 0.3 }}
+                  contentStyle={{
+                    fontSize:        11,
+                    background:      'var(--popover)',
+                    color:           'var(--popover-foreground)',
+                    border:          '1px solid var(--border)',
+                    borderRadius:    '0.5rem',
+                    boxShadow:       '0 4px 12px rgb(0 0 0 / 0.10)',
+                  }}
+                  labelStyle={{ color: 'var(--popover-foreground)' }}
+                  itemStyle={{ color: 'var(--popover-foreground)' }}
+                />
                   <Bar dataKey="count" fill="#6366f1" radius={[0, 2, 2, 0]}>
                     {data.by_type.slice(0, 10).map((_, i) => (
                       <Cell key={i} />
@@ -170,9 +194,9 @@ export function ExamAnalytics() {
                   <td className="p-2 font-medium">{e.name}</td>
                   <td className="p-2 text-xs text-muted-foreground">{e.scheduled_date ?? '—'}</td>
                   <td className="p-2 text-right tabular-nums">{e.total}</td>
-                  <td className="p-2 text-right tabular-nums text-red-700">{e.violation}</td>
-                  <td className="p-2 text-right tabular-nums text-amber-700">{e.suspicious}</td>
-                  <td className="p-2 text-right tabular-nums text-emerald-700">{e.clean}</td>
+                  <td className="p-2 text-right tabular-nums text-red-700 dark:text-red-400">{e.violation}</td>
+                  <td className="p-2 text-right tabular-nums text-amber-700 dark:text-amber-400">{e.suspicious}</td>
+                  <td className="p-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{e.clean}</td>
                   <td className="p-2 text-right tabular-nums text-muted-foreground">{e.pending}</td>
                 </tr>
               ))}
@@ -191,8 +215,9 @@ function SummaryTile({ Icon, label, value, sub, tone }: {
   Icon: typeof Target; label: string; value: number | string; sub?: string;
   tone?: 'red' | 'emerald';
 }) {
-  const toneCls = tone === 'red' ? 'text-red-700'
-                : tone === 'emerald' ? 'text-emerald-700' : 'text-foreground';
+  const toneCls = tone === 'red'     ? 'text-red-700 dark:text-red-400'
+                : tone === 'emerald' ? 'text-emerald-700 dark:text-emerald-400'
+                :                      'text-foreground';
   return (
     <Card>
       <CardContent className="flex items-center justify-between p-4">

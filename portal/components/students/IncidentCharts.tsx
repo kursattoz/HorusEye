@@ -88,8 +88,18 @@ export function IncidentCharts({ studentUuid }: { studentUuid: string }) {
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip
+                  cursor={{ fill: 'var(--accent)', opacity: 0.3 }}
                   labelFormatter={(v: string) => new Date(v).toLocaleDateString()}
-                  contentStyle={{ fontSize: 11 }}
+                  contentStyle={{
+                    fontSize:     11,
+                    background:   'var(--popover)',
+                    color:        'var(--popover-foreground)',
+                    border:       '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    boxShadow:    '0 4px 12px rgb(0 0 0 / 0.10)',
+                  }}
+                  labelStyle={{ color: 'var(--popover-foreground)' }}
+                  itemStyle={{ color: 'var(--popover-foreground)' }}
                 />
                 <Area type="monotone" dataKey="low"      stackId="1" stroke={SEVERITY_COLOR.low}      fill={SEVERITY_COLOR.low}      fillOpacity={0.5} />
                 <Area type="monotone" dataKey="medium"   stackId="1" stroke={SEVERITY_COLOR.medium}   fill={SEVERITY_COLOR.medium}   fillOpacity={0.5} />
@@ -130,7 +140,20 @@ export function IncidentCharts({ studentUuid }: { studentUuid: string }) {
                     width={110}
                     tickFormatter={(v: string) => v.replace(/_/g, ' ')}
                   />
-                  <Tooltip contentStyle={{ fontSize: 11 }} formatter={(v: number) => [v, 'count']} />
+                  <Tooltip
+                    cursor={{ fill: 'var(--accent)', opacity: 0.3 }}
+                    contentStyle={{
+                      fontSize:     11,
+                      background:   'var(--popover)',
+                      color:        'var(--popover-foreground)',
+                      border:       '1px solid var(--border)',
+                      borderRadius: '0.5rem',
+                      boxShadow:    '0 4px 12px rgb(0 0 0 / 0.10)',
+                    }}
+                    labelStyle={{ color: 'var(--popover-foreground)' }}
+                    itemStyle={{ color: 'var(--popover-foreground)' }}
+                    formatter={(v: number) => [v, 'count']}
+                  />
                   <Bar dataKey="count" fill="#6366f1" radius={[0, 2, 2, 0]} />
                 </BarChart>
               </ResponsiveContainer>
