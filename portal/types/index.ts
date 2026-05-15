@@ -37,14 +37,20 @@ export interface HorusFile {
   metadata: Record<string, unknown>;
 }
 
-// @interface LogEvent @version 1.1
+// @interface LogEvent @version 1.3
 export type LogEventType =
   | 'auth.login' | 'auth.logout' | 'auth.failed' | 'auth.password_reset'
   | 'file.upload' | 'file.download' | 'file.delete' | 'file.view' | 'file.update' | 'file.restore'
   | 'feedback.create' | 'feedback.update' | 'feedback.delete'
   | 'user.create' | 'user.update' | 'user.delete'
   | 'checklist.create' | 'checklist.update' | 'checklist.check' | 'checklist.uncheck' | 'checklist.delete'
-  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit';
+  | 'system.error' | 'system.warning' | 'system.info' | 'page.visit'
+  // Dataset pipeline (PRD-017 / PRD-021 BL-271)
+  | 'dataset.import'
+  | 'dataset.validate'
+  | 'dataset.merge'
+  | 'dataset.deploy'
+  | 'dataset.annotation_complete';
 
 export type LogSeverity = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
@@ -265,13 +271,15 @@ export interface SessionCamera {
   added_by: string | null;
 }
 
-// @interface CameraHealthEvent @version 1.0 — PRD-019
+// @interface CameraHealthEvent @version 1.1 — PRD-019 + BL-253 telemetry
 export type CameraHealthEventType =
   | 'connected' | 'disconnected' | 'reconnected'
   | 'low_battery' | 'critical_battery' | 'charging'
   | 'app_backgrounded' | 'app_foregrounded'
   | 'overheat' | 'orientation_changed' | 'preview_offscreen'
-  | 'permission_revoked';
+  | 'permission_revoked'
+  // BL-253 reconnect telemetry
+  | 'reconnect_scheduled' | 'reconnect_gave_up' | 'reconnect_manual';
 
 export interface CameraHealthEvent {
   id: string;
@@ -297,7 +305,10 @@ export interface ExamSession {
   updated_at: string;
 }
 
-// @interface Student @version 1.1
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+export type RiskTrend = 'rising' | 'stable' | 'falling';
+
+// @interface Student @version 1.2
 export interface Student {
   id: string;
   student_id: string;          // School ID (unique)
@@ -305,15 +316,28 @@ export interface Student {
   email: string | null;
   department: string | null;
   is_active: boolean;
+  // Risk cache (BL-225) — derived from incidents
+  risk_score: number;
+  risk_level: RiskLevel;
+  risk_trend: RiskTrend;
+  incident_count: number;
+  risk_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// @interface Incident @version 1.1
+// @interface Incident @version 1.2
 export type IncidentType =
+  // Phase A / Sprint 7-13
   | 'phone_detected' | 'earbuds_detected' | 'paper_detected'
   | 'gaze_diversion' | 'head_turn' | 'empty_seat'
-  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty';
+  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty'
+  // Sprint 17 — pose / behavior / gaze refinements
+  | 'body_lean_neighbor' | 'standing_up' | 'hand_under_desk'
+  | 'hand_to_ear_mouth' | 'object_passing' | 'gaze_at_lap'
+  | 'gaze_at_neighbor' | 'synchronized_behavior'
+  // Sprint 18 — multi-cam + face covering
+  | 'face_covering';
 
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type ProctorDecision = 'clean' | 'suspicious' | 'violation';

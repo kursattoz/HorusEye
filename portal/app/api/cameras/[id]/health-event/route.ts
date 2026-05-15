@@ -18,6 +18,9 @@ const EVENT_TYPES = [
   'app_backgrounded', 'app_foregrounded',
   'overheat', 'orientation_changed', 'preview_offscreen',
   'permission_revoked',
+  // BL-253 reconnect telemetry — kept out of ALERT_EVENTS because they
+  // don't warrant a proctor notification on their own.
+  'reconnect_scheduled', 'reconnect_gave_up', 'reconnect_manual',
 ] as const;
 type CameraHealthEventType = typeof EVENT_TYPES[number];
 

@@ -10,20 +10,26 @@ websocket:
   heartbeat_interval_sec: 30
 
 # BL-42 — YOLOv8n COCO pre-trained inference
+# BL-265 — laptop/keyboard removed from classes_of_interest; they don't
+# belong on an exam desk and their old paper_detected mapping was a
+# false-positive source. Custom paper_notes detection lands in Sprint 16.
 detection:
   model_path: models/yolov8n.pt    # auto-downloaded on first use if missing
   confidence_threshold: 0.45
   iou_threshold: 0.50
   device: cpu                       # 'cpu' | 'cuda:0' | 'mps'
   # COCO class IDs we care about for proctoring (Phase A subset)
-  # 0=person, 67=cell phone, 63=laptop, 73=book, 76=keyboard
-  classes_of_interest: [0, 63, 67, 73, 76]
-  # Map COCO class name → our IncidentType (when severity rule fires)
+  # 0=person, 67=cell phone, 73=book
+  classes_of_interest: [0, 67, 73]
+  # Map COCO class name → our IncidentType (when severity rule fires).
+  # NB: this map is informational; actual mappings live in
+  # src/detection/scoring.py (_DEFAULT_CLASS_MAP) and the per-rule
+  # PAPER_CLASSES constants. Keeping them in sync.
   incident_class_map:
     'cell phone': phone_detected
-    'laptop':     paper_detected
-    'book':       paper_detected
-    'keyboard':   paper_detected
+    'book':       paper_detected    # Sprint 16 will split into
+                                    # paper_notes (cheat sheet) vs
+                                    # book_detected (allowed material)
 
 # BL-188 / BL-201 — rule-engine thresholds.
 # Each knob can be overridden at runtime via the matching ENV var below

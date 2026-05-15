@@ -13,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
+# git: required for the `clip @ git+https://github.com/ultralytics/CLIP.git`
+# entry in requirements.txt (Sprint 19, YOLO-World CLIP encoder).
 
 WORKDIR /app
 
@@ -27,6 +30,14 @@ RUN mkdir -p models \
  && (mv yolov8n.pt models/ 2>/dev/null || true) \
  && ls -lh models/
 
+# Sprint 19 — pre-bake YOLOv8s-WorldV2 (~25 MB) for open-vocabulary mode.
+# Activated at runtime by setting DETECTOR_MODE=world; this RUN keeps the
+# weight in the image so cold-start doesn't pay the ultralytics download
+# tax (~10s on CPU tasks).
+RUN python -c "from ultralytics import YOLO; YOLO('yolov8s-worldv2.pt')" \
+ && (mv yolov8s-worldv2.pt models/ 2>/dev/null || true) \
+ && ls -lh models/
+
 # BL-216 (Sprint 10) — pre-bake insightface buffalo_l (ArcFace + RetinaFace).
 # ~280 MB download skipped on first request; insightface looks for models
 # under <root>/models/<pack_name>, so we point root=/app/models/insightface.
@@ -38,6 +49,12 @@ fa.prepare(ctx_id=-1, det_size=(640, 640))" \
  && du -sh "$INSIGHTFACE_HOME"
 
 COPY config.yaml .
+# Sprint 19 — runtime YAML for YOLO-World prompts + class aliases.
+# publish_handler._load_world_config reads configs/class_mapping.yaml at
+# startup; without this COPY the file is missing from the image, the
+# loader returns empty prompts, and DETECTOR_MODE=world silently falls
+# back to COCO (person/phone/book only).
+COPY configs/ ./configs/
 COPY src/ ./src/
 
 EXPOSE 8000

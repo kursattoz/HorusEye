@@ -6,11 +6,16 @@
 **Durum:** DRAFT → AKTIF (Phase A.1 başladığında)
 **Feature Flag:** `NEXT_PUBLIC_CAMERA_MODULE_ENABLED=true` (PRD-013 ile paylaşımlı)
 
+> **🚀 Implementation (Sprint 13-18):** Bu PRD'nin sprint sırası, BL
+> atamaları ve canlı reliability işleri **PRD-021** ile
+> `docs/dataset-plan/dataset-development-plan.md` v2.1'de tanımlanmıştır.
+> Dataset kataloğu, kontrollü senaryo şablonları, Faz uyum kararları orada.
+
 ---
 
 <!-- INTERFACE_DEPS
 AuthUser: @1.1
-LogEvent: @1.2
+LogEvent: @1.3
 -->
 
 ## ⚠️ LLM TALİMATI

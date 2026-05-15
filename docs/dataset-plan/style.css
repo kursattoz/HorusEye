@@ -1,0 +1,350 @@
+@page {
+  size: A4;
+  margin: 18mm 16mm 18mm 16mm;
+  @top-right {
+    content: "HorusEye • Dataset Plan • v1.0";
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+  @bottom-center {
+    content: counter(page) " / " counter(pages);
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+}
+
+:root {
+  --primary: #6d28d9;
+  --primary-light: #8b5cf6;
+  --primary-bg: #f5f3ff;
+  --accent: #f59e0b;
+  --accent-bg: #fffbeb;
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --text: #1e293b;
+  --text-light: #64748b;
+  --border: #e2e8f0;
+  --code-bg: #1e1e2e;
+  --code-text: #cdd6f4;
+  --light-bg: #f8fafc;
+}
+
+* { box-sizing: border-box; }
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11pt;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+body {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Title block ── */
+header#title-block-header {
+  text-align: center;
+  margin: 2cm 0 1.5cm 0;
+  padding: 1.5cm 1cm;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  color: white;
+  border-radius: 8px;
+  page-break-after: always;
+}
+
+header#title-block-header h1.title {
+  font-size: 28pt;
+  margin: 0 0 0.5cm 0;
+  font-weight: 700;
+  letter-spacing: -0.5pt;
+}
+
+header#title-block-header p.subtitle {
+  font-size: 14pt;
+  margin: 0 0 1cm 0;
+  opacity: 0.92;
+  font-weight: 400;
+}
+
+header#title-block-header p.author,
+header#title-block-header p.date {
+  font-size: 11pt;
+  margin: 0.2cm 0;
+  opacity: 0.85;
+}
+
+/* ── TOC ── */
+nav#TOC {
+  page-break-after: always;
+  margin: 0 0 1cm 0;
+  padding: 1cm;
+  background: var(--light-bg);
+  border-left: 4px solid var(--primary);
+  border-radius: 4px;
+}
+
+nav#TOC h2 {
+  margin-top: 0;
+  color: var(--primary);
+  font-size: 18pt;
+  border: none;
+}
+
+nav#TOC h2::before {
+  content: none;
+}
+
+nav#TOC ul {
+  list-style: none;
+  padding-left: 1em;
+}
+
+nav#TOC > ul {
+  padding-left: 0;
+}
+
+nav#TOC li {
+  margin: 0.3em 0;
+}
+
+nav#TOC a {
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+}
+
+nav#TOC a:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+nav#TOC > ul > li > a {
+  font-weight: 600;
+  color: var(--primary);
+  font-size: 11.5pt;
+}
+
+/* ── Headings ── */
+h1, h2, h3, h4 {
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  page-break-after: avoid;
+}
+
+h1 {
+  font-size: 22pt;
+  margin: 1.2cm 0 0.5cm 0;
+  padding-bottom: 0.3cm;
+  border-bottom: 3px solid var(--primary);
+  color: var(--primary);
+  page-break-before: always;
+}
+
+h1:first-of-type {
+  page-break-before: auto;
+}
+
+h2 {
+  font-size: 16pt;
+  margin: 0.8cm 0 0.3cm 0;
+  color: var(--text);
+  padding-left: 0.4cm;
+  border-left: 4px solid var(--primary-light);
+}
+
+h3 {
+  font-size: 13pt;
+  margin: 0.6cm 0 0.2cm 0;
+  color: var(--primary);
+}
+
+h4 {
+  font-size: 11.5pt;
+  margin: 0.5cm 0 0.2cm 0;
+  color: var(--text);
+}
+
+p {
+  margin: 0.3cm 0;
+  text-align: justify;
+  hyphens: auto;
+}
+
+/* ── Links ── */
+a {
+  color: #0d9488;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(13, 148, 136, 0.3);
+}
+
+a:hover {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ── Tables ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5cm 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+thead {
+  background: var(--primary);
+  color: white;
+}
+
+th {
+  padding: 0.25cm 0.3cm;
+  text-align: left;
+  font-weight: 600;
+}
+
+td {
+  padding: 0.2cm 0.3cm;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+tr:nth-child(even) {
+  background: var(--light-bg);
+}
+
+/* ── Code ── */
+code {
+  font-family: "Menlo", "Monaco", "Consolas", monospace;
+  font-size: 9.5pt;
+  background: var(--primary-bg);
+  color: var(--primary);
+  padding: 0.05cm 0.15cm;
+  border-radius: 3px;
+  word-break: break-word;
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.4cm;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-size: 9pt;
+  line-height: 1.4;
+  page-break-inside: avoid;
+  margin: 0.4cm 0;
+}
+
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* ── Lists ── */
+ul, ol {
+  margin: 0.3cm 0;
+  padding-left: 0.8cm;
+}
+
+li {
+  margin: 0.15cm 0;
+}
+
+/* ── Blockquote ── */
+blockquote {
+  margin: 0.5cm 0;
+  padding: 0.3cm 0.6cm;
+  background: var(--accent-bg);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  color: var(--text);
+  font-style: italic;
+}
+
+blockquote p {
+  margin: 0.15cm 0;
+}
+
+/* ── Callouts (tier boxes via custom syntax mapped to divs) ── */
+.tier1, .tier2, .tier3, .accent-box {
+  margin: 0.5cm 0;
+  padding: 0.4cm 0.5cm;
+  border-radius: 5px;
+  page-break-inside: avoid;
+}
+
+.tier1 {
+  background: var(--success-bg);
+  border-left: 4px solid var(--success);
+}
+
+.tier2 {
+  background: var(--accent-bg);
+  border-left: 4px solid var(--accent);
+}
+
+.tier3 {
+  background: var(--danger-bg);
+  border-left: 4px solid var(--danger);
+}
+
+.accent-box {
+  background: var(--primary-bg);
+  border-left: 4px solid var(--primary);
+}
+
+.tier1 strong, .tier2 strong, .tier3 strong, .accent-box strong {
+  display: block;
+  margin-bottom: 0.15cm;
+}
+
+/* ── Definition list (glossary) ── */
+dl {
+  margin: 0.3cm 0;
+}
+
+dt {
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: 0.3cm;
+}
+
+dd {
+  margin: 0.1cm 0 0.2cm 0.6cm;
+  color: var(--text);
+}
+
+/* ── Section numbers ── */
+.header-section-number {
+  color: var(--primary-light);
+  margin-right: 0.4em;
+}
+
+/* ── Page break helpers ── */
+.page-break {
+  page-break-after: always;
+}
+
+/* ── Emoji-free clean ── */
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8cm 0;
+}
+
+strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+em {
+  font-style: italic;
+  color: var(--text-light);
+}

@@ -1,0 +1,42 @@
+# Opt-in training-time dependencies — NOT installed in the runtime
+# Docker image (the ai-service container only needs requirements.txt).
+# Install with:
+#
+#   pip install -r requirements.txt -r requirements-training.txt
+#
+# This file isolates the multi-GB ML training stack so the production
+# container stays under 2GB.
+
+# ── Dataset fetch ────────────────────────────────────────────────────
+# BL-259 — Roboflow Universe CLI client
+roboflow>=1.1.40
+
+# BL-259 / BL-275 / BL-285 — FiftyOne for OID + COCO + LVIS + Objects365 zoo
+fiftyone>=0.25.0
+
+# BL-320 — HuggingFace Datasets for MaskedFace-Net pull
+datasets>=2.20.0
+
+# ── Training core ────────────────────────────────────────────────────
+# ultralytics already in requirements.txt (inference) — same package
+# handles fine-tune. Train-time PyTorch ships with CUDA wheels; pin a
+# minimum so GPU users get cu121/cu124 wheels automatically.
+torch>=2.3.0
+
+# ── BL-277 in-ear filter — CLIP zero-shot classifier ────────────────
+open_clip_torch>=2.24.0
+
+# ── BL-312 person Re-ID — OSNet body embedder ────────────────────────
+# torchreid pulls torch as a transitive dep; pinned again here to be
+# explicit. The os-net-x0_25 weights download on first use.
+torchreid>=0.2.5
+
+# ── BL-313 cross-camera matcher — Hungarian assignment ───────────────
+# Optional but recommended; the matcher falls back to greedy if missing.
+scipy>=1.13.0
+
+# ── Misc ─────────────────────────────────────────────────────────────
+# Pillow is a transitive ultralytics dep but the BL-263 anonymize_frame
+# + BL-291 mine_negatives helpers import it directly — pin so a slim
+# ultralytics install can't break our scripts.
+Pillow>=10.0.0

@@ -1,0 +1,65 @@
+# Sprint 15 (BL-279) — Local CVAT annotation server.
+# Lightweight single-machine deployment for annotating ~700 Sprint 15
+# frames. See ai-service/docs/sprint15-cvat-setup.md for first-run +
+# admin steps.
+#
+# Pinned CVAT major version: v2.16. Newer is fine but the annotation
+# task templates in docs/ are tested against v2.16.
+#
+# Default ports:
+#   8080  — CVAT web UI
+#   8090  — utils API (cvat-utils) used by the export script
+services:
+  cvat_db:
+    container_name: cvat_db
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${CVAT_POSTGRES_USER:-root}
+      POSTGRES_DB:       cvat
+      POSTGRES_PASSWORD: ${CVAT_POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - cvat_db:/var/lib/postgresql/data
+
+  cvat_redis:
+    container_name: cvat_redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - cvat_redis:/data
+
+  cvat_server:
+    container_name: cvat_server
+    image: cvat/server:v2.16.0
+    restart: unless-stopped
+    depends_on:
+      - cvat_db
+      - cvat_redis
+    environment:
+      DJANGO_MODWSGI_EXTRA_ARGS: ""
+      ALLOWED_HOSTS:             "*"
+      CVAT_REDIS_HOST:           cvat_redis
+      CVAT_POSTGRES_HOST:        cvat_db
+      CVAT_POSTGRES_USER:        ${CVAT_POSTGRES_USER:-root}
+      CVAT_POSTGRES_PASSWORD:    ${CVAT_POSTGRES_PASSWORD:-changeme}
+      ADAPTIVE_AUTO_ANNOTATION:  "false"
+    volumes:
+      - cvat_data:/home/django/data
+      - cvat_keys:/home/django/keys
+      - cvat_logs:/home/django/logs
+
+  cvat_ui:
+    container_name: cvat_ui
+    image: cvat/ui:v2.16.0
+    restart: unless-stopped
+    depends_on:
+      - cvat_server
+    ports:
+      - "8080:80"
+
+volumes:
+  cvat_db:
+  cvat_redis:
+  cvat_data:
+  cvat_keys:
+  cvat_logs:

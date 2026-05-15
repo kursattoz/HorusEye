@@ -41,6 +41,9 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [statusMessages, setStatusMessages] = useState<ServerStatus[]>([]);
   const [framesByCamera, setFramesByCamera] = useState<Map<string, ServerFrame>>(new Map());
   const [focusedCameraId, setFocusedCameraId] = useState<string | null>(null);
+  // BL-317 (Sprint 18) — multi-cam view mode. 'focus' keeps the single
+  // focused-camera viewport; 'grid' tiles every attached camera at once.
+  const [viewMode, setViewMode] = useState<'focus' | 'grid'>('focus');
   const [error, setError] = useState<string | null>(null);
   const [sessionCameras, setSessionCameras] = useState<SessionCameraRow[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -277,6 +280,20 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   }, [frameTsByCamera, now]);
   const focusedStale = focusedCameraId ? isStale(focusedCameraId) : false;
 
+  // Sprint 14-18 overlay: incidents that fired in the last ACTIVE_WINDOW_MS
+  // for the focused camera. The LiveVideoOverlay draws a severity ring +
+  // chip on the matching person bbox by track_id.
+  const ACTIVE_INCIDENT_WINDOW_MS = 15_000;
+  const focusedActiveIncidents = useMemo(() => {
+    if (!focusedCameraId) return [];
+    const cutoff = now - ACTIVE_INCIDENT_WINDOW_MS;
+    return incidents.filter(inc => {
+      if (!inc.camera_ids?.includes(focusedCameraId)) return false;
+      const occurredMs = Date.parse(inc.occurred_at);
+      return Number.isFinite(occurredMs) && occurredMs >= cutoff;
+    });
+  }, [incidents, focusedCameraId, now]);
+
   // Health summary — counts cameras by current state for the header pill.
   const healthSummary = useMemo(() => {
     let live = 0, stale = 0, offline = 0;
@@ -334,13 +351,75 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 )}
               </div>
             )}
+            {/* BL-317 view toggle */}
+            {sessionCameras.length > 1 && (
+              <div className="inline-flex rounded-md border bg-background p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded ${viewMode === 'focus' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/40'}`}
+                  onClick={() => setViewMode('focus')}
+                >
+                  Focus
+                </button>
+                <button
+                  type="button"
+                  className={`px-2 py-0.5 rounded ${viewMode === 'grid' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent/40'}`}
+                  onClick={() => setViewMode('grid')}
+                >
+                  Grid
+                </button>
+              </div>
+            )}
             <ConnectionBadge state={state} />
           </div>
         </header>
 
-        {/* Focused camera area: zoom + rotate + pan via CameraViewport. */}
-        {focusedFrame ? (
-          <CameraViewport frame={focusedFrame} label={focusedLabel} stale={focusedStale} />
+        {/* BL-317 grid view: tile every camera, click to refocus. */}
+        {viewMode === 'grid' && sessionCameras.length > 0 ? (
+          <div className="flex-1 min-h-0 overflow-auto bg-black p-2">
+            <div
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${Math.min(Math.ceil(Math.sqrt(sessionCameras.length)), 4)}, minmax(0, 1fr))`,
+              }}
+            >
+              {sessionCameras.map(sc => {
+                const f = framesByCamera.get(sc.camera_id) ?? null;
+                const stale = isStale(sc.camera_id);
+                return (
+                  <button
+                    key={sc.camera_id}
+                    type="button"
+                    onClick={() => { setFocusedCameraId(sc.camera_id); setViewMode('focus'); }}
+                    className="relative aspect-video bg-black/80 overflow-hidden rounded border border-border/50 text-left"
+                  >
+                    {f ? (
+                      <img
+                        src={`data:image/jpeg;base64,${f.jpeg_base64}`}
+                        alt={sc.camera.label}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
+                        no frame yet
+                      </div>
+                    )}
+                    <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                      {sc.camera.label}{stale ? ' · stale' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : focusedFrame ? (
+          <CameraViewport
+            frame={focusedFrame}
+            label={focusedLabel}
+            stale={focusedStale}
+            activeIncidents={focusedActiveIncidents}
+          />
         ) : (
         <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
           {state === 'connected' ? (

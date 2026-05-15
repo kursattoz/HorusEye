@@ -22,12 +22,48 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.persistence.supabase_client import get_supabase_admin
-from src.scoring.calibration import severity_to_risk_score
+from src.scoring.calibration import apply_severity_bump, severity_to_risk_score
 from src.scoring.rules import IncidentCandidate
 
 log = logging.getLogger(__name__)
 
 EVIDENCE_BUCKET = "incident-evidence"
+
+
+def _lookup_student_calibration(
+    client: Any, student_code: str | None,
+) -> dict[str, Any] | None:
+    """Fetch the per-student calibration row (BL-232) keyed by school
+    student_id text. Returns None if no override exists or on error.
+    Pre-match (``track:N``) IDs are skipped.
+    """
+    if not student_code or student_code.startswith("track:"):
+        return None
+    try:
+        # student_calibration is keyed by students.id (uuid); we need to
+        # resolve from the school student_id text first.
+        student_row = (
+            client.table("students")
+            .select("id")
+            .eq("student_id", student_code)
+            .limit(1)
+            .execute()
+        )
+        student_uuid = (getattr(student_row, "data", None) or [{}])[0].get("id")
+        if not student_uuid:
+            return None
+        result = (
+            client.table("student_calibration")
+            .select("severity_bump, min_confidence")
+            .eq("student_id", student_uuid)
+            .limit(1)
+            .execute()
+        )
+        row = (getattr(result, "data", None) or [None])[0]
+        return row
+    except Exception as e:  # noqa: BLE001 — calibration must not crash the pipeline
+        log.debug("student calibration lookup failed for %s: %s", student_code, e)
+        return None
 
 
 def _evidence_path(session_id: str, incident_id: str) -> str:
@@ -64,7 +100,13 @@ def _build_row(
     session_id: str,
     camera_id: str,
     evidence_path: str | None,
+    severity_override: str | None = None,
+    raw_signal_extras: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    severity = severity_override or candidate.severity
+    raw_signals = dict(candidate.raw_signals or {})
+    if raw_signal_extras:
+        raw_signals.update(raw_signal_extras)
     return {
         "id": incident_id,
         "session_id": session_id,
@@ -73,16 +115,16 @@ def _build_row(
         "student_id": candidate.student_id,
         "track_id": candidate.track_id,
         "incident_type": candidate.incident_type,
-        "severity": candidate.severity,
+        "severity": severity,
         "confidence": candidate.confidence,
         # BL-207 — risk_score is derived from severity via the calibration
         # table so every consumer agrees on the LOW/MEDIUM/HIGH/CRITICAL
         # numerical equivalence.
-        "risk_score": severity_to_risk_score(candidate.severity),
+        "risk_score": severity_to_risk_score(severity),
         "triggered_rules": list(candidate.triggered_rules),
         "camera_ids": [camera_id],
         "evidence_paths": [evidence_path] if evidence_path else [],
-        "raw_signals": candidate.raw_signals,
+        "raw_signals": raw_signals,
         "occurred_at": _occurred_at_iso(candidate.occurred_at),
     }
 
@@ -109,11 +151,65 @@ def write_incident(
 
     incident_id = str(uuid.uuid4())
 
+    # BL-232 — per-student calibration override. Look up before any I/O
+    # since drop-on-low-confidence shortcircuits Storage + DB writes.
+    calibration = _lookup_student_calibration(client, candidate.student_id)
+    severity_override: str | None = None
+    raw_signal_extras: dict[str, Any] | None = None
+    if calibration:
+        min_conf = calibration.get("min_confidence")
+        if min_conf is not None and candidate.confidence < float(min_conf):
+            log.info(
+                "incident dropped by student calibration min_confidence: "
+                "student=%s confidence=%.2f<%.2f",
+                candidate.student_id, candidate.confidence, float(min_conf),
+            )
+            return None
+        bump = int(calibration.get("severity_bump") or 0)
+        if bump != 0:
+            severity_override = apply_severity_bump(candidate.severity, bump)
+            raw_signal_extras = {
+                "calibration": {
+                    "student_id": candidate.student_id,
+                    "severity_bump": bump,
+                    "original_severity": candidate.severity,
+                    "min_confidence": float(min_conf) if min_conf is not None else None,
+                },
+            }
+
     evidence_path = (
         _upload_evidence(client, session_id, incident_id, frame_jpeg)
         if frame_jpeg
         else None
     )
+
+    # Sprint 18 BL-310/315 — multi-cam severity fusion.
+    # Run BEFORE the calibration-bump severity_override gets baked into
+    # the row so the multi-cam confirm can stack on top. If the same
+    # incident_type already fired from another camera in this session
+    # within the dedup window, promote one tier (low→medium, medium→high,
+    # …) and flag multi_cam_confirmed in raw_signals.
+    from src.scoring.multi_cam_coordinator import get_coordinator
+    fusion_severity = severity_override or candidate.severity
+    fusion = get_coordinator().fuse(
+        session_id=session_id,
+        camera_id=camera_id,
+        track_id=candidate.track_id,
+        incident_type=candidate.incident_type,
+        severity=fusion_severity,
+        occurred_at=candidate.occurred_at,
+        student_id=candidate.student_id,
+    )
+    if fusion.multi_cam_confirmed:
+        severity_override = fusion.severity
+        extras = dict(raw_signal_extras or {})
+        extras["multi_cam"] = {
+            "confirmed":         True,
+            "matched_camera_id": fusion.matched[0] if fusion.matched else None,
+            "matched_track_id":  fusion.matched[1] if fusion.matched else None,
+            "fused_severity":    fusion.severity,
+        }
+        raw_signal_extras = extras
 
     row = _build_row(
         incident_id=incident_id,
@@ -121,6 +217,8 @@ def write_incident(
         session_id=session_id,
         camera_id=camera_id,
         evidence_path=evidence_path,
+        severity_override=severity_override,
+        raw_signal_extras=raw_signal_extras,
     )
 
     try:

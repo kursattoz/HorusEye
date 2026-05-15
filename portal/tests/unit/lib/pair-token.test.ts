@@ -62,4 +62,17 @@ describe('pair-token JWT', () => {
     expect(verifyPairToken('a.b').ok).toBe(false);
     expect(verifyPairToken('a.b.c').ok).toBe(false);  // 3 parts but invalid sig
   });
+
+  it('returns not_configured (not a throw) when PAIR_TOKEN_SECRET is missing', () => {
+    const saved = process.env.PAIR_TOKEN_SECRET;
+    delete process.env.PAIR_TOKEN_SECRET;
+    try {
+      // 3-segment token so we hit the secret-load path, not the "malformed" early return.
+      const result = verifyPairToken('a.b.c');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('not_configured');
+    } finally {
+      process.env.PAIR_TOKEN_SECRET = saved;
+    }
+  });
 });

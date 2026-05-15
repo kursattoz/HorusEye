@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Plus, Upload, Search, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { routes } from '@/constants/routes';
+import { RiskBadge } from '@/components/students/RiskBadge';
 import type { Student } from '@/types';
 
 interface ImportResult {
@@ -15,6 +18,7 @@ interface ImportResult {
 }
 
 export function StudentsTable() {
+  const router = useRouter();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState<string | null>(null);
@@ -210,17 +214,30 @@ export function StudentsTable() {
                 <th className="px-3 py-2 font-medium">Full name</th>
                 <th className="px-3 py-2 font-medium">Email</th>
                 <th className="px-3 py-2 font-medium">Department</th>
+                <th className="px-3 py-2 font-medium">Risk</th>
                 <th className="px-3 py-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {students.map(s => (
-                <tr key={s.id} className="border-t hover:bg-muted/30">
+                <tr
+                  key={s.id}
+                  className="border-t hover:bg-muted/30 cursor-pointer"
+                  onClick={() => router.push(routes.studentDetail(s.id))}
+                >
                   <td className="px-3 py-2 font-mono text-xs">{s.student_id}</td>
-                  <td className="px-3 py-2">{s.full_name}</td>
+                  <td className="px-3 py-2 font-medium">{s.full_name}</td>
                   <td className="px-3 py-2 text-muted-foreground">{s.email ?? '—'}</td>
                   <td className="px-3 py-2 text-muted-foreground">{s.department ?? '—'}</td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-3 py-2">
+                    <RiskBadge
+                      level={s.risk_level}
+                      score={s.risk_score}
+                      trend={s.risk_trend}
+                      hideLow
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       variant="ghost"

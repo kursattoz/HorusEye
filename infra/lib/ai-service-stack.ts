@@ -62,12 +62,26 @@ export class AiServiceStack extends cdk.Stack {
     // BL-185 — Supabase service-role client for incident persistence.
     const supabaseUrl = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_URL`);
     const supabaseServiceRoleKey = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/SUPABASE_SERVICE_ROLE_KEY`);
+    // Sprint 19 — detector mode + confidence override. Stored as plain
+    // String params (NOT SecureString — CDK valueFromLookup can't resolve
+    // SecureString and would pass a KMS blob to the container).
+    //   DETECTOR_MODE:        "world" | "coco"   (default "coco")
+    //   YOLO_CONF_THRESHOLD:  decimal string     (default 0.20 in world mode)
+    const detectorMode = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/DETECTOR_MODE`);
+    const yoloConfThreshold = ssm.StringParameter.valueFromLookup(this, `${ssmPrefix}/YOLO_CONF_THRESHOLD`);
+
+    // BL-250 — explicit LogGroup so we can attach metric filters below.
+    const logGroup = new logs.LogGroup(this, 'LogGroup', {
+      logGroupName: `/aws/ecs/horuseye-ai-${props.envName}`,
+      retention: logs.RetentionDays.TWO_WEEKS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     taskDef.addContainer('ai-service', {
       image: ecs.ContainerImage.fromEcrRepository(props.repository, 'latest'),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: `horuseye-ai-${props.envName}`,
-        logRetention: logs.RetentionDays.TWO_WEEKS,
+        logGroup,
       }),
       environment: {
         HORUSEYE_ENV: props.envName,
@@ -79,8 +93,78 @@ export class AiServiceStack extends cdk.Stack {
           ? 'https://horuseye.app'
           : 'https://staging.horuseye.app,https://horuseye.app',
         PYTHONUNBUFFERED: '1',
+        DETECTOR_MODE: detectorMode,
+        YOLO_CONF_THRESHOLD: yoloConfThreshold,
       },
       portMappings: [{ containerPort: 8000 }],
+    });
+
+    // ── CloudWatch metric filters (BL-250) ───────────────────────
+    // Extract structured tokens from publish_handler logs so we can
+    // alarm/dashboard on the camera-pair-drop reliability signals from
+    // PRD-021 §3 Sprint 13 (BL-246..253). Filter patterns are case-
+    // sensitive substring matches with optional key=value extractors.
+    const metricNamespace = `HorusEye/AI/${props.envName}`;
+
+    new logs.MetricFilter(this, 'PublishIdleTimeoutFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'publish_idle_timeout',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"publish idle timeout"'),
+    });
+
+    new logs.MetricFilter(this, 'PublishExceptionFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'publish_exception',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"publish_exception=1"'),
+    });
+
+    new logs.MetricFilter(this, 'DetectionsExceptionFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'detections_exception',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"detections_exception=1"'),
+    });
+
+    new logs.MetricFilter(this, 'IncidentQueueDropFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'incident_queue_drop',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"incident_queue_drop=1"'),
+    });
+
+    // YOLO eager-init occurrence counter. We used to also extract the
+    // numeric duration via space-delimited filter pattern, but CloudWatch
+    // rejects the trailing `*` glob ("Invalid character(s) in term '*'")
+    // so we fall back to a presence count. Cold-start ms can be read
+    // directly from log lines via Logs Insights when needed.
+    new logs.MetricFilter(this, 'YoloInitDurationFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'yolo_init_duration_ms',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"yolo_init_duration_ms="'),
+    });
+
+    // Abnormal WS close (1006 = pre-BL-246 drop signature). The
+    // structured log line is "ws_close_code=1006".
+    new logs.MetricFilter(this, 'WsAbnormalCloseFilter', {
+      logGroup,
+      metricNamespace,
+      metricName: 'ws_close_abnormal',
+      metricValue: '1',
+      defaultValue: 0,
+      filterPattern: logs.FilterPattern.literal('"ws_close_code=1006"'),
     });
 
     // ── Fargate service ──────────────────────────────────────────

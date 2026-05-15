@@ -24,8 +24,14 @@ interface Props {
   redeem: RedeemPayload;
 }
 
-const FRAME_INTERVAL_MS = 200;     // 5 FPS
+const FRAME_INTERVAL_MS = 100;     // 10 FPS — short-lived gestures (gaze flicks,
+                                   // head turns, hand-to-lap) need denser sampling
+                                   // to clear pose/face-mesh rule windows.
 const JPEG_QUALITY = 0.7;
+// BL-253: exponential backoff schedule for auto-reconnect after WS close.
+// 3 attempts at 1s / 2s / 4s; beyond that we leave the connection 'closed'
+// and surface a manual Reconnect button to the user.
+const RECONNECT_DELAYS_MS: readonly number[] = [1000, 2000, 4000];
 
 type WsState = 'idle' | 'connecting' | 'open' | 'error' | 'closed';
 type FacingMode = 'environment' | 'user';
@@ -36,11 +42,26 @@ export function CamPairCapture({ token, redeem }: Props) {
   const wsRef     = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // BL-251: backpressure-skipped frame counter (BL-254 surfaces in debug overlay)
+  const framesSkippedRef = useRef<number>(0);
+  // BL-252: tracks whether streaming was active before tab went hidden so
+  // resume on foreground doesn't override a user-initiated Pause.
+  const wasStreamingBeforeHideRef = useRef<boolean>(false);
+  // BL-253: auto-reconnect with exponential backoff
+  const reconnectAttemptsRef = useRef<number>(0);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streamingRef = useRef<boolean>(true);
+  const openWSRef = useRef<(() => void) | null>(null);
 
   const [facing, setFacing]       = useState<FacingMode>('environment');
   const [streaming, setStreaming] = useState(true);
   const [wsState, setWsState]     = useState<WsState>('idle');
   const [framesSent, setFramesSent] = useState(0);
+  // BL-254: dev-only telemetry surfaces for debugging mobile reliability.
+  const [framesSkipped, setFramesSkipped] = useState(0);
+  const [bufferedAmountSample, setBufferedAmountSample] = useState(0);
+  const [lastCloseCode, setLastCloseCode] = useState<number | null>(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [permError, setPermError] = useState<string | null>(null);
 
   // ───── camera setup ──────────────────────────────────────────────
@@ -52,7 +73,10 @@ export function CamPairCapture({ token, redeem }: Props) {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode, width: { ideal: 640 }, height: { ideal: 480 } },
+        // 720p ideal — earbuds / paper_notes / smart_watch are ~30-80 px wide
+        // on a desk-distance shot, unresolvable at 480p. Phones that can't
+        // hit 720p fall back automatically via `ideal` semantics.
+        video: { facingMode: mode, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -93,16 +117,40 @@ export function CamPairCapture({ token, redeem }: Props) {
   }, [redeem.camera_id, redeem.session_id, token]);
 
   // ───── browser sağlık API'leri (PRD-019 §7) ─────────────────────
-  // Page Visibility: arkaplana atılma
+  // BL-252: Page Visibility + Page Lifecycle (freeze/resume on iOS Safari)
+  // — pause capture when the tab is hidden so we don't leak frames into
+  //   a frozen MediaStream and trip server idle timeout (15s).
   useEffect(() => {
+    const onHide = () => {
+      void postHealthEvent('app_backgrounded', { ts: Date.now() });
+      setStreaming((prev) => {
+        wasStreamingBeforeHideRef.current = prev;
+        return false;
+      });
+    };
+    const onShow = () => {
+      void postHealthEvent('app_foregrounded', { ts: Date.now() });
+      // Resume only if we paused due to hide — respect user-pressed Pause.
+      if (wasStreamingBeforeHideRef.current) {
+        setStreaming(true);
+        wasStreamingBeforeHideRef.current = false;
+      }
+    };
     const onVis = () => {
-      void postHealthEvent(
-        document.visibilityState === 'hidden' ? 'app_backgrounded' : 'app_foregrounded',
-        { ts: Date.now() },
-      );
+      if (document.visibilityState === 'hidden') onHide();
+      else onShow();
     };
     document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
+    // iOS Safari aggressively freezes background tabs; freeze/resume
+    // are more reliable signals than visibilitychange there. Cast is
+    // needed because they're not in the standard DocumentEventMap yet.
+    document.addEventListener('freeze', onHide as EventListener);
+    document.addEventListener('resume', onShow as EventListener);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      document.removeEventListener('freeze', onHide as EventListener);
+      document.removeEventListener('resume', onShow as EventListener);
+    };
   }, [postHealthEvent]);
 
   // Battery API (Chrome/Safari, opsiyonel — Firefox'ta yok)
@@ -209,16 +257,71 @@ export function CamPairCapture({ token, redeem }: Props) {
         camera_id: redeem.camera_id,
       }));
       setWsState('open');
+      // BL-253: successful (re)connect — clear attempt counter.
+      reconnectAttemptsRef.current = 0;
+      setReconnectAttempts(0); // BL-254 debug overlay
+      setLastCloseCode(null);
       void postHealthEvent('connected', { ua: navigator.userAgent });
     };
     ws.onerror = () => setWsState('error');
-    ws.onclose = () => setWsState('closed');
+    ws.onclose = (ev: CloseEvent) => {
+      setWsState('closed');
+      setLastCloseCode(ev.code); // BL-254 debug overlay
+      void postHealthEvent('disconnected', {
+        close_code: ev.code,
+        close_reason: ev.reason,
+      });
+      // BL-253: auto-reconnect with exponential backoff (1s / 2s / 4s).
+      // Only retry on abnormal closes when the user still wants to stream
+      // and the tab is foreground; otherwise the BL-252 visibility resume
+      // handles re-open.
+      if (!streamingRef.current) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      if (ev.code === 1000) return; // normal close (server unsubscribe)
+      if (ev.code >= 4000 && ev.code < 5000) return; // app-level (auth failed)
+
+      const attempts = reconnectAttemptsRef.current;
+      if (attempts >= RECONNECT_DELAYS_MS.length) {
+        void postHealthEvent('reconnect_gave_up', {
+          attempts,
+          close_code: ev.code,
+        });
+        return;
+      }
+      const delay = RECONNECT_DELAYS_MS[attempts];
+      void postHealthEvent('reconnect_scheduled', {
+        attempt: attempts + 1,
+        delay_ms: delay,
+        close_code: ev.code,
+      });
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        reconnectAttemptsRef.current = attempts + 1;
+        setReconnectAttempts(attempts + 1); // BL-254 debug overlay
+        openWSRef.current?.();
+      }, delay);
+    };
   }, [redeem, postHealthEvent]);
+
+  // BL-253: keep openWSRef + streamingRef in sync so the onclose handler
+  // (closed over older openWS reference) can fire fresh reconnect calls.
+  useEffect(() => {
+    openWSRef.current = openWS;
+  }, [openWS]);
+  useEffect(() => {
+    streamingRef.current = streaming;
+  }, [streaming]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- openWS sets wsState transitions via the WS event handlers
     if (streaming) openWS();
     return () => {
+      // BL-253: cancel any pending reconnect when the effect tears down.
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       wsRef.current?.close();
       wsRef.current = null;
     };
@@ -238,6 +341,27 @@ export function CamPairCapture({ token, redeem }: Props) {
       const ws = wsRef.current;
       if (!video || !canvas || !ws || ws.readyState !== WebSocket.OPEN) return;
       if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      // BL-252: setInterval guard — if the tab went hidden between when
+      // this tick was scheduled and when it fired, skip. The useEffect
+      // teardown will clear the interval shortly; this avoids any
+      // intervening frame from leaking to a frozen MediaStream.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
+      // BL-251: bufferedAmount backpressure. Mobile WS send quota is
+      // small (~256KB on iOS Safari / Chrome). Once exceeded the socket
+      // closes silently with 1006 — which is exactly the production
+      // pattern that drops mobile streams after ~10 frames (publish_handler.py:388
+      // root-cause analysis). Skip the frame instead of queueing more.
+      if (ws.bufferedAmount > 250_000) {
+        framesSkippedRef.current += 1;
+        // BL-254: surface to state at most every Nth skip so we don't
+        // re-render on every backpressure event.
+        if (framesSkippedRef.current % 5 === 0) {
+          setFramesSkipped(framesSkippedRef.current);
+        }
+        return;
+      }
 
       canvas.width  = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -260,6 +384,17 @@ export function CamPairCapture({ token, redeem }: Props) {
     };
   }, [streaming]);
 
+  // BL-254: sample WS bufferedAmount at 1Hz for the dev overlay (avoids
+  // re-rendering on every capture tick).
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    const t = setInterval(() => {
+      const ws = wsRef.current;
+      setBufferedAmountSample(ws ? ws.bufferedAmount : 0);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
   return (
     <div className="flex flex-col gap-3 max-w-md mx-auto">
       <div className="rounded-lg overflow-hidden bg-black aspect-video relative">
@@ -280,6 +415,21 @@ export function CamPairCapture({ token, redeem }: Props) {
               : 'Idle'}
           </span>
         </div>
+
+        {/* BL-254: dev-only telemetry overlay. Hidden in production
+            builds; field testers turning on a staging build see live
+            counters for the BL-251/252/253 reliability signals. */}
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 font-mono text-[10px] leading-tight text-white">
+            <div>sent: {framesSent}</div>
+            <div>skipped: {framesSkipped}</div>
+            <div>buf: {Math.round(bufferedAmountSample / 1024)}KB</div>
+            <div>retry: {reconnectAttempts}/{RECONNECT_DELAYS_MS.length}</div>
+            {lastCloseCode !== null && (
+              <div>last close: {lastCloseCode}</div>
+            )}
+          </div>
+        )}
       </div>
 
       {permError && (
@@ -308,8 +458,26 @@ export function CamPairCapture({ token, redeem }: Props) {
         </Button>
       </div>
 
-      {wsState === 'error' && (
-        <Button variant="outline" size="sm" onClick={openWS}>
+      {/* Manual Reconnect surface:
+          - 'error': initial WS open failed before any successful connect
+          - 'closed' + auto-retry exhausted: phone connected at least once,
+            then dropped 3× and auto-backoff (BL-253) gave up. Without this
+            second branch the phone stayed "closed" forever and the user
+            had to reload the tab.
+          The click resets the retry counter so subsequent failures get
+          a fresh backoff cycle instead of immediately giving up. */}
+      {(wsState === 'error'
+        || (wsState === 'closed' && reconnectAttempts >= RECONNECT_DELAYS_MS.length)) && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            reconnectAttemptsRef.current = 0;
+            setReconnectAttempts(0);
+            void postHealthEvent('reconnect_manual', { from: wsState });
+            openWS();
+          }}
+        >
           <RefreshCcw size={12} /> Reconnect
         </Button>
       )}

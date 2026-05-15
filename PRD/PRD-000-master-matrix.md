@@ -48,6 +48,10 @@ Script: `npm run validate:prd`
 | PRD-015 | PRD-015-reports-deliverables.md | Raporlar & Teslim Edilebilirler | AKTIF | 1.0 | PRD-000, PRD-001, PRD-003, PRD-014 |
 | PRD-016 | PRD-016-notifications.md | Bildirim Merkezi | AKTIF | 2.0 | PRD-000, PRD-001 |
 | PRD-017 | PRD-017-dataset-training-pipeline.md | Veri Seti Stratejisi & Model Eğitim Pipeline'ı | AKTIF | 1.1 | PRD-000, PRD-013 |
+| PRD-018 | PRD-018-sprint-backlog.md | Sprint Backlog Sistemi | AKTIF | 1.0 | PRD-000, PRD-001 |
+| PRD-019 | PRD-019-camera-pairing.md | Kamera Eşleştirme (Multi-Camera) | AKTIF | 1.0 | PRD-000, PRD-013 |
+| PRD-020 | PRD-020-phase-b-ai-pipeline.md | Phase B AI Pipeline (Sprint 7-12) | AKTIF | 1.0 | PRD-000, PRD-013, PRD-017, PRD-018 |
+| PRD-021 | PRD-021-dataset-roadmap.md | Dataset & Reliability Yol Haritası (Sprint 13-18) | AKTIF | 1.0 | PRD-000, PRD-013, PRD-017, PRD-018, PRD-019, PRD-020 |
 
 ---
 
@@ -157,11 +161,11 @@ interface HorusFile {
 }
 ```
 
-### 3.3 LogEvent `@1.2`
-**Kanal:** PRD-006 → PRD-007, PRD-013
+### 3.3 LogEvent `@1.3`
+**Kanal:** PRD-006 → PRD-007, PRD-013, PRD-017
 
 ```typescript
-// @interface LogEvent @version 1.2
+// @interface LogEvent @version 1.3
 interface LogEvent {
   id: string;
   event_type: LogEventType;   // Bkz: SYSTEM_GLOSSARY.LogEventType
@@ -353,11 +357,12 @@ interface ExamSession {
 }
 ```
 
-### 3.13 Student `@1.1`
+### 3.13 Student `@1.2`
 **Kanal:** PRD-013 (internal)
+**Yenilik (1.2):** Risk skoru cache alanları (BL-225, Sprint 11) — `students` tablosunda persist edilir, AI tarafından incident insert trigger'ı ile güncellenir.
 
 ```typescript
-// @interface Student @version 1.1
+// @interface Student @version 1.2
 interface Student {
   id: string;
   student_id: string;          // Okul numarası (unique)
@@ -365,6 +370,12 @@ interface Student {
   email: string | null;
   department: string | null;   // Bölüm (opsiyonel)
   is_active: boolean;
+  // ── Risk cache (BL-225, Sprint 11) — derived from incidents
+  risk_score: number;          // 0..1, weighted severity rolling 90d avg
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  risk_trend: 'rising' | 'stable' | 'falling';
+  incident_count: number;
+  risk_updated_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -374,11 +385,18 @@ interface Student {
 **Kanal:** PRD-013 (internal)
 
 ```typescript
-// @interface Incident @version 1.1
+// @interface Incident @version 1.2
 type IncidentType =
+  // Phase A / Sprint 7-13
   | 'phone_detected' | 'earbuds_detected' | 'paper_detected'
   | 'gaze_diversion' | 'head_turn' | 'empty_seat'
-  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty';
+  | 'whispering' | 'unauthorized_communication' | 'position_uncertainty'
+  // Sprint 17 — pose / behavior / gaze refinements
+  | 'body_lean_neighbor' | 'standing_up' | 'hand_under_desk'
+  | 'hand_to_ear_mouth' | 'object_passing' | 'gaze_at_lap'
+  | 'gaze_at_neighbor' | 'synchronized_behavior'
+  // Sprint 18 — multi-cam + face covering
+  | 'face_covering';
 
 type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 type ProctorDecision = 'clean' | 'suspicious' | 'violation';
@@ -422,17 +440,19 @@ interface SessionCamera {
 }
 ```
 
-### 3.14b CameraHealthEvent `@1.0`
+### 3.14b CameraHealthEvent `@1.1`
 **Kanal:** PRD-019 (owner)
 
 ```typescript
-// @interface CameraHealthEvent @version 1.0
+// @interface CameraHealthEvent @version 1.1
 type CameraHealthEventType =
   | 'connected' | 'disconnected' | 'reconnected'
   | 'low_battery' | 'critical_battery' | 'charging'
   | 'app_backgrounded' | 'app_foregrounded'
   | 'overheat' | 'orientation_changed' | 'preview_offscreen'
-  | 'permission_revoked';
+  | 'permission_revoked'
+  // BL-253 reconnect telemetry
+  | 'reconnect_scheduled' | 'reconnect_gave_up' | 'reconnect_manual';
 
 interface CameraHealthEvent {
   id:         string;
@@ -553,6 +573,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | LogEvent | 1.0 | 2025 | İlk tanım | PRD-006,007 |
 | LogEvent | 1.1 | 2026 | `LogEventType`'a `file.update` ve `file.restore` eklendi | PRD-006,007 |
 | LogEvent | 1.2 | 2026 | `LogEventType`'a Faz 2 event tipleri eklendi: exam.*, session.*, student.*, attendance.*, camera.*, ai.*, proctor.* (17 yeni event). Kanal PRD-013 eklendi | PRD-006,007,013 |
+| LogEvent | 1.3 | 2026 | `LogEventType`'a Sprint 14 dataset event tipleri eklendi: `dataset.import`, `dataset.validate`, `dataset.merge`, `dataset.deploy`, `dataset.annotation_complete` (PRD-021 BL-271). Kanal PRD-017 eklendi | PRD-006,007,017 |
 | Feedback | 1.0 | 2025 | İlk tanım | PRD-002,004 |
 | Feedback | 1.1 | 2026 | `line_ref` tipi `number \| null` → `string \| null` (DB şeması `VARCHAR(20)` ile uyumlu, format: "sayfa:satır") | PRD-002,004 |
 | HealthStatus | 1.0 | 2025 | İlk tanım | PRD-007 |
@@ -565,6 +586,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | Student | 1.0 | 2026 | İlk tanım — öğrenci yönetimi, toplu import, transfer (PRD-013 Phase A) | PRD-013 |
 | Incident | 1.0 | 2026 | İlk tanım — AI tespit olayları, severity, evidence (PRD-013 Phase A) | PRD-013 |
 | Incident | 1.1 | 2026 | `raw_signals`, `proctor_decision`, `decision_note`, `decided_by`, `decided_at` eklendi — post-exam review ve re-scoring desteği | PRD-013 |
+| Incident | 1.2 | 2026 | `IncidentType`'a Sprint 17 davranış kuralları (`body_lean_neighbor`, `standing_up`, `hand_under_desk`, `hand_to_ear_mouth`, `object_passing`, `gaze_at_lap`, `gaze_at_neighbor`, `synchronized_behavior`) ve Sprint 18 `face_covering` eklendi | PRD-013,021 |
 | Exam | 1.0 | 2026 | İlk tanım — sınav üst entity, multi-session, wizard, gözetmen/öğrenci ataması | PRD-013 |
 | Camera | 1.1 | 2026 | `camera_type: CameraType` eklendi — IP kamera, telefon, USB webcam ayrımı. `stream_url` açıklaması genişletildi | PRD-013 |
 | Student | 1.1 | 2026 | `room_id` ve `seat_number` kaldırıldı (öğrenciler odaya değil oturuma atanır — `session_students` tablosu). `department` eklendi | PRD-013 |
@@ -572,6 +594,7 @@ Her interface değişikliği buraya eklenir. Eski versiyonlar silinmez.
 | Camera | 1.2 | 2026 | `is_fixed`, `owner_user_id`, `device_id`, `last_seen_at` eklendi; `room_id` nullable yapıldı (taşınabilir telefonlar için). `fixed_cameras_have_home_room` CHECK constraint | PRD-019 |
 | SessionCamera | 1.0 | 2026 | İlk tanım — oturum ↔ kamera M:N junction (PRD-019) | PRD-019 |
 | CameraHealthEvent | 1.0 | 2026 | İlk tanım — telefon sağlık event tipleri (battery/visibility/permission/orientation) | PRD-019 |
+| CameraHealthEvent | 1.1 | 2026 | `CameraHealthEventType`'a BL-253 reconnect telemetry eklendi (`reconnect_scheduled`, `reconnect_gave_up`, `reconnect_manual`) — auto-reconnect güvenilirlik sinyalleri | PRD-019 |
 
 ---
 
@@ -644,7 +667,13 @@ type LogEventType =
   | 'ai.detection'      // Yüksek hacim — sadece Redis, DB'ye yazılmaz
   | 'ai.incident'       // Risk eşiği aşıldı → incident kaydı
   | 'ai.model_deploy'   // Yeni AI modeli aktif edildi
-  | 'ai.dataset_import'  // Yeni veri seti sisteme aktarıldı (PRD-017)
+  | 'ai.dataset_import'  // Yeni veri seti sisteme aktarıldı (PRD-017) — DEPRECATED, use dataset.import
+  // Faz 2 — Dataset Pipeline (PRD-017 / PRD-021 BL-271)
+  | 'dataset.import'              // İndirme tamamlandı (Roboflow/OID/COCO)
+  | 'dataset.validate'            // quality_report.json üretildi
+  | 'dataset.merge'               // Birleştirilmiş dataset hazır
+  | 'dataset.deploy'              // Dataset modele bağlandı / fine-tune başladı
+  | 'dataset.annotation_complete' // internal_training_samples annotation onayı
   // Faz 2 — Gözetmen Aksiyonları (PRD-013)
   | 'proctor.acknowledge'
   | 'proctor.decide'     // Post-exam: gözetmen kararı (clean/suspicious/violation)

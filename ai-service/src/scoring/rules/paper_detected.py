@@ -23,7 +23,12 @@ from src.detection.yolo_detector import Detection
 from src.scoring.rules import IncidentCandidate
 from src.scoring.track_state import TrackState
 
-PAPER_CLASSES: tuple[str, ...] = ("book", "keyboard")
+PAPER_CLASSES: tuple[str, ...] = ("book", "paper_notes")
+# BL-265: keyboard removed (off-desk, FP-only signal).
+# Sprint 19: paper_notes added — YOLO-World World mode emits this as a
+# canonical class via class_mapping.yaml aliases. With COCO weights only
+# "book" ever overlaps, so the rule degrades to the legacy single-class
+# behavior automatically.
 RULE_NAME = "paper_detected"
 
 

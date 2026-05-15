@@ -14,7 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import type { Student } from '@/types';
+import { RiskBadge } from '@/components/students/RiskBadge';
+import type { Student, RiskLevel, RiskTrend } from '@/types';
 
 interface BasePerson {
   id: string;
@@ -27,7 +28,13 @@ interface AssignedRow {
   personId: string;          // students.id / user_profiles.id
   primary: string;
   secondary?: string;
-  meta?: { seat_number?: string | null; role?: string | null };
+  meta?: {
+    seat_number?: string | null;
+    role?: string | null;
+    risk_level?: RiskLevel;
+    risk_score?: number;
+    risk_trend?: RiskTrend;
+  };
 }
 
 type Mode = 'students' | 'proctors';
@@ -76,7 +83,12 @@ export function SessionAssignModal({ open, onClose, sessionId, mode, onAssigned 
           personId:  row.students.id,
           primary:   row.students.student_id,
           secondary: row.students.full_name,
-          meta:      { seat_number: row.seat_number },
+          meta:      {
+            seat_number: row.seat_number,
+            risk_level:  row.students.risk_level,
+            risk_score:  row.students.risk_score,
+            risk_trend:  row.students.risk_trend,
+          },
         })));
       } else {
         const users = (poolData.users ?? []) as Array<{ id: string; full_name: string; email: string; is_active: boolean }>;
@@ -187,9 +199,20 @@ export function SessionAssignModal({ open, onClose, sessionId, mode, onAssigned 
             <ul className="rounded-md border divide-y max-h-40 overflow-y-auto">
               {assigned.map(a => (
                 <li key={a.id} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
-                  <div>
-                    <p className="font-medium">{a.primary}</p>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">{a.primary}</p>
+                      {mode === 'students' && a.meta?.risk_level && (
+                        <RiskBadge
+                          level={a.meta.risk_level}
+                          score={a.meta.risk_score}
+                          trend={a.meta.risk_trend}
+                          size="sm"
+                          hideLow
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
                       {a.secondary}
                       {mode === 'students' && a.meta?.seat_number ? ` · seat ${a.meta.seat_number}` : ''}
                       {mode === 'proctors' && a.meta?.role        ? ` · ${a.meta.role}` : ''}
