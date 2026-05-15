@@ -18,7 +18,8 @@ export async function GET(_request: NextRequest, { params }: Params) {
       id, session_id, camera_id, added_at, added_by,
       camera:cameras (
         id, room_id, label, camera_type, role,
-        is_fixed, owner_user_id, device_id, last_seen_at, is_active
+        is_fixed, owner_user_id, device_id, last_seen_at, is_active,
+        demo_video_url
       )
     `)
     .eq('session_id', sessionId)

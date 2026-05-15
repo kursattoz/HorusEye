@@ -14,6 +14,7 @@ import { CameraTile } from '@/components/exams/CameraTile';
 import { IncidentCard } from '@/components/exams/IncidentCard';
 import { PhonePairModal } from '@/components/exams/PhonePairModal';
 import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
+import { DemoCameraPublisher } from '@/components/exams/DemoCameraPublisher';
 
 type ConnectState = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
 
@@ -32,6 +33,10 @@ interface SessionCameraRow {
     label: string;
     camera_type: 'ip_camera' | 'phone' | 'usb_webcam';
     last_seen_at: string | null;
+    // Plan §Demo — when non-null the LiveMonitor mounts an invisible
+    // DemoCameraPublisher that loops the asset and pushes frames to
+    // the AI service, so the tile shows real overlays on demo footage.
+    demo_video_url?: string | null;
   };
 }
 
@@ -51,6 +56,11 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [manageOpen, setManageOpen] = useState(false);
   const [pendingCameraId, setPendingCameraId] = useState<string | null>(null);
   const [frameTsByCamera, setFrameTsByCamera] = useState<Map<string, number>>(new Map());
+  // Plan §Demo — cached AI service credentials for in-tab demo publishers.
+  // Populated alongside the subscribe handshake; safe to share since these
+  // are the same shared secret the LiveMonitor itself uses for SUBSCRIBE.
+  const [aiWsUrl, setAiWsUrl] = useState<string>('');
+  const [aiApiKey, setAiApiKey] = useState<string>('');
   const wsRef = useRef<WebSocket | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // Cameras we've already auto-attached during this monitor session — guards
@@ -92,6 +102,9 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           setState('error');
           return;
         }
+        // Cache for demo publishers — same shared key the subscribe path uses.
+        setAiWsUrl(baseUrl);
+        setAiApiKey(cfg.api_key ?? '');
         const url = `${baseUrl}/ws/sessions/${session.id}/detections`;
         try {
           ws = new WebSocket(url);
@@ -318,6 +331,23 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-4 flex-1 min-h-0">
+      {/* Plan §Demo — invisible publishers for any demo-video cameras
+          attached to this session. They share the same AI WS host +
+          api_key the LiveMonitor itself uses for SUBSCRIBE, so the
+          proctor sees real detections overlaid on the looped footage. */}
+      {aiWsUrl && aiApiKey && sessionCameras
+        .filter(sc => sc.camera.demo_video_url)
+        .map(sc => (
+          <DemoCameraPublisher
+            key={`demo-pub-${sc.camera_id}`}
+            cameraId={sc.camera_id}
+            sessionId={session.id}
+            videoUrl={sc.camera.demo_video_url!}
+            wsBase={aiWsUrl}
+            apiKey={aiApiKey}
+          />
+        ))}
+
       {/* Main: video frame + camera strip */}
       <div className="rounded-lg border bg-card flex flex-col overflow-hidden min-h-0">
         <header className="flex items-center justify-between gap-2 border-b px-4 py-2 flex-wrap">
