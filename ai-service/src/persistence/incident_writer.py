@@ -7,11 +7,13 @@ Turns an :class:`~src.scoring.rules.IncidentCandidate` into:
 2. An ``incidents`` row with ``evidence_paths=[that path]`` and the
    candidate's confidence, severity, raw_signals, etc.
 
-Both steps are best-effort: a Storage failure leaves ``evidence_paths``
-empty but still writes the row; an insert failure logs and returns
-``None`` so the publish pipeline keeps streaming. The publish handler
-(BL-187) inspects the return value to decide whether to broadcast a
-ServerIncident.
+**Atomicity** (Plan §B1 — synchronous rollback): the two writes are kept
+in sync so an evidence blob exists in Storage iff a row points to it in
+the DB. If the frame upload fails we drop the incident entirely instead
+of writing an orphan DB row with empty ``evidence_paths``. If the DB
+insert then fails we delete the uploaded JPEG to avoid orphan blobs.
+``frame_jpeg=None`` (no frame to upload) is still allowed and writes a
+row with empty ``evidence_paths`` — that path doesn't need rollback.
 """
 
 from __future__ import annotations
@@ -91,6 +93,20 @@ def _upload_evidence(
     except Exception as e:  # noqa: BLE001 — Storage failures must not crash the pipeline
         log.warning("evidence upload failed for incident %s: %s", incident_id, e)
         return None
+
+
+def _rollback_evidence(client: Any, evidence_path: str) -> None:
+    """Best-effort deletion after a failed DB insert — keeps Storage and
+    DB in sync. A failure here means a leaked blob the orphan-cleanup
+    cron (PRD §B5) will eventually reap."""
+    try:
+        client.storage.from_(EVIDENCE_BUCKET).remove([evidence_path])
+        log.info("rolled back orphan evidence %s after insert failure", evidence_path)
+    except Exception as e:  # noqa: BLE001 — rollback failure must not crash
+        log.error(
+            "evidence rollback failed for %s — manual cleanup needed: %s",
+            evidence_path, e,
+        )
 
 
 def _build_row(
@@ -177,11 +193,19 @@ def write_incident(
                 },
             }
 
-    evidence_path = (
-        _upload_evidence(client, session_id, incident_id, frame_jpeg)
-        if frame_jpeg
-        else None
-    )
+    evidence_path: str | None = None
+    if frame_jpeg:
+        evidence_path = _upload_evidence(client, session_id, incident_id, frame_jpeg)
+        if evidence_path is None:
+            # Storage failed even though we had a frame to upload. Drop the
+            # incident rather than leave a row pointing at no evidence — a
+            # proctor reviewing later would see an alert with nothing to
+            # back it up, which is worse than a brief gap in coverage.
+            log.warning(
+                "dropping incident — evidence upload failed (session=%s track=%s id=%s)",
+                session_id, candidate.track_id, incident_id,
+            )
+            return None
 
     # Sprint 18 BL-310/315 — multi-cam severity fusion.
     # Run BEFORE the calibration-bump severity_override gets baked into
@@ -228,6 +252,8 @@ def write_incident(
             "incident insert failed (session=%s track=%s): %s",
             session_id, candidate.track_id, e,
         )
+        if evidence_path:
+            _rollback_evidence(client, evidence_path)
         return None
 
     inserted = (getattr(result, "data", None) or [None])[0]
