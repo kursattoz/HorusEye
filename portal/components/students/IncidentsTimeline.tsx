@@ -23,7 +23,7 @@ interface TimelineIncident {
     id: string;
     started_at: string | null;
     ended_at: string | null;
-    exams: { id: string; title: string } | null;
+    exams: { id: string; name: string } | null;
   } | null;
 }
 
@@ -42,10 +42,10 @@ const SEVERITY_BORDER: Record<TimelineIncident['severity'], string> = {
 };
 
 const SEVERITY_BADGE: Record<TimelineIncident['severity'], string> = {
-  low:      'bg-blue-100 text-blue-800',
-  medium:   'bg-amber-100 text-amber-800',
-  high:     'bg-orange-100 text-orange-800',
-  critical: 'bg-red-100 text-red-800',
+  low:      'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+  medium:   'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  high:     'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
+  critical: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
 };
 
 const DECISION_LABEL: Record<NonNullable<TimelineIncident['proctor_decision']>, { label: string; cls: string; icon: typeof CheckCircle2 }> = {
@@ -186,7 +186,7 @@ function TimelineRow({ inc }: { inc: TimelineIncident }) {
 
           <p className="mt-1 text-xs text-muted-foreground">
             {new Date(inc.occurred_at).toLocaleString()}
-            {inc.exam_sessions?.exams?.title ? <> · {inc.exam_sessions.exams.title}</> : null}
+            {inc.exam_sessions?.exams?.name ? <> · {inc.exam_sessions.exams.name}</> : null}
           </p>
 
           {inc.triggered_rules.length > 0 && (
