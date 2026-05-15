@@ -14,7 +14,6 @@ import { CameraTile } from '@/components/exams/CameraTile';
 import { IncidentCard } from '@/components/exams/IncidentCard';
 import { PhonePairModal } from '@/components/exams/PhonePairModal';
 import { SessionCameraAttach } from '@/components/exams/SessionCameraAttach';
-import { DemoCameraPublisher } from '@/components/exams/DemoCameraPublisher';
 
 type ConnectState = 'idle' | 'connecting' | 'connected' | 'closed' | 'error';
 
@@ -56,11 +55,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
   const [manageOpen, setManageOpen] = useState(false);
   const [pendingCameraId, setPendingCameraId] = useState<string | null>(null);
   const [frameTsByCamera, setFrameTsByCamera] = useState<Map<string, number>>(new Map());
-  // Plan §Demo — cached AI service credentials for in-tab demo publishers.
-  // Populated alongside the subscribe handshake; safe to share since these
-  // are the same shared secret the LiveMonitor itself uses for SUBSCRIBE.
-  const [aiWsUrl, setAiWsUrl] = useState<string>('');
-  const [aiApiKey, setAiApiKey] = useState<string>('');
   const wsRef = useRef<WebSocket | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   // Cameras we've already auto-attached during this monitor session — guards
@@ -102,9 +96,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
           setState('error');
           return;
         }
-        // Cache for demo publishers — same shared key the subscribe path uses.
-        setAiWsUrl(baseUrl);
-        setAiApiKey(cfg.api_key ?? '');
         const url = `${baseUrl}/ws/sessions/${session.id}/detections`;
         try {
           ws = new WebSocket(url);
@@ -331,23 +322,6 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-4 flex-1 min-h-0">
-      {/* Plan §Demo — invisible publishers for any demo-video cameras
-          attached to this session. They share the same AI WS host +
-          api_key the LiveMonitor itself uses for SUBSCRIBE, so the
-          proctor sees real detections overlaid on the looped footage. */}
-      {aiWsUrl && aiApiKey && sessionCameras
-        .filter(sc => sc.camera.demo_video_url)
-        .map(sc => (
-          <DemoCameraPublisher
-            key={`demo-pub-${sc.camera_id}`}
-            cameraId={sc.camera_id}
-            sessionId={session.id}
-            videoUrl={sc.camera.demo_video_url!}
-            wsBase={aiWsUrl}
-            apiKey={aiApiKey}
-          />
-        ))}
-
       {/* Main: video frame + camera strip */}
       <div className="rounded-lg border bg-card flex flex-col overflow-hidden min-h-0">
         <header className="flex items-center justify-between gap-2 border-b px-4 py-2 flex-wrap">
@@ -430,6 +404,16 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                         className="absolute inset-0 w-full h-full object-cover"
                         draggable={false}
                       />
+                    ) : sc.camera.demo_video_url ? (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption -- demo loop, silent
+                      <video
+                        src={sc.camera.demo_video_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
                         no frame yet
@@ -443,12 +427,13 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
               })}
             </div>
           </div>
-        ) : focusedFrame ? (
+        ) : (focusedFrame || focusedRow?.camera.demo_video_url) ? (
           <CameraViewport
             frame={focusedFrame}
             label={focusedLabel}
             stale={focusedStale}
             activeIncidents={focusedActiveIncidents}
+            demoVideoUrl={focusedRow?.camera.demo_video_url ?? null}
           />
         ) : (
         <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
@@ -515,6 +500,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 frame={framesByCamera.get(sc.camera_id) ?? null}
                 active={focusedCameraId === sc.camera_id}
                 stale={isStale(sc.camera_id)}
+                demoVideoUrl={sc.camera.demo_video_url ?? null}
                 onSelect={() => setFocusedCameraId(sc.camera_id)}
               />
             ))}

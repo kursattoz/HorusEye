@@ -20,6 +20,11 @@ interface Props {
    *  per-track incident ring + chip labels. Caller filters by camera +
    *  time window. */
   activeIncidents?: ServerIncident[];
+  /** Plan §Demo — when set, render the URL as a looping <video>
+   *  directly in the viewport instead of the WS-fed JPEG overlay.
+   *  Bypasses the AI pipeline; used to show classroom footage as if
+   *  a real camera were attached. */
+  demoVideoUrl?: string | null;
 }
 
 const ZOOM_MIN = 1;
@@ -27,7 +32,7 @@ const ZOOM_MAX = 5;
 const ZOOM_STEP = 0.25;
 const ROTATIONS = [0, 90, 180, 270] as const;
 
-export function CameraViewport({ frame, label, stale, activeIncidents }: Props) {
+export function CameraViewport({ frame, label, stale, activeIncidents, demoVideoUrl }: Props) {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<typeof ROTATIONS[number]>(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -102,13 +107,35 @@ export function CameraViewport({ frame, label, stale, activeIncidents }: Props) 
           className="w-full h-full transition-transform duration-150 ease-out flex items-center justify-center"
           style={{ transform, transformOrigin: 'center center' }}
         >
-          <LiveVideoOverlay
-            frame={frame}
-            showBbox
-            label={label}
-            stale={stale}
-            activeIncidents={activeIncidents}
-          />
+          {demoVideoUrl ? (
+            <div className="relative w-full h-full flex items-center justify-center">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption -- live classroom loop, no track */}
+              <video
+                src={demoVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="max-w-full max-h-full object-contain"
+              />
+              {label && (
+                <div className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-0.5 text-[11px] text-white">
+                  {label}
+                </div>
+              )}
+              <div className="absolute top-2 right-2 rounded bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-200">
+                Demo loop
+              </div>
+            </div>
+          ) : (
+            <LiveVideoOverlay
+              frame={frame}
+              showBbox
+              label={label}
+              stale={stale}
+              activeIncidents={activeIncidents}
+            />
+          )}
         </div>
       </div>
 
