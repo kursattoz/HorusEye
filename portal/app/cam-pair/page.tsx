@@ -17,6 +17,21 @@ interface RedeemPayload {
   protocol_version: string;
 }
 
+function validateDemoVideo(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  // Same-origin static path under /demo/… (or any local path).
+  if (/^\/[\w\-./]+$/.test(raw)) return raw;
+  // Supabase public demo-assets bucket on the configured project.
+  const supabaseBase = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '');
+  if (supabaseBase) {
+    const prefix = `${supabaseBase}/storage/v1/object/public/demo-assets/`;
+    if (raw.startsWith(prefix) && /^[\w\-./]+$/.test(raw.slice(prefix.length))) {
+      return raw;
+    }
+  }
+  return undefined;
+}
+
 async function redeem(token: string): Promise<{ ok: true; payload: RedeemPayload } | { ok: false; error: string; status: number }> {
   // Build the absolute URL from the incoming request — request.nextUrl.origin
   // returns the internal container hostname in ECS, which the fetch then can't
@@ -32,9 +47,16 @@ async function redeem(token: string): Promise<{ ok: true; payload: RedeemPayload
   return { ok: true, payload: d as RedeemPayload };
 }
 
-export default async function CamPairPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-  const params = await searchParams;
-  const token = params.token;
+export default async function CamPairPage({ searchParams }: { searchParams: Promise<{ token?: string; video?: string }> }) {
+  const params   = await searchParams;
+  const token    = params.token;
+  // Demo mode: when ?video=<url> is present, the pair page loops the asset
+  // instead of using the device camera. To keep this from being abused to
+  // pull arbitrary external URLs through the demo flow, only allow:
+  //   - same-origin paths (^/[\w\-./]+$), OR
+  //   - the public demo-assets bucket on the configured Supabase project.
+  // Canvas drawImage would CORS-fail any other origin anyway.
+  const videoUrl = validateDemoVideo(params.video);
 
   if (!token) {
     return (
@@ -77,7 +99,7 @@ export default async function CamPairPage({ searchParams }: { searchParams: Prom
         </header>
 
         <Suspense fallback={<CamPairCaptureLoading />}>
-          <CamPairCapture token={token} redeem={result.payload} />
+          <CamPairCapture token={token} redeem={result.payload} videoUrl={videoUrl} />
         </Suspense>
       </div>
     </main>
