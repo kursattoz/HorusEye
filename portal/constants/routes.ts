@@ -20,6 +20,7 @@ export const routes = {
   examDetail:      (id: string) => `/exams/${id}`,
   examLive:        (id: string) => `/exams/${id}/live`,
   examReview:      (id: string) => `/exams/${id}/review`,
+  examAttendance:  (id: string) => `/exams/${id}/attendance`,
   examAnalytics:   '/exams/analytics',
   examRooms:       '/exam-rooms',
   students:        '/students',

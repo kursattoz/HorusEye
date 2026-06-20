@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, { params }: Params) {
       occurred_at, created_at,
       exam_sessions:session_id (
         id, started_at, ended_at,
-        exams:exam_id (id, title)
+        exams:exam_id (id, name)
       )
     `, { count: 'exact' })
     .eq('student_id', student.student_id)

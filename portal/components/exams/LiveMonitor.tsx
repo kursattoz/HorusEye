@@ -32,6 +32,10 @@ interface SessionCameraRow {
     label: string;
     camera_type: 'ip_camera' | 'phone' | 'usb_webcam';
     last_seen_at: string | null;
+    // Plan §Demo — when non-null the LiveMonitor mounts an invisible
+    // DemoCameraPublisher that loops the asset and pushes frames to
+    // the AI service, so the tile shows real overlays on demo footage.
+    demo_video_url?: string | null;
   };
 }
 
@@ -400,6 +404,16 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                         className="absolute inset-0 w-full h-full object-cover"
                         draggable={false}
                       />
+                    ) : sc.camera.demo_video_url ? (
+                      // eslint-disable-next-line jsx-a11y/media-has-caption -- demo loop, silent
+                      <video
+                        src={sc.camera.demo_video_url}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-[11px] text-muted-foreground">
                         no frame yet
@@ -413,12 +427,13 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
               })}
             </div>
           </div>
-        ) : focusedFrame ? (
+        ) : (focusedFrame || focusedRow?.camera.demo_video_url) ? (
           <CameraViewport
             frame={focusedFrame}
             label={focusedLabel}
             stale={focusedStale}
             activeIncidents={focusedActiveIncidents}
+            demoVideoUrl={focusedRow?.camera.demo_video_url ?? null}
           />
         ) : (
         <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative">
@@ -485,6 +500,7 @@ export function LiveMonitor({ examId, session, wsBase }: LiveMonitorProps) {
                 frame={framesByCamera.get(sc.camera_id) ?? null}
                 active={focusedCameraId === sc.camera_id}
                 stale={isStale(sc.camera_id)}
+                demoVideoUrl={sc.camera.demo_video_url ?? null}
                 onSelect={() => setFocusedCameraId(sc.camera_id)}
               />
             ))}

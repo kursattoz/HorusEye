@@ -22,6 +22,12 @@ interface RedeemPayload {
 interface Props {
   token: string;
   redeem: RedeemPayload;
+  // Demo mode — when set, the <video> element loops this URL instead of
+  // a live camera stream. Frames are still captured + published over WS
+  // exactly like a real phone, so the AI service runs full inference and
+  // the proctor's live monitor receives genuine detections. Used for
+  // showing the system end-to-end on classroom footage during demos.
+  videoUrl?: string;
 }
 
 const FRAME_INTERVAL_MS = 100;     // 10 FPS — short-lived gestures (gaze flicks,
@@ -36,7 +42,9 @@ const RECONNECT_DELAYS_MS: readonly number[] = [1000, 2000, 4000];
 type WsState = 'idle' | 'connecting' | 'open' | 'error' | 'closed';
 type FacingMode = 'environment' | 'user';
 
-export function CamPairCapture({ token, redeem }: Props) {
+export function CamPairCapture({ token, redeem, videoUrl }: Props) {
+  const isDemoMode = !!videoUrl;
+
   const videoRef  = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wsRef     = useRef<WebSocket | null>(null);
@@ -71,6 +79,29 @@ export function CamPairCapture({ token, redeem }: Props) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+
+    // Demo mode — point the <video> element at the asset URL and loop it.
+    // Skip getUserMedia entirely; the canvas-capture tick downstream is
+    // identical for both paths since it only reads videoWidth/height + drawImage.
+    // crossOrigin must be set BEFORE src so the response is fetched with CORS
+    // mode — otherwise canvas.drawImage taints the canvas and toBlob throws.
+    if (isDemoMode && videoUrl) {
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = null;
+      video.crossOrigin = 'anonymous';
+      video.src       = videoUrl;
+      video.loop      = true;
+      video.muted     = true;          // muted autoplay always allowed
+      video.playsInline = true;
+      try {
+        await video.play();
+      } catch (e) {
+        setPermError(e instanceof Error ? e.message : 'Demo video could not start');
+      }
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         // 720p ideal — earbuds / paper_notes / smart_watch are ~30-80 px wide
@@ -87,7 +118,7 @@ export function CamPairCapture({ token, redeem }: Props) {
     } catch (e) {
       setPermError(e instanceof Error ? e.message : 'Camera permission denied');
     }
-  }, []);
+  }, [isDemoMode, videoUrl]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- startCamera triggers async permError state via getUserMedia rejection
@@ -449,14 +480,22 @@ export function CamPairCapture({ token, redeem }: Props) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" onClick={() => setFacing(f => f === 'environment' ? 'user' : 'environment')}>
-          <RotateCcw size={14} /> Front/Back
-        </Button>
+      <div className={isDemoMode ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-2 gap-2'}>
+        {!isDemoMode && (
+          <Button variant="outline" onClick={() => setFacing(f => f === 'environment' ? 'user' : 'environment')}>
+            <RotateCcw size={14} /> Front/Back
+          </Button>
+        )}
         <Button variant={streaming ? 'default' : 'outline'} onClick={() => setStreaming(s => !s)}>
           <Camera size={14} /> {streaming ? 'Pause' : 'Resume'}
         </Button>
       </div>
+
+      {isDemoMode && (
+        <p className="text-[11px] text-center text-amber-600 dark:text-amber-400">
+          Demo mode — looping classroom footage as a simulated camera feed.
+        </p>
+      )}
 
       {/* Manual Reconnect surface:
           - 'error': initial WS open failed before any successful connect

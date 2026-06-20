@@ -46,13 +46,21 @@ class _StubTable:
 class _StubBucket:
     def __init__(self) -> None:
         self.uploads: list[tuple[str, bytes, dict]] = []
+        self.removed: list[list[str]] = []
         self.fail_upload: bool = False
+        self.fail_remove: bool = False
 
     def upload(self, path: str, data: bytes, file_options: dict) -> Any:
         if self.fail_upload:
             raise RuntimeError("Storage down")
         self.uploads.append((path, data, file_options))
         return {"Key": path}
+
+    def remove(self, paths: list[str]) -> Any:
+        if self.fail_remove:
+            raise RuntimeError("Storage remove failed")
+        self.removed.append(list(paths))
+        return {"data": paths}
 
 
 class _StubStorage:
@@ -147,7 +155,9 @@ def test_write_incident_with_no_jpeg_skips_evidence(stub_client) -> None:
     assert stub_client.storage.bucket.uploads == []
 
 
-def test_storage_failure_still_writes_row(stub_client) -> None:
+def test_storage_failure_drops_incident(stub_client) -> None:
+    # Plan §B1 — synchronous rollback: a Storage failure must drop the
+    # whole incident rather than write a DB row pointing at no evidence.
     stub_client.storage.bucket.fail_upload = True
     row = incident_writer.write_incident(
         _candidate(),
@@ -155,13 +165,14 @@ def test_storage_failure_still_writes_row(stub_client) -> None:
         camera_id="cam-1",
         frame_jpeg=b"FAKE",
     )
-    assert row is not None
-    assert row["evidence_paths"] == []
-    # Insert was still called
-    assert len(stub_client.incidents.inserted_rows) == 1
+    assert row is None
+    # Insert was NOT called
+    assert stub_client.incidents.inserted_rows == []
 
 
-def test_insert_failure_returns_none(stub_client) -> None:
+def test_insert_failure_rolls_back_evidence(stub_client) -> None:
+    # Plan §B1 — if the DB insert fails after a successful upload, the
+    # uploaded JPEG must be removed so we don't leak orphan blobs.
     stub_client.incidents.fail_insert = True
     row = incident_writer.write_incident(
         _candidate(),
@@ -170,6 +181,40 @@ def test_insert_failure_returns_none(stub_client) -> None:
         frame_jpeg=b"FAKE",
     )
     assert row is None
+    # Upload happened, then rollback removed it
+    assert len(stub_client.storage.bucket.uploads) == 1
+    assert len(stub_client.storage.bucket.removed) == 1
+    uploaded_path = stub_client.storage.bucket.uploads[0][0]
+    assert stub_client.storage.bucket.removed[0] == [uploaded_path]
+
+
+def test_insert_failure_with_no_jpeg_skips_rollback(stub_client) -> None:
+    # If there's no JPEG to upload, a DB failure has nothing to roll back.
+    stub_client.incidents.fail_insert = True
+    row = incident_writer.write_incident(
+        _candidate(),
+        session_id="sess-1",
+        camera_id="cam-1",
+        frame_jpeg=None,
+    )
+    assert row is None
+    assert stub_client.storage.bucket.uploads == []
+    assert stub_client.storage.bucket.removed == []
+
+
+def test_rollback_failure_is_swallowed(stub_client) -> None:
+    # If both DB insert AND the rollback delete fail, we still return
+    # None gracefully — the orphan cleanup cron will catch the leak later.
+    stub_client.incidents.fail_insert = True
+    stub_client.storage.bucket.fail_remove = True
+    row = incident_writer.write_incident(
+        _candidate(),
+        session_id="sess-1",
+        camera_id="cam-1",
+        frame_jpeg=b"FAKE",
+    )
+    assert row is None
+    assert len(stub_client.storage.bucket.uploads) == 1
 
 
 def test_missing_env_returns_none(monkeypatch) -> None:

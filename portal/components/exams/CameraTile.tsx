@@ -16,10 +16,13 @@ interface Props {
   active: boolean;
   /** Last frame older than ~10s — show a "Yayın koptu" red overlay. */
   stale?: boolean;
+  /** Plan §Demo — when set, render the looping video directly in the
+   *  thumbnail (no WS frames needed). */
+  demoVideoUrl?: string | null;
   onSelect: () => void;
 }
 
-function CameraTileImpl({ cameraId, label, cameraType, frame, active, stale = false, onSelect }: Props) {
+function CameraTileImpl({ cameraId, label, cameraType, frame, active, stale = false, demoVideoUrl, onSelect }: Props) {
   return (
     <button
       type="button"
@@ -36,6 +39,16 @@ function CameraTileImpl({ cameraId, label, cameraType, frame, active, stale = fa
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
           draggable={false}
+        />
+      ) : demoVideoUrl ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption -- demo loop, silent
+        <video
+          src={demoVideoUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-muted-foreground">
@@ -76,5 +89,6 @@ export const CameraTile = memo(CameraTileImpl, (a, b) =>
   a.stale === b.stale &&
   a.label === b.label &&
   a.cameraType === b.cameraType &&
+  a.demoVideoUrl === b.demoVideoUrl &&
   a.frame?.jpeg_base64 === b.frame?.jpeg_base64
 );
